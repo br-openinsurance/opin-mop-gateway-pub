@@ -1,0 +1,243 @@
+openapi: 3.0.3
+info:
+  title: "MOP Client Gateway API"
+  version: "1.0.0"
+  description: |
+    API Gateway for MOP (Message Oriented Processing) Client Gateway.
+    This service receives anonymization requests, validates headers and payload,
+    and forwards messages to RabbitMQ queues for processing.
+  
+  contact:
+    name: MOP Team
+    email: mop-team@opinbrasil.com.br
+
+servers:
+  - url: "http://localhost:8080/v1/anonymize"
+    description: "Local development server"
+  - url: "https://api-dev.intranet.opinbrasil/v1/anonymize"
+    description: "Development environment"
+  - url: "https://api.intranet.opinbrasil/v1/anonymize"
+    description: "Production environment"
+
+paths:
+  /data:
+    post:
+      tags:
+        - "Anonymization"
+      summary: "Submit data for anonymization"
+      description: |
+        Receives a JSON payload and forwards it to the anonymization processing queue.
+        The request must include required headers for routing and traceability.
+        The payload is validated and sent to RabbitMQ for asynchronous processing.
+      operationId: "submitAnonymizationRequest"
+      
+      parameters:
+        - $ref: '#/components/parameters/originHeader'
+        - $ref: '#/components/parameters/destinationHeader'
+        - $ref: '#/components/parameters/pathHeader'
+        - $ref: '#/components/parameters/operationHeader'
+        - $ref: '#/components/parameters/certificateHeader'
+        - $ref: '#/components/parameters/userIdHeader'
+      
+      requestBody:
+        required: true
+        description: |
+          JSON payload to be anonymized. The structure is flexible and can contain
+          any valid JSON object. The payload will be forwarded as-is to the processing queue.
+        content:
+          application/json:
+            schema:
+              type: object
+              description: "Arbitrary JSON payload"
+              additionalProperties: true
+            examples:
+              example1:
+                summary: "Simple payload example"
+                value:
+                  id: "12345"
+                  name: "John Doe"
+                  email: "john.doe@example.com"
+                  timestamp: "2025-01-15T10:30:00Z"
+              example2:
+                summary: "Complex nested payload"
+                value:
+                  requestId: "req-abc-123"
+                  metadata:
+                    source: "external-system"
+                    version: "1.0"
+                  data:
+                    user:
+                      id: "user-123"
+                      profile:
+                        name: "Jane Smith"
+                        preferences: ["pref1", "pref2"]
+      
+      responses:
+        '200':
+          description: "Message sent successfully to the processing queue"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              examples:
+                success:
+                  value:
+                    message: "Message sent successfully"
+        
+        '400':
+          description: "Bad Request - Invalid headers or JSON payload"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidHeader:
+                  summary: "Missing or empty header"
+                  value:
+                    error: "Invalid header"
+                    details: "Header 'origin' must not be empty"
+                invalidJson:
+                  summary: "Invalid or empty JSON"
+                  value:
+                    error: "Invalid JSON"
+                    details: "Invalid or empty JSON payload"
+                jsonConversionError:
+                  summary: "JSON conversion error"
+                  value:
+                    error: "JSON conversion error"
+                    details: "Failed to process JSON payload: ..."
+        
+        '500':
+          description: "Internal Server Error - Processing or messaging failure"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                rabbitmqError:
+                  summary: "RabbitMQ processing error"
+                  value:
+                    error: "Message processing error"
+                    details: "Failed to process message: Connection timeout"
+                unexpectedError:
+                  summary: "Unexpected error"
+                  value:
+                    error: "Unexpected error"
+                    details: "An unexpected error occurred while processing the request"
+
+components:
+  parameters:
+    originHeader:
+      name: "origin"
+      in: "header"
+      description: |
+        Source system identifier. Identifies the system or service that originated the request.
+        This value is used for routing and traceability in the message queue.
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        example: "external-api-service"
+    
+    destinationHeader:
+      name: "destination"
+      in: "header"
+      description: |
+        Target system identifier. Identifies the intended recipient or logical destination
+        for the message in the processing pipeline.
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        example: "anonymization-service"
+    
+    pathHeader:
+      name: "path"
+      in: "header"
+      description: |
+        Logical path or endpoint identifier. Represents the business route or endpoint
+        related to the message processing.
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        example: "/open-insurance/consents/v2/consents"
+    
+    operationHeader:
+      name: "operation"
+      in: "header"
+      description: |
+        Operation type identifier. Specifies the type of operation being performed
+        (e.g., CREATE, UPDATE, DELETE, PROCESS).
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        enum: ["CREATE", "UPDATE", "DELETE", "PROCESS", "GET", "POST", "PUT", "PATCH"]
+        example: "PROCESS"
+    
+    certificateHeader:
+      name: "certificate"
+      in: "header"
+      description: |
+        Certificate information for authentication/authorization purposes.
+        May contain certificate identifier or encoded certificate data.
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        example: "cert-abc123xyz"
+    
+    userIdHeader:
+      name: "userID"
+      in: "header"
+      description: |
+        User identifier associated with the request. Used for audit and traceability.
+        Identifies the user or system account making the request.
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        example: "user-12345"
+
+  schemas:
+    SuccessResponse:
+      type: object
+      description: "Successful API response"
+      properties:
+        message:
+          type: string
+          description: "Success message"
+          example: "Message sent successfully"
+      required:
+        - message
+    
+    ErrorResponse:
+      type: object
+      description: "Error API response"
+      properties:
+        error:
+          type: string
+          description: "Error type or category"
+          example: "Invalid header"
+        details:
+          type: string
+          description: "Detailed error message"
+          example: "Header 'origin' must not be empty"
+      required:
+        - error
+        - details
+
+  securitySchemes:
+    # Note: Currently no authentication is required, but this can be extended
+    # with API keys, OAuth2, or other authentication mechanisms
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: "API Key for authentication (future implementation)"
+
+tags:
+  - name: "Anonymization"
+    description: "Operations for submitting data anonymization requests"
+
