@@ -883,9 +883,3 @@ curl --location 'http://localhost:8080/v1/anonymize/data' \
 - Atualize este documento sempre que novas filas ou variáveis forem introduzidas.
 
 ---
-
-## 10. Diagrama de Arquitetura do Cliente
-
-![Diagrama de Arquitetura do Cliente](docs/assets/mop-client-arquitetura.png)
-
-> Garanta que a imagem mais recente esteja salva no caminho `docs/assets/mop-client-arquitetura.png`. Sempre que o desenho arquitetural mudar, substitua o arquivo para manter esta documentação atualizada.
