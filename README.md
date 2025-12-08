@@ -1,16 +1,17 @@
-# Guia de Arquitetura e Configuração do Módulo de Operações OPIN (MOP) — MOP Client
+## Guia de Arquitetura e Configuração do Módulo de Operações OPIN (MOP) — MOP Client
 
 Este documento consolidado descreve a estrutura de pacotes, a convenção de filas do RabbitMQ, os parâmetros de configuração Spring Boot e o processo de execução do **MOP Client**. Use-o como referência rápida para padronizar ambientes de desenvolvimento, homologação e produção.
-A motivação para desenvolvimento do **Módulo de
-Operações OPIN (MOP)** é a promoção da
-transparência e confiabilidade no âmbito do Open
-Insurance.
-▪ Facilitando o acesso direto à infraestrutura dos
-participantes, o desenvolvimento da plataforma
-pretende eliminar obstáculos na comunicação e
-atuar como um acelerador na implementação e
-análise de qualidade dos dados e prevenção à riscos
-de cibersegurança e fraudes
+
+## Sobre o MOP
+
+O **Módulo de Operações OPIN (MOP)** foi desenvolvido para promover a transparência e confiabilidade no âmbito do Open Insurance.
+
+**Principais objetivos:**
+- Facilitar o acesso direto à infraestrutura dos participantes
+- Eliminar obstáculos na comunicação entre sistemas
+- Atuar como acelerador na implementação e análise de qualidade dos dados
+- Prevenir riscos de cibersegurança e fraudes
+
 ---
 
 ## 1. Visão Geral da Arquitetura
@@ -34,19 +35,61 @@ de cibersegurança e fraudes
 
 ---
 
-## 3. Mensageria RabbitMQ
+## 3. Headers Obrigatórios da API
 
-### 3.1 Filas Mandatórias
+A API do Gateway requer os seguintes headers obrigatórios em todas as requisições:
+
+| Header | Descrição | Valores Aceitos | Exemplo |
+|--------|-----------|-----------------|---------|
+| `origin` | Identifica o sistema originador da requisição | Qualquer string não vazia | `Sistema` |
+| `destination` | Identifica o destino esperado pelo gateway | Qualquer string não vazia | `Sistema` |
+| `path` | Rota alvo que será registrada nos logs | Qualquer string não vazia | `/open-insurance/consents/v2/consents` |
+| `operation` | Método da operação encapsulada | `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `CREATE`, `UPDATE`, `DELETE`, `PROCESS` | `POST` |
+| `certificate` | Certificado codificado para autenticação/autorização | Qualquer string (pode ser vazia) | `cert-abc123xyz` |
+| `userID` | Identificador do usuário ou sistema que está fazendo a requisição | Qualquer string não vazia | `user-12345` |
+| `APPLICATION_MODE` | Modo de aplicação do gateway | **`TRANSMITTER`** ou **`RECEIVER`** (case-insensitive) | `TRANSMITTER` |
+
+### 3.1 Validação do APPLICATION_MODE
+
+O header `APPLICATION_MODE` é obrigatório e aceita apenas dois valores:
+- **`TRANSMITTER`**: Usado quando o gateway está enviando mensagens para processamento
+- **`RECEIVER`**: Usado quando o gateway está recebendo mensagens processadas
+
+**Validações:**
+- O header não pode estar vazio ou nulo
+- Apenas os valores `TRANSMITTER` ou `RECEIVER` são aceitos (case-insensitive)
+- Qualquer outro valor resultará em erro 400 com a mensagem: `"Header 'APPLICATION_MODE' must be either 'TRANSMITTER' or 'RECEIVER'"`
+
+### 3.2 Exemplo de Requisição com APPLICATION_MODE
+
+```bash
+curl --location 'http://localhost:8080/v1/anonymize/data' \
+--header 'origin: Sistema' \
+--header 'destination: Sistema' \
+--header 'path: /open-insurance/consents/v2/consents' \
+--header 'operation: POST' \
+--header 'certificate: cert-abc123' \
+--header 'userID: user-12345' \
+--header 'APPLICATION_MODE: TRANSMITTER' \
+--header 'Content-Type: application/json' \
+--data-raw '{"data": {...}}'
+```
+
+---
+
+## 4. Mensageria RabbitMQ
+
+### 4.1 Filas Mandatórias
 
 Estas filas devem existir em todos os ambientes:
 
 | Fila | Descrição | Produtor | Consumidor |
 |------|-----------|----------|------------|
-| `data.anonymization.input.queue` | Recebe dados brutos para anonimização | `open-insurance-mop-gateway` | `open-insurance-mop-client-anonymization` |
-| `data.anonymization.output.queue` | Armazena dados já anonimizados para processamento ou armazenamento | `open-insurance-mop-client-anonymization` | `open-insurance-mop-validator` |
-| `data.validator.input.queue` | Fila intermediária para payloads recebidos pelo gateway que são validados | `open-insurance-mop-validator` | `open-insurance-mop-gateway` |
+| `data.anonymization.input.queue` | Recebe dados brutos para anonimização | `open-insurance-mop-gateway` | [`open-insurance-mop-client-anonymization`](https://github.com/br-openinsurance-infra/opin-mop-client-anonymization/tree/develop) |
+| `data.anonymization.output.queue` | Armazena dados já anonimizados para processamento ou armazenamento | [`open-insurance-mop-client-anonymization`](https://github.com/br-openinsurance-infra/opin-mop-client-anonymization/tree/develop) | [`open-insurance-mop-validator`](https://github.com/br-openinsurance-infra/mop-client-data-validator/tree/develop) |
+| `data.validator.input.queue` | Fila intermediária para payloads recebidos pelo gateway que são validados | [`open-insurance-mop-validator`](https://github.com/br-openinsurance-infra/mop-client-data-validator/tree/develop) | `open-insurance-mop-gateway` |
 
-### 3.2 Diretrizes de Configuração
+### 4.2 Diretrizes de Configuração
 
 - **Durável** (`durable=true`) para sobreviver a reinícios.
 - **Auto-delete** desativado.
@@ -60,132 +103,80 @@ Estas filas devem existir em todos os ambientes:
 
 ## 4. Configuração Spring Boot
 
-### 4.0 Arquivos de Configuração
-
-A aplicação utiliza dois arquivos de configuração principais:
-
-- **`application.yml`**: Arquivo base para ambientes de produção/staging. **Todas as variáveis de ambiente são obrigatórias e não possuem valores padrão.** Este arquivo deve ser usado em containers Docker, Kubernetes e ambientes de produção.
-
-- **`application_local.yml`**: Arquivo para desenvolvimento local. Contém valores padrão para todas as variáveis, permitindo executar a aplicação localmente sem configurar variáveis de ambiente. Este arquivo é ativado automaticamente quando o perfil `local` está ativo.
-
-**Importante:** Em ambientes de produção, todas as variáveis de ambiente listadas na seção 5.1 devem ser configuradas obrigatoriamente, pois o `application.yml` não possui valores padrão.
-
-### 4.1 Aplicação
+### 5.1 Aplicação
 ```yaml
 spring.application.name: ${SPRING_APPLICATION_NAME:mop-client-gateway}
 ```
 O valor à direita do `:` indica o padrão utilizado quando `SPRING_APPLICATION_NAME` não é informado; se nenhum valor for definido, a aplicação sobe como `mop-client-gateway`.
 
-### 4.2 Servidor
+### 5.2 Servidor
 ```yaml
-server:
-  port: ${SERVER_PORT}
-  servlet:
-    context-path: ${SERVER_CONTEXT_PATH}
+server.port: ${SERVER_PORT:8080}
 ```
-**Variáveis de ambiente obrigatórias:**
-- `SERVER_PORT`: Porta do servidor (ex: `8080`)
-- `SERVER_CONTEXT_PATH`: Context path da aplicação (ex: `/v1/anonymize`)
+Assim como nas demais propriedades, o valor padrão é aplicado quando `SERVER_PORT` não é definido externamente.
 
-**Nota:** No arquivo `application.yml` (base), estas variáveis são obrigatórias. Valores padrão estão disponíveis apenas em `application_local.yml` para desenvolvimento local.
-
-### 4.3 RabbitMQ
+### 5.3 RabbitMQ
 ```yaml
 # Unified Spring AMQP Configuration
 spring.rabbitmq:
-  # Connection settings (obrigatórias)
-  host: ${RABBITMQ_HOST}
-  port: ${RABBITMQ_PORT}
-  username: ${RABBITMQ_USERNAME}
-  password: ${RABBITMQ_PASSWORD}
+  # Connection settings
+  host: ${RABBITMQ_VALIDATOR_HOST:localhost}
+  port: ${RABBITMQ_VALIDATOR_PORT:5672}
+  username: ${RABBITMQ_USERNAME:guest}
+  password: ${RABBITMQ_PASSWORD:guest}
   
   # Listener configuration
   listener:
     simple:
       acknowledge-mode: auto
-      concurrency: ${RABBITMQ_CONCURRENCY:1}
-      max-concurrency: ${RABBITMQ_MAX_CONCURRENCY:5}
-      prefetch: ${RABBITMQ_PREFETCH:10}
+      concurrency: 1
+      max-concurrency: 5
+      prefetch: 10
   
-  # Application-specific queues (obrigatórias)
+  # Application-specific queues
   queues:
     validator:
-      name: ${RABBITMQ_QUEUE_VALIDATOR}
+      name: ${RABBITMQ_VALIDATOR_QUEUE_NAME:data.validator.input.queue}
     output:
-      name: ${RABBITMQ_QUEUE_OUTPUT}
+      name: ${RABBITMQ_OUTPUT_QUEUE_NAME:data.anonymization.output.queue}
   
   # Retry configuration
   retry:
     maxAttempts: ${RABBITMQ_RETRY_MAX_ATTEMPTS:5}
     backoff: ${RABBITMQ_RETRY_BACKOFF:2000}
-    enablesTransactionSupport: true
+    enablesTransactionSupport: ${RABBITMQ_ENABLES_TRANSACTION_SUPPORT:true}
 ```
+Todos os parâmetros podem ser sobrescritos por variáveis de ambiente com o mesmo nome (`RABBITMQ_*`).
 
-**Variáveis de ambiente obrigatórias:**
-- `RABBITMQ_HOST`: Host do RabbitMQ
-- `RABBITMQ_PORT`: Porta do RabbitMQ
-- `RABBITMQ_USERNAME`: Usuário do RabbitMQ
-- `RABBITMQ_PASSWORD`: Senha do RabbitMQ
-- `RABBITMQ_QUEUE_VALIDATOR`: Nome da fila de validação
-- `RABBITMQ_QUEUE_OUTPUT`: Nome da fila de saída
-
-**Variáveis de ambiente opcionais:**
-- `RABBITMQ_CONCURRENCY`: Número de consumidores concorrentes (padrão: `1`)
-- `RABBITMQ_MAX_CONCURRENCY`: Máximo de consumidores concorrentes (padrão: `5`)
-- `RABBITMQ_PREFETCH`: Contagem de prefetch (padrão: `10`)
-- `RABBITMQ_RETRY_MAX_ATTEMPTS`: Tentativas máximas de retry (padrão: `5`)
-- `RABBITMQ_RETRY_BACKOFF`: Tempo de backoff do retry em ms (padrão: `2000`)
-
-**Nota:** No arquivo `application.yml` (base), as variáveis marcadas como obrigatórias não possuem valores padrão. Valores padrão estão disponíveis apenas em `application_local.yml` para desenvolvimento local.
-
-### 4.4 Endpoints de Gerenciamento
+### 5.4 Endpoints de Gerenciamento
 ```yaml
-management:
-  endpoints:
-    web:
-      exposure:
-        include: ${MANAGEMENT_ENDPOINTS_INCLUDE}
-  endpoint:
-    health:
-      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS}
+management.endpoints.web.exposure.include: '*'
+management.endpoint.health.show-details: always
 ```
-
-**Variáveis de ambiente obrigatórias:**
-- `MANAGEMENT_ENDPOINTS_INCLUDE`: Endpoints do Actuator a expor (ex: `*` para todos)
-- `MANAGEMENT_HEALTH_SHOW_DETAILS`: Detalhes do health check (ex: `always`)
-
-**Nota:** No arquivo `application.yml` (base), estas variáveis são obrigatórias. Valores padrão estão disponíveis apenas em `application_local.yml` para desenvolvimento local.
+Expõe todos os endpoints do Actuator e força detalhes completos no `/actuator/health`.
 
 ---
 
-## 5. Variáveis de Ambiente
+## 6. Variáveis de Ambiente
 
 As tabelas abaixo mapeiam as propriedades Spring expostas por cada aplicação para suas respectivas variáveis de ambiente e valores padrão.
 
-### 5.1 Gateway (`open-insurance-mop-gateway`)
+### 6.1 Gateway (`open-insurance-mop-gateway`)
 
-| Variável | Propriedade Spring | Obrigatória | Valor padrão (apenas local) |
-|----------|--------------------|-------------|----------------------------|
-| `SERVER_PORT` | `server.port` | Sim | `8080` (apenas em `application_local.yml`) |
-| `SERVER_CONTEXT_PATH` | `server.servlet.context-path` | Sim | `/v1/anonymize` (apenas em `application_local.yml`) |
-| `RABBITMQ_HOST` | `spring.rabbitmq.host` | Sim | `localhost` (apenas em `application_local.yml`) |
-| `RABBITMQ_PORT` | `spring.rabbitmq.port` | Sim | `5672` (apenas em `application_local.yml`) |
-| `RABBITMQ_USERNAME` | `spring.rabbitmq.username` | Sim | `guest` (apenas em `application_local.yml`) |
-| `RABBITMQ_PASSWORD` | `spring.rabbitmq.password` | Sim | `guest` (apenas em `application_local.yml`) |
-| `RABBITMQ_CONCURRENCY` | `spring.rabbitmq.listener.simple.concurrency` | Não | `1` |
-| `RABBITMQ_MAX_CONCURRENCY` | `spring.rabbitmq.listener.simple.max-concurrency` | Não | `5` |
-| `RABBITMQ_PREFETCH` | `spring.rabbitmq.listener.simple.prefetch` | Não | `10` |
-| `RABBITMQ_QUEUE_VALIDATOR` | `spring.rabbitmq.queues.validator.name` | Sim | `data.validator.input.queue` (apenas em `application_local.yml`) |
-| `RABBITMQ_QUEUE_OUTPUT` | `spring.rabbitmq.queues.output.name` | Sim | `data.anonymization.output.queue` (apenas em `application_local.yml`) |
-| `RABBITMQ_RETRY_MAX_ATTEMPTS` | `spring.rabbitmq.retry.maxAttempts` | Não | `5` |
-| `RABBITMQ_RETRY_BACKOFF` | `spring.rabbitmq.retry.backoff` | Não | `2000` |
-| `EXTERNAL_API_URL` | `external.server.request.url` | Sim | `localhost/process` (apenas em `application_local.yml`) |
-| `MANAGEMENT_ENDPOINTS_INCLUDE` | `management.endpoints.web.exposure.include` | Sim | `*` (apenas em `application_local.yml`) |
-| `MANAGEMENT_HEALTH_SHOW_DETAILS` | `management.endpoint.health.show-details` | Sim | `always` (apenas em `application_local.yml`) |
+| Variável | Propriedade Spring | Valor padrão |
+|----------|--------------------|--------------|
+| `SERVER_PORT_GATEWAY` | `server.port` | `8080` |
+| `RABBITMQ_USERNAME` | `spring.rabbitmq.username` | `guest` |
+| `RABBITMQ_PASSWORD` | `spring.rabbitmq.password` | `guest` |
+| `RABBITMQ_VALIDATOR_HOST` | `spring.rabbitmq.host` | `localhost` |
+| `RABBITMQ_VALIDATOR_PORT` | `spring.rabbitmq.port` | `5672` |
+| `RABBITMQ_RETRY_MAX_ATTEMPTS` | `spring.rabbitmq.retry.maxAttempts` | `5` |
+| `RABBITMQ_RETRY_BACKOFF` | `spring.rabbitmq.retry.backoff` | `2000` |
+| `RABBITMQ_ENABLES_TRANSACTION_SUPPORT` | `spring.rabbitmq.retry.enablesTransactionSupport` | `true` |
+| `RABBITMQ_VALIDATOR_QUEUE_NAME` | `spring.rabbitmq.queues.validator.name` | `data.validator.input.queue` |
+| `RABBITMQ_OUTPUT_QUEUE_NAME` | `spring.rabbitmq.queues.output.name` | `data.anonymization.output.queue` |
 
-**Nota:** No arquivo `application.yml` (base), todas as variáveis são obrigatórias e não possuem valores padrão. Os valores padrão listados acima são apenas para referência do arquivo `application_local.yml`, usado para desenvolvimento local.
-
-### 5.2 Validator (`open-insurance-mop-validator`)
+### 6.2 Validator ([`open-insurance-mop-validator`](https://github.com/br-openinsurance-infra/mop-client-data-validator/tree/develop))
 
 | Variável | Propriedade Spring | Valor padrão |
 |----------|--------------------|--------------|
@@ -203,36 +194,36 @@ As tabelas abaixo mapeiam as propriedades Spring expostas por cada aplicação p
 | `RABBITMQ_INPUT_PORT` | `rabbitmq.input.port` | `5672` |
 
 
-### 5.3 Anonymization (`open-insurance-mop-anonymization`)
+### 6.3 Anonymization ([`open-insurance-mop-anonymization`](https://github.com/br-openinsurance-infra/opin-mop-client-anonymization/tree/develop))
 
-| Variável | Propriedade Spring | Valor padrão                                           |
-|----------|--------------------|--------------------------------------------------------|
-| `SERVER_PORT_ANONYMIZATION` | `server.port` | `8181`                                                 |
-| `EXTERNAL_API_DATA_ANONYMIZATION` | `external.api.data-anonymization` | `http://localhost/anonymization-fields?schema=Consent` |
-| `EXTERNAL_REQUEST_URL` | `external.request.url` | `http://localhost/process`                                    |
-| `EXTERNAL_REQUEST_HOST` | `external.request.host` | `http://localhost`        |
-| `EXTERNAL_REQUEST_PATH` | `external.request.path` | `/process`                                             |
-| `EXTERNAL_REQUEST_METHOD` | `external.request.method` | `POST`                                                 |
-| `RABBITMQ_USERNAME` | `rabbitmq.username` | `guest`                                                |
-| `RABBITMQ_PASSWORD` | `rabbitmq.password` | `guest`                                                |
-| `RABBITMQ_INPUT_QUEUE_NAME` | `rabbitmq.input.queue.name` | `data.anonymization.input.queue`                       |
-| `RABBITMQ_INPUT_HOST` | `rabbitmq.input.host` | `localhost`                                            |
-| `RABBITMQ_INPUT_PORT` | `rabbitmq.input.port` | `5672`                                                 |
-| `RABBITMQ_OUTPUT_QUEUE_NAME` | `rabbitmq.output.queue.name` | `data.anonymization.output.queue`                      |
-| `RABBITMQ_OUTPUT_HOST` | `rabbitmq.output.host` | `localhost`                                            |
-| `RABBITMQ_OUTPUT_PORT` | `rabbitmq.output.port` | `5672`                                                 |
+| Variável | Propriedade Spring | Valor padrão |
+|----------|--------------------|--------------|
+| `SERVER_PORT_ANONYMIZATION` | `server.port` | `8181` |
+| `EXTERNAL_API_DATA_ANONYMIZATION` | `external.api.data-anonymization` | `http://mop-server-entrypoint-dev.intranet.opinbrasil/anonymization-fields?schema=Consent` |
+| `EXTERNAL_REQUEST_URL` | `external.request.url` | `http://mop-server-entrypoint-dev.intranet.opinbrasil/process` |
+| `EXTERNAL_REQUEST_HOST` | `external.request.host` | `mop-server-entrypoint-dev.intranet.opinbrasil` |
+| `EXTERNAL_REQUEST_PATH` | `external.request.path` | `/process` |
+| `EXTERNAL_REQUEST_METHOD` | `external.request.method` | `POST` |
+| `RABBITMQ_USERNAME` | `rabbitmq.username` | `guest` |
+| `RABBITMQ_PASSWORD` | `rabbitmq.password` | `guest` |
+| `RABBITMQ_INPUT_QUEUE_NAME` | `rabbitmq.input.queue.name` | `data.anonymization.input.queue` |
+| `RABBITMQ_INPUT_HOST` | `rabbitmq.input.host` | `localhost` |
+| `RABBITMQ_INPUT_PORT` | `rabbitmq.input.port` | `5672` |
+| `RABBITMQ_OUTPUT_QUEUE_NAME` | `rabbitmq.output.queue.name` | `data.anonymization.output.queue` |
+| `RABBITMQ_OUTPUT_HOST` | `rabbitmq.output.host` | `localhost` |
+| `RABBITMQ_OUTPUT_PORT` | `rabbitmq.output.port` | `5672` |
 ---
 
-## 6. Execução Local
+## 7. Execução Local
 
-### 6.1 Pré-requisitos
+### 7.1 Pré-requisitos
 
 - Java 17
 - Maven 3.x
 - Docker
 - Docker Compose
 
-### 6.2 Configuração do RabbitMQ via Docker Compose
+### 7.2 Configuração do RabbitMQ via Docker Compose
 
 Antes de executar a aplicação localmente, é necessário subir o RabbitMQ utilizando o arquivo `docker-compose.yml` fornecido no projeto.
 
@@ -265,7 +256,7 @@ docker-compose down
 
 > **Importante:** O RabbitMQ deve estar em execução antes de iniciar a aplicação Spring Boot, pois ela depende do broker de mensageria para funcionar corretamente.
 
-## 7 Passos via Docker
+## 8. Passos via Docker
 
 1. Baixe as imagens obrigatórias (gateway, validator e anonymization):
    ```bash
@@ -278,23 +269,16 @@ docker-compose down
    **Gateway**
    ```bash
    docker run --rm --name mop-gateway \
-     -e SERVER_PORT=${SERVER_PORT:-8080} \
-     -e SERVER_CONTEXT_PATH=${SERVER_CONTEXT_PATH:-/v1/anonymize} \
-     -e RABBITMQ_HOST=${RABBITMQ_HOST:-localhost} \
-     -e RABBITMQ_PORT=${RABBITMQ_PORT:-5672} \
+     -e SERVER_PORT=${SERVER_PORT_GATEWAY:-8080} \
      -e RABBITMQ_USERNAME=${RABBITMQ_USERNAME:-guest} \
      -e RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD:-guest} \
-     -e RABBITMQ_CONCURRENCY=${RABBITMQ_CONCURRENCY:-1} \
-     -e RABBITMQ_MAX_CONCURRENCY=${RABBITMQ_MAX_CONCURRENCY:-5} \
-     -e RABBITMQ_PREFETCH=${RABBITMQ_PREFETCH:-10} \
-     -e RABBITMQ_QUEUE_VALIDATOR=${RABBITMQ_QUEUE_VALIDATOR:-data.validator.input.queue} \
-     -e RABBITMQ_QUEUE_OUTPUT=${RABBITMQ_QUEUE_OUTPUT:-data.anonymization.output.queue} \
      -e RABBITMQ_RETRY_MAX_ATTEMPTS=${RABBITMQ_RETRY_MAX_ATTEMPTS:-5} \
      -e RABBITMQ_RETRY_BACKOFF=${RABBITMQ_RETRY_BACKOFF:-2000} \
-     -e EXTERNAL_API_URL=${EXTERNAL_API_URL:-localhost/process} \
-     -e MANAGEMENT_ENDPOINTS_INCLUDE=${MANAGEMENT_ENDPOINTS_INCLUDE:-*} \
-     -e MANAGEMENT_HEALTH_SHOW_DETAILS=${MANAGEMENT_HEALTH_SHOW_DETAILS:-always} \
-     -p ${SERVER_PORT:-8080}:${SERVER_PORT:-8080} \
+     -e RABBITMQ_ENABLES_TRANSACTION_SUPPORT=${RABBITMQ_ENABLES_TRANSACTION_SUPPORT:-true} \
+     -e RABBITMQ_VALIDATOR_QUEUE_NAME=${RABBITMQ_VALIDATOR_QUEUE_NAME:-data.anonymization.input.queue} \
+     -e RABBITMQ_VALIDATOR_HOST=${RABBITMQ_VALIDATOR_HOST:-localhost} \
+     -e RABBITMQ_VALIDATOR_PORT=${RABBITMQ_VALIDATOR_PORT:-5672} \
+     -p ${SERVER_PORT_GATEWAY:-8080}:${SERVER_PORT_GATEWAY:-8080} \
      ghcr.io/br-openinsurance-infra/opin-mop-gateway/open-insurance-mop-gateway:develop
    ```
 
@@ -340,19 +324,19 @@ docker-compose down
 
    > Em shells Windows substitua `\` por `^`.
 
-### 7.1 Comportamento dos valores padrão no Docker
+### 8.1 Comportamento dos valores padrão no Docker
 
 - A sintaxe `${VARIAVEL:-valorPadrao}` é avaliada pelo shell antes do `docker run`. Se `VARIAVEL` estiver definida no seu terminal, o valor informado é usado; caso contrário, o texto após os dois pontos é enviado para o container.
 - Isso significa que você pode omitir qualquer `-e` e confiar no valor padrão mostrado no comando, obtendo o mesmo comportamento descrito na tabela de variáveis de ambiente.
 - Para personalizar um valor, defina a variável no shell (ex.: `export SERVER_PORT=9090`) antes de executar o comando ou substitua diretamente o trecho `${VARIAVEL:-valorPadrao}` pelo valor desejado.
 
-## 8. Consulta ao diagrama de arquitetura do cliente
+## 9. Consulta ao diagrama de arquitetura do cliente
 
 1. Localize o arquivo `docs/assets/mop-client-arquitetura.png`, que contém o diagrama oficial do MOP Client.
 2. Abra a imagem para revisar o fluxo ponta a ponta (produtor → broker → consumidor) antes de configurar novas integrações.
 3. Caso o arquivo ainda não esteja presente, utilize a imagem compartilhada pela equipe de arquitetura e salve-a com o mesmo nome para manter o documento sincronizado.
 
-### 8.1 Exemplo de requisição via Postman/cURL
+### 9.1 Exemplo de requisição via Postman/cURL
 
 Use este passo a passo para validar rapidamente o endpoint `/v1/anonymize/data` depois de subir os containers:
 
@@ -363,6 +347,8 @@ Use este passo a passo para validar rapidamente o endpoint `/v1/anonymize/data` 
   - `path: /open-insurance/consents/v2/consents` → rota alvo que será registrada nos logs.
   - `operation: POST` → método da operação encapsulada.
   - `certificate` → preencha com o certificado codificado (no exemplo abaixo ele está vazio).
+  - `userID: user-12345` → identificador do usuário ou sistema que está fazendo a requisição.
+  - `APPLICATION_MODE: TRANSMITTER` → modo de aplicação: `TRANSMITTER` (para envio de mensagens) ou `RECEIVER` (para recebimento de mensagens). **Obrigatório**.
   - `Content-Type: application/json`.
 3. Na aba **Body**, selecione `raw` + `JSON` e cole o payload completo apresentado abaixo (é o mesmo corpo usado no comando `curl`).
 4. Clique em **Send**. Se as três aplicações estiverem rodando, a resposta retornará o payload anonimizado consumido da fila configurada.
@@ -375,7 +361,9 @@ curl --location 'http://localhost:8080/v1/anonymize/data' \
 --header 'destination: Sistema' \
 --header 'path: /open-insurance/consents/v2/consents' \
 --header 'operation: POST' \
---header 'certificate;' \
+--header 'certificate:' \
+--header 'userID: user-12345' \
+--header 'APPLICATION_MODE: TRANSMITTER' \
 --header 'Content-Type: application/json' \
 --data-raw '{
   "data": {
@@ -386,7 +374,7 @@ curl --location 'http://localhost:8080/v1/anonymize/data' \
         "updateDateTime": "2021-05-21T08:30:00Z",
         "personalId": "578-psd-71md6971kjh-2d414",
         "brandName": "Organização A",
-        "civilName": "Juan Kaique Cláudio Fernandes",
+        "civilName": "Fulano de Tal",
         "socialName": "string",
         "cpfNumber": "84872401663",
         "companyInfo": {
@@ -413,10 +401,10 @@ curl --location 'http://localhost:8080/v1/anonymize/data' \
         "contact": {
           "postalAddresses": [
             {
-              "address": "Av Naburo Ykesaki, 1270",
-              "additionalInfo": "Fundos",
+              "address": "Rua Exemplo, 123",
+              "additionalInfo": "Apto 101",
               "districtName": "Centro",
-              "townName": "Marília",
+              "townName": "São Paulo",
               "countrySubDivision": "SP",
               "postCode": "10000000",
               "country": "BRA"
@@ -426,13 +414,13 @@ curl --location 'http://localhost:8080/v1/anonymize/data' \
             {
               "countryCallingCode": "55",
               "areaCode": "19",
-              "number": "29875132",
+              "number": "12345678",
               "phoneExtension": "932"
             }
           ],
           "emails": [
             {
-              "email": "nome@br.net"
+              "email": "exemplo@exemplo.com.br"
             }
           ]
         },
@@ -441,10 +429,10 @@ curl --location 'http://localhost:8080/v1/anonymize/data' \
         "birthDate": "2021-05-21",
         "filiation": {
           "type": "MAE",
-          "civilName": "Marcelo Cláudio Fernandes"
+          "civilName": "Maria da Silva"
         },
         "identificationDetails": {
-          "civilName": "Juan Kaique Cláudio Fernandes",
+          "civilName": "Fulano de Tal",
           "cpfNumber": "63693941192"
         }
       },
@@ -484,7 +472,7 @@ curl --location 'http://localhost:8080/v1/anonymize/data' \
               {
                 "nature": "PROCURADOR",
                 "cpfNumber": "73677831148",
-                "civilName": "Elza Milena Stefany Teixeira",
+                "civilName": "José da Silva",
                 "socialName": "string"
               }
             ]
@@ -498,7 +486,7 @@ curl --location 'http://localhost:8080/v1/anonymize/data' \
           "updateDateTime": "2021-05-21T08:30:00Z",
           "personalId": "578-psd-71md6971kjh-2d414",
           "brandName": "Organização A",
-          "civilName": "Juan Kaique Cláudio Fernandes",
+          "civilName": "Fulano de Tal",
           "socialName": "string",
           "cpfNumber": "22220174155",
           "companyInfo": {
@@ -538,13 +526,13 @@ curl --location 'http://localhost:8080/v1/anonymize/data' \
               {
                 "countryCallingCode": "55",
                 "areaCode": "19",
-                "number": "29875132",
+                "number": "12345678",
                 "phoneExtension": "932"
               }
             ],
             "emails": [
               {
-                "email": "nome@br.net"
+                "email": "exemplo@exemplo.com.br"
               }
             ]
           },
@@ -553,10 +541,10 @@ curl --location 'http://localhost:8080/v1/anonymize/data' \
           "birthDate": "2021-05-21",
           "filiation": {
             "type": "MAE",
-            "civilName": "Marcelo Cláudio Fernandes"
+            "civilName": "Maria da Silva"
           },
           "identificationDetails": {
-            "civilName": "Juan Kaique Cláudio Fernandes",
+            "civilName": "Fulano de Tal",
             "cpfNumber": "NA"
           }
         },
@@ -596,7 +584,7 @@ curl --location 'http://localhost:8080/v1/anonymize/data' \
                 {
                   "nature": "PROCURADOR",
                   "cpfNumber": "73677831148",
-                  "civilName": "Elza Milena Stefany Teixeira",
+                  "civilName": "José da Silva",
                   "socialName": "string"
                 }
               ]
@@ -888,10 +876,16 @@ curl --location 'http://localhost:8080/v1/anonymize/data' \
 
 ---
 
-## 9. Referências Rápidas
+## 10. Referências Rápidas
 
 - Priorize consistência de nomes entre ambientes.
 - Padronize monitoração e alarmes para cada fila.
 - Atualize este documento sempre que novas filas ou variáveis forem introduzidas.
 
 ---
+
+## 10. Diagrama de Arquitetura do Cliente
+
+![Diagrama de Arquitetura do Cliente](docs/assets/mop-client-arquitetura.png)
+
+> Garanta que a imagem mais recente esteja salva no caminho `docs/assets/mop-client-arquitetura.png`. Sempre que o desenho arquitetural mudar, substitua o arquivo para manter esta documentação atualizada.
