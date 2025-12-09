@@ -85,9 +85,9 @@ Estas filas devem existir em todos os ambientes:
 
 | Fila | Descrição | Produtor | Consumidor |
 |------|-----------|----------|------------|
-| `data.anonymization.input.queue` | Recebe dados brutos para anonimização | `open-insurance-mop-gateway` | [`open-insurance-mop-client-anonymization`](https://github.com/br-openinsurance-infra/opin-mop-client-anonymization/tree/develop) |
-| `data.anonymization.output.queue` | Armazena dados já anonimizados para processamento ou armazenamento | [`open-insurance-mop-client-anonymization`](https://github.com/br-openinsurance-infra/opin-mop-client-anonymization/tree/develop) | [`open-insurance-mop-validator`](https://github.com/br-openinsurance-infra/mop-client-data-validator/tree/develop) |
-| `data.validator.input.queue` | Fila intermediária para payloads recebidos pelo gateway que são validados | [`open-insurance-mop-validator`](https://github.com/br-openinsurance-infra/mop-client-data-validator/tree/develop) | `open-insurance-mop-gateway` |
+| `data.anonymization.input.queue` | Recebe dados brutos para anonimização | `open-insurance-mop-gateway` | [`open-insurance-mop-client-anonymization`](https://github.com/br-openinsurance/opin-mop-client-anonymization-pub/tree/develop) |
+| `data.anonymization.output.queue` | Armazena dados já anonimizados para processamento ou armazenamento | [`open-insurance-mop-client-anonymization`](https://github.com/br-openinsurance/opin-mop-client-anonymization-pub/tree/develop) | [`open-insurance-mop-validator`](https://github.com/br-openinsurance/mop-client-data-validator-pub/tree/develop) |
+| `data.validator.input.queue` | Fila intermediária para payloads recebidos pelo gateway que são validados | [`open-insurance-mop-validator`](https://github.com/br-openinsurance/mop-client-data-validator-pub/tree/develop) | `open-insurance-mop-gateway` |
 
 ### 4.2 Diretrizes de Configuração
 
@@ -176,7 +176,7 @@ As tabelas abaixo mapeiam as propriedades Spring expostas por cada aplicação p
 | `RABBITMQ_VALIDATOR_QUEUE_NAME` | `spring.rabbitmq.queues.validator.name` | `data.validator.input.queue` |
 | `RABBITMQ_OUTPUT_QUEUE_NAME` | `spring.rabbitmq.queues.output.name` | `data.anonymization.output.queue` |
 
-### 6.2 Validator ([`open-insurance-mop-validator`](https://github.com/br-openinsurance-infra/mop-client-data-validator/tree/develop))
+### 6.2 Validator ([`open-insurance-mop-validator`](https://github.com/br-openinsurance/mop-client-data-validator-pub/tree/develop))
 
 | Variável | Propriedade Spring | Valor padrão |
 |----------|--------------------|--------------|
@@ -194,7 +194,7 @@ As tabelas abaixo mapeiam as propriedades Spring expostas por cada aplicação p
 | `RABBITMQ_INPUT_PORT` | `rabbitmq.input.port` | `5672` |
 
 
-### 6.3 Anonymization ([`open-insurance-mop-anonymization`](https://github.com/br-openinsurance-infra/opin-mop-client-anonymization/tree/develop))
+### 6.3 Anonymization ([`open-insurance-mop-anonymization`](https://github.com/br-openinsurance/opin-mop-client-anonymization-pub/tree/develop))
 
 | Variável | Propriedade Spring | Valor padrão |
 |----------|--------------------|--------------|
@@ -260,9 +260,9 @@ docker-compose down
 
 1. Baixe as imagens obrigatórias (gateway, validator e anonymization):
    ```bash
-   docker pull ghcr.io/br-openinsurance-infra/opin-mop-gateway/open-insurance-mop-gateway:develop
-   docker pull ghcr.io/br-openinsurance-infra/mop-client-data-validator/open-insurance-mop-validator:develop
-   docker pull ghcr.io/br-openinsurance-infra/opin-mop-client-anonymization/open-insurance-mop-anonymization:develop
+   docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway-pub:develop
+   docker pull ghcr.io/br-openinsurance/mop-client-data-validator-pub/open-insurance-mop-validator-pub:develop
+   docker pull ghcr.io/br-openinsurance/opin-mop-client-anonymization-pub/open-insurance-mop-anonymization-pub:develop
    ```
 2. Execute os containers exportando as variáveis necessárias (exemplo POSIX):
 
