@@ -40,7 +40,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: ghcr.io/br-openinsurance/opin-mop-gateway-pub
+          images: ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
