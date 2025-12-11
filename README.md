@@ -260,9 +260,9 @@ docker-compose down
 
 1. Baixe as imagens obrigatórias (gateway, validator e anonymization):
    ```bash
-   docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:develop
-   docker pull ghcr.io/br-openinsurance/mop-client-data-validator-pub/open-insurance-mop-validator:develop
-   docker pull ghcr.io/br-openinsurance/opin-mop-client-anonymization-pub/open-insurance-mop-anonymization-pub:develop
+   docker pull ghcr.io/br-openinsurance/openinsurance-mop-gateway-pub:develop
+   docker pull ghcr.io/br-openinsurance/openinsurance-mop-validator-pub:develop
+   docker pull ghcr.io/br-openinsurance/openinsurance-mop-anonymization-pub:develop
    ```
 2. Execute os containers exportando as variáveis necessárias (exemplo POSIX):
 
@@ -279,7 +279,7 @@ docker-compose down
      -e RABBITMQ_VALIDATOR_HOST=${RABBITMQ_VALIDATOR_HOST:-localhost} \
      -e RABBITMQ_VALIDATOR_PORT=${RABBITMQ_VALIDATOR_PORT:-5672} \
      -p ${SERVER_PORT_GATEWAY:-8080}:${SERVER_PORT_GATEWAY:-8080} \
-     ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:develop
+     ghcr.io/br-openinsurance/openinsurance-mop-gateway-pub:develop
    ```
 
    **Validator**
@@ -298,7 +298,7 @@ docker-compose down
      -e RABBITMQ_INPUT_HOST=${RABBITMQ_INPUT_HOST:-localhost} \
      -e RABBITMQ_INPUT_PORT=${RABBITMQ_INPUT_PORT:-5672} \
      -p ${SERVER_PORT_VALIDATOR:-8084}:${SERVER_PORT_VALIDATOR:-8084} \
-     ghcr.io/br-openinsurance/mop-client-data-validator-pub/open-insurance-mop-validator:develop
+     ghcr.io/br-openinsurance/openinsurance-mop-validator-pub:develop
    ```
 
    **Anonymization**
@@ -319,7 +319,7 @@ docker-compose down
      -e EXTERNAL_REQUEST_PATH=${EXTERNAL_REQUEST_PATH:-/process} \
      -e EXTERNAL_REQUEST_METHOD=${EXTERNAL_REQUEST_METHOD:-POST} \
      -p ${SERVER_PORT_ANONYMIZATION:-8181}:${SERVER_PORT_ANONYMIZATION:-8181} \
-     ghcr.io/br-openinsurance-infra/opin-mop-client-anonymization/open-insurance-mop-anonymization:develop
+     ghcr.io/br-openinsurance/openinsurance-mop-anonymization-pub:develop
    ```
 
    > Em shells Windows substitua `\` por `^`.
