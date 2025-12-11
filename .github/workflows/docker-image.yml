@@ -52,3 +52,14 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Make package public
+        run: |
+          PACKAGE_NAME="openinsurance-mop-gateway-pub"
+          PACKAGE_TYPE="container"
+          ORG_NAME="br-openinsurance"
+          curl -X PATCH \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            https://api.github.com/orgs/$ORG_NAME/packages/$PACKAGE_TYPE/$PACKAGE_NAME \
+            -d '{"visibility":"public"}'
