@@ -41,8 +41,10 @@ class RabbitMQMessagePublisherTest {
                 .destination("test-destination")
                 .path("/test")
                 .operation("POST")
-                .certificate("test-cert")
                 .userID("test-user")
+                .applicationMode("TRANSMITTER")
+                .correlationID("test-correlation-id")
+                .timestamp("2024-01-15T10:00:00Z")
                 .headers(new HashMap<>())
                 .build();
     }
@@ -174,8 +176,9 @@ class RabbitMQMessagePublisherTest {
                 .destination("test-destination")
                 .path("/test")
                 .operation("POST")
-                .certificate("cert")
                 .userID("user")
+                .applicationMode("TRANSMITTER")
+                .headers(new HashMap<>())
                 .build();
         doNothing().when(rabbitTemplate).send(eq(""), eq(QUEUE_NAME), any(Message.class));
 
@@ -190,6 +193,57 @@ class RabbitMQMessagePublisherTest {
                     var headers = message.getMessageProperties().getHeaders();
                     String correlationId = headers.get("correlationID").toString();
                     return correlationId != null && correlationId.startsWith("mop-gateway-");
+                })
+        );
+    }
+
+    @Test
+    @DisplayName("Deve processar mensagem mesmo quando headersDTO tem campos null")
+    void shouldProcessMessageWhenHeadersDTOHasNullFields() {
+        // Arrange
+        RequestHeadersDTO headersWithNulls = RequestHeadersDTO.builder()
+                .origin(null)
+                .destination(null)
+                .path(null)
+                .operation(null)
+                .userID(null)
+                .applicationMode(null)
+                .correlationID(null)
+                .timestamp(null)
+                .headers(null)
+                .build();
+        doNothing().when(rabbitTemplate).send(eq(""), eq(QUEUE_NAME), any(Message.class));
+
+        // Act
+        assertDoesNotThrow(() -> messagePublisher.sendMessageWithHead(VALID_MESSAGE, headersWithNulls));
+
+        // Assert
+        verify(rabbitTemplate, times(1)).send(eq(""), eq(QUEUE_NAME), any(Message.class));
+    }
+
+    @Test
+    @DisplayName("Deve construir mensagem com todos os headers incluindo applicationMode")
+    void shouldBuildMessageWithAllHeadersIncludingApplicationMode() {
+        // Arrange
+        doNothing().when(rabbitTemplate).send(eq(""), eq(QUEUE_NAME), any(Message.class));
+
+        // Act
+        messagePublisher.sendMessageWithHead(VALID_MESSAGE, validHeadersDTO);
+
+        // Assert
+        verify(rabbitTemplate).send(
+                eq(""),
+                eq(QUEUE_NAME),
+                argThat((Message message) -> {
+                    var headers = message.getMessageProperties().getHeaders();
+                    return "test-origin".equals(headers.get("origin")) &&
+                           "test-destination".equals(headers.get("destination")) &&
+                           "/test".equals(headers.get("path")) &&
+                           "POST".equals(headers.get("operation")) &&
+                           "test-user".equals(headers.get("userID")) &&
+                           "TRANSMITTER".equals(headers.get("applicationMode")) &&
+                           headers.get("correlationID") != null &&
+                           headers.get("timestamp") != null;
                 })
         );
     }

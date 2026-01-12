@@ -92,7 +92,9 @@ public class RabbitMQMessagePublisher {
      * @throws RabbitMQException if an error occurs while sending the message
      */
     public void sendMessageWithHead(String payload, RequestHeadersDTO headersDTO) {
-        logger.debug("Sending message with headers to RabbitMQ. Queue: {} | Payload: {} | Headers: {}", queueName, payload, headersDTO);
+        String headersSummary = formatHeadersSummary(headersDTO);
+        logger.debug("Sending message with headers to RabbitMQ. Queue: {} | Payload length: {} | Headers: {}", 
+                queueName, payload != null ? payload.length() : 0, headersSummary);
         try {
             Message message = MessageBuilderHelper.buildMessage(payload, headersDTO);
             MessageHeadersDTO headers = MessageBuilderHelper.createMessageHeadersFromDTO(headersDTO);
@@ -101,14 +103,35 @@ public class RabbitMQMessagePublisher {
             logger.info("Message with headers sent successfully to RabbitMQ. Queue: {} | Origin: {} | Destination: {} | correlationID: {} | userID: {}", 
                     queueName, headers.getOrigin(), headers.getDestination(), headers.getCorrelationId(), headers.getUserID());
         } catch (IllegalArgumentException e) {
-            logger.error("Invalid payload when sending message with headers. Queue: {} | Payload: {} | Exception: {}", 
-                    queueName, payload, e.getMessage(), e);
+            logger.error("Invalid payload when sending message with headers. Queue: {} | Payload length: {} | Headers: {} | Exception: {}", 
+                    queueName, payload != null ? payload.length() : 0, headersSummary, e.getMessage(), e);
             throw e;
         } catch (Exception e) {
             String errorMessage = "Failed to send message with headers to RabbitMQ";
-            logger.error("{} | Queue: {} | Payload: {} | Headers: {} | Exception: {}", 
-                    errorMessage, queueName, payload, headersDTO, e.getMessage(), e);
+            logger.error("{} | Queue: {} | Payload length: {} | Headers: {} | Exception: {}", 
+                    errorMessage, queueName, payload != null ? payload.length() : 0, headersSummary, e.getMessage(), e);
             throw new RabbitMQException(payload, errorMessage, e);
         }
+    }
+
+    /**
+     * Formats headers DTO into a readable string summary.
+     *
+     * @param headersDTO the headers DTO to format
+     * @return formatted string with key header information
+     */
+    private String formatHeadersSummary(RequestHeadersDTO headersDTO) {
+        if (headersDTO == null) {
+            return "null";
+        }
+        return String.format("origin=%s, destination=%s, path=%s, operation=%s, userID=%s, applicationMode=%s, correlationID=%s, timestamp=%s",
+                headersDTO.getOrigin(),
+                headersDTO.getDestination(),
+                headersDTO.getPath(),
+                headersDTO.getOperation(),
+                headersDTO.getUserID(),
+                headersDTO.getApplicationMode(),
+                headersDTO.getCorrelationID(),
+                headersDTO.getTimestamp());
     }
 }

@@ -12,11 +12,11 @@ info:
     email: mop-team@opinbrasil.com.br
 
 servers:
-  - url: "http://localhost:8080/v1/anonymize"
+  - url: "http://localhost:8080"
     description: "Local development server"
-  - url: "https://api-dev.intranet.opinbrasil/v1/anonymize"
+  - url: "https://api-dev.intranet.opinbrasil"
     description: "Development environment"
-  - url: "https://api.intranet.opinbrasil/v1/anonymize"
+  - url: "https://api.intranet.opinbrasil"
     description: "Production environment"
 
 paths:
@@ -26,8 +26,10 @@ paths:
         - "Anonymization"
       summary: "Submit data for anonymization"
       description: |
-        Receives a JSON payload and forwards it to the anonymization processing queue.
+        Receives a JSON payload (optional) and forwards it to the anonymization processing queue.
         The request must include required headers for routing and traceability.
+        Empty, null, or invalid JSON payloads are treated as empty object ({}).
+        The correlationID and timestamp are automatically generated if not provided in headers.
         The payload is validated and sent to RabbitMQ for asynchronous processing.
       operationId: "submitAnonymizationRequest"
       
@@ -36,14 +38,16 @@ paths:
         - $ref: '#/components/parameters/destinationHeader'
         - $ref: '#/components/parameters/pathHeader'
         - $ref: '#/components/parameters/operationHeader'
-        - $ref: '#/components/parameters/certificateHeader'
         - $ref: '#/components/parameters/userIdHeader'
+        - $ref: '#/components/parameters/applicationModeHeader'
+        - $ref: '#/components/parameters/correlationIdHeader'
       
       requestBody:
-        required: true
+        required: false
         description: |
-          JSON payload to be anonymized. The structure is flexible and can contain
-          any valid JSON object. The payload will be forwarded as-is to the processing queue.
+          JSON payload to be anonymized (optional). The structure is flexible and can contain
+          any valid JSON object. Empty, null, or invalid JSON payloads are treated as empty object ({}).
+          The payload will be forwarded as-is to the processing queue.
         content:
           application/json:
             schema:
@@ -71,6 +75,12 @@ paths:
                       profile:
                         name: "Jane Smith"
                         preferences: ["pref1", "pref2"]
+              example3:
+                summary: "Empty body (optional)"
+                value: {}
+              example4:
+                summary: "Null body (optional)"
+                value: null
       
       responses:
         '200':
@@ -81,8 +91,17 @@ paths:
                 $ref: '#/components/schemas/SuccessResponse'
               examples:
                 success:
+                  summary: "Successful response with all fields"
                   value:
-                    message: "Message sent successfully"
+                    status: "SUCCESS"
+                    message: "Request processed successfully. Your data has been received and forwarded to the queue."
+                    correlationId: "mop-gateway-20240115-143025-123-abc12345"
+                    timestamp: "2024-01-15T14:30:25.123Z"
+                    origin: "external-api-service"
+                    destination: "anonymization-service"
+                    path: "/open-insurance/consents/v2/consents"
+                    operation: "POST"
+                    applicationMode: "TRANSMITTER"
         
         '400':
           description: "Bad Request - Invalid headers or JSON payload"
@@ -94,18 +113,24 @@ paths:
                 invalidHeader:
                   summary: "Missing or empty header"
                   value:
+                    status: "ERROR"
                     error: "Invalid header"
                     details: "Header 'origin' must not be empty"
-                invalidJson:
-                  summary: "Invalid or empty JSON"
+                    timestamp: "2024-01-15T14:30:25.123Z"
+                invalidApplicationMode:
+                  summary: "Invalid applicationMode value"
                   value:
-                    error: "Invalid JSON"
-                    details: "Invalid or empty JSON payload"
+                    status: "ERROR"
+                    error: "Invalid header"
+                    details: "Header 'applicationMode' must be either 'TRANSMITTER' or 'RECEIVER'"
+                    timestamp: "2024-01-15T14:30:25.123Z"
                 jsonConversionError:
                   summary: "JSON conversion error"
                   value:
+                    status: "ERROR"
                     error: "JSON conversion error"
                     details: "Failed to process JSON payload: ..."
+                    timestamp: "2024-01-15T14:30:25.123Z"
         
         '500':
           description: "Internal Server Error - Processing or messaging failure"
@@ -117,13 +142,17 @@ paths:
                 rabbitmqError:
                   summary: "RabbitMQ processing error"
                   value:
+                    status: "ERROR"
                     error: "Message processing error"
                     details: "Failed to process message: Connection timeout"
+                    timestamp: "2024-01-15T14:30:25.123Z"
                 unexpectedError:
                   summary: "Unexpected error"
                   value:
+                    status: "ERROR"
                     error: "Unexpected error"
                     details: "An unexpected error occurred while processing the request"
+                    timestamp: "2024-01-15T14:30:25.123Z"
 
 components:
   parameters:
@@ -176,18 +205,6 @@ components:
         enum: ["CREATE", "UPDATE", "DELETE", "PROCESS", "GET", "POST", "PUT", "PATCH"]
         example: "PROCESS"
     
-    certificateHeader:
-      name: "certificate"
-      in: "header"
-      description: |
-        Certificate information for authentication/authorization purposes.
-        May contain certificate identifier or encoded certificate data.
-      required: true
-      schema:
-        type: string
-        minLength: 1
-        example: "cert-abc123xyz"
-    
     userIdHeader:
       name: "userID"
       in: "header"
@@ -199,34 +216,120 @@ components:
         type: string
         minLength: 1
         example: "user-12345"
+    
+    applicationModeHeader:
+      name: "applicationMode"
+      in: "header"
+      description: |
+        Application mode identifier. Specifies the mode of operation for the gateway.
+        Must be either TRANSMITTER (for sending messages) or RECEIVER (for receiving messages).
+      required: true
+      schema:
+        type: string
+        enum: ["TRANSMITTER", "RECEIVER"]
+        example: "TRANSMITTER"
+    
+    correlationIdHeader:
+      name: "CORRELATIONID"
+      in: "header"
+      description: |
+        Correlation identifier for distributed tracing (optional).
+        If not provided, a traceable correlation ID will be automatically generated
+        in the format: mop-gateway-YYYYMMdd-HHmmss-SSS-XXXXXXXX
+      required: false
+      schema:
+        type: string
+        pattern: "^mop-gateway-\\d{8}-\\d{6}-\\d{3}-[a-zA-Z0-9]{8}$"
+        example: "mop-gateway-20240115-143025-123-abc12345"
 
   schemas:
     SuccessResponse:
       type: object
-      description: "Successful API response"
+      description: |
+        Successful API response with structured fields containing request details
+        and traceability information. All fields are automatically populated.
       properties:
+        status:
+          type: string
+          description: "Response status, always 'SUCCESS' for successful requests"
+          enum: ["SUCCESS"]
+          example: "SUCCESS"
         message:
           type: string
-          description: "Success message"
-          example: "Message sent successfully"
+          description: "Human-readable success message"
+          example: "Request processed successfully. Your data has been received and forwarded to the queue."
+        correlationId:
+          type: string
+          description: |
+            Correlation ID for request tracking. Automatically generated if not provided in header.
+            Format: mop-gateway-YYYYMMdd-HHmmss-SSS-XXXXXXXX
+          example: "mop-gateway-20240115-143025-123-abc12345"
+        timestamp:
+          type: string
+          format: date-time
+          description: "Timestamp when the request was processed (ISO-8601 format)"
+          example: "2024-01-15T14:30:25.123Z"
+        origin:
+          type: string
+          description: "Origin system identifier from request header"
+          example: "external-api-service"
+        destination:
+          type: string
+          description: "Destination system identifier from request header"
+          example: "anonymization-service"
+        path:
+          type: string
+          description: "Path identifier from request header"
+          example: "/open-insurance/consents/v2/consents"
+        operation:
+          type: string
+          description: "Operation type from request header"
+          example: "POST"
+        applicationMode:
+          type: string
+          description: "Application mode from request header"
+          enum: ["TRANSMITTER", "RECEIVER"]
+          example: "TRANSMITTER"
       required:
+        - status
         - message
+        - correlationId
+        - timestamp
+        - origin
+        - destination
+        - path
+        - operation
+        - applicationMode
     
     ErrorResponse:
       type: object
-      description: "Error API response"
+      description: |
+        Error API response with structured fields. Contains error information
+        and timestamp for debugging purposes.
       properties:
+        status:
+          type: string
+          description: "Response status, always 'ERROR' for error responses"
+          enum: ["ERROR"]
+          example: "ERROR"
         error:
           type: string
           description: "Error type or category"
           example: "Invalid header"
         details:
           type: string
-          description: "Detailed error message"
+          description: "Detailed error message explaining what went wrong"
           example: "Header 'origin' must not be empty"
+        timestamp:
+          type: string
+          format: date-time
+          description: "Timestamp when the error occurred (ISO-8601 format)"
+          example: "2024-01-15T14:30:25.123Z"
       required:
+        - status
         - error
         - details
+        - timestamp
 
   securitySchemes:
     # Note: Currently no authentication is required, but this can be extended

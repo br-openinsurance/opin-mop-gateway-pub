@@ -63,14 +63,16 @@ public class RabbitListener {
     private RabbitMQCorrelationIdInterceptor correlationIdInterceptor;
 
     public RabbitListener() {
-        logger.info("RabbitMQListener initialized.");
+        logger.info("Initializing RabbitMQ Listener...");
     }
 
     @PostConstruct
     public void init() {
-        logger.info("RabbitMQListener post-construct: Queue name configured as '{}'", queueName);
-        logger.info("RabbitMQListener will listen to queue: {}", queueName);
-        logger.info("RabbitMQListener Queue bean: {}", outputQueue != null ? outputQueue.getName() : "null");
+        logger.info("RabbitMQ Listener configured successfully");
+        logger.info("  - Configured queue: {}", queueName);
+        logger.info("  - Queue bean: {}", outputQueue != null ? outputQueue.getName() : "not available");
+        logger.info("  - Thread pool: 5 fixed threads");
+        logger.info("RabbitMQ Listener ready to receive messages from queue: {}", queueName);
     }
 
     /**

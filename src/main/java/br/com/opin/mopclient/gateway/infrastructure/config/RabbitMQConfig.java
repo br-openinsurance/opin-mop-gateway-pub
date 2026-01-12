@@ -56,7 +56,10 @@ public class RabbitMQConfig {
      */
     @Bean
     public Queue outputQueue() {
-        return new Queue(outputQueueName, true); // true = durable
+        logger.info("Configuring RabbitMQ queue: {}", outputQueueName);
+        Queue queue = new Queue(outputQueueName, true); // true = durable
+        logger.info("RabbitMQ queue configured successfully: {} (Durable: true)", outputQueueName);
+        return queue;
     }
 
     /**
@@ -72,6 +75,7 @@ public class RabbitMQConfig {
         int validatedPort = requirePositive(port, "spring.rabbitmq.port");
 
         try {
+            logger.info("Initializing RabbitMQ connection: {}:{}", validatedHost, validatedPort);
             CachingConnectionFactory factory = new CachingConnectionFactory(validatedHost, validatedPort);
             factory.setUsername(validatedUsername);
             factory.setPassword(validatedPassword);
@@ -80,8 +84,11 @@ public class RabbitMQConfig {
             // Note: Connection cache size cannot be configured when cache mode is CHANNEL
             // The connection cache size is only applicable for CacheMode.CONNECTION
             factory.setConnectionNameStrategy(f -> CONNECTION_NAME);
+            logger.info("RabbitMQ connection initialized successfully: {}:{} (Cache Mode: CHANNEL)", 
+                    validatedHost, validatedPort);
             return factory;
         } catch (Exception ex) {
+            logger.error("Failed to configure RabbitMQ connection: {}", ex.getMessage(), ex);
             throw new IllegalStateException("Failed to configure RabbitMQ connection", ex);
         }
     }
@@ -92,7 +99,10 @@ public class RabbitMQConfig {
     @Bean
     public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
         ConnectionFactory validatedFactory = Objects.requireNonNull(connectionFactory, "ConnectionFactory bean must be available");
-        return new RabbitTemplate(validatedFactory);
+        logger.info("Configuring RabbitTemplate...");
+        RabbitTemplate template = new RabbitTemplate(validatedFactory);
+        logger.info("RabbitTemplate configured successfully");
+        return template;
     }
 
     /**
@@ -107,15 +117,19 @@ public class RabbitMQConfig {
      */
     @Bean(name = "rabbitListenerContainerFactory")
     public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(ConnectionFactory connectionFactory) {
-        logger.info("Creating RabbitListenerContainerFactory bean...");
+        logger.info("Configuring RabbitListenerContainerFactory...");
         SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
         factory.setConnectionFactory(connectionFactory);
         factory.setConcurrentConsumers(1);
         factory.setMaxConcurrentConsumers(5);
         factory.setPrefetchCount(10);
         factory.setAutoStartup(true);
-        logger.info("RabbitListenerContainerFactory configured successfully. Queue: {}, Host: {}, Port: {}", 
-                outputQueueName, host, port);
+        logger.info("RabbitListenerContainerFactory configured successfully");
+        logger.info("  - Queue: {}", outputQueueName);
+        logger.info("  - Initial consumers: 1");
+        logger.info("  - Max consumers: 5");
+        logger.info("  - Prefetch: 10");
+        logger.info("  - Auto-startup: true");
         return factory;
     }
 

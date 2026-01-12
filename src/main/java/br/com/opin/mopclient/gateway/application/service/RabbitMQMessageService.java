@@ -6,7 +6,6 @@ import br.com.opin.mopclient.gateway.shared.exception.RabbitMQException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import java.util.Objects;
 
@@ -74,16 +73,16 @@ public class RabbitMQMessageService {
      * Sends a message to RabbitMQ with validation and error handling.
      * <p>
      * Validates the message before sending and handles exceptions appropriately.
+     * Accepts empty messages (e.g., "{}") as valid payloads.
      *
-     * @param message The message to be sent (must not be null or blank).
-     * @throws IllegalArgumentException if the message is null or blank.
+     * @param message The message to be sent (must not be null, can be empty or "{}").
+     * @throws IllegalArgumentException if the message is null.
      * @throws RabbitMQException if an error occurs while sending the message.
      */
     public void sendMessage(String message) {
-        validateMessage(message);
+        Objects.requireNonNull(message, "Message cannot be null");
         
-        logger.debug("Preparing to send message to RabbitMQ. Message length: {}", 
-                message != null ? message.length() : 0);
+        logger.debug("Preparing to send message to RabbitMQ. Message length: {}", message.length());
         
         try {
             messagePublisher.sendMessage(message);
@@ -102,18 +101,19 @@ public class RabbitMQMessageService {
      * Sends a message to RabbitMQ with headers, validation and error handling.
      * <p>
      * Validates both the message and headers before sending.
+     * Accepts empty messages (e.g., "{}") as valid payloads.
      *
-     * @param message The message to be sent (must not be null or blank).
+     * @param message The message to be sent (must not be null, can be empty or "{}").
      * @param headersDTO The headers to include (must not be null).
-     * @throws IllegalArgumentException if the message is null/blank or headersDTO is null.
+     * @throws IllegalArgumentException if the message is null or headersDTO is null.
      * @throws RabbitMQException if an error occurs while sending the message.
      */
     public void sendMessageWithHead(String message, RequestHeadersDTO headersDTO) {
-        validateMessage(message);
+        Objects.requireNonNull(message, "Message cannot be null");
         Objects.requireNonNull(headersDTO, "RequestHeadersDTO cannot be null");
         
         logger.debug("Preparing to send message with headers to RabbitMQ. Message length: {}, Origin: {}, Destination: {}", 
-                message != null ? message.length() : 0,
+                message.length(),
                 headersDTO.getOrigin(),
                 headersDTO.getDestination());
         
@@ -132,15 +132,4 @@ public class RabbitMQMessageService {
         }
     }
 
-    /**
-     * Validates that the message is not null or blank.
-     *
-     * @param message The message to validate.
-     * @throws IllegalArgumentException if the message is null or blank.
-     */
-    private void validateMessage(String message) {
-        if (!StringUtils.hasText(message)) {
-            throw new IllegalArgumentException("Message cannot be null or blank");
-        }
-    }
 }

@@ -24,15 +24,15 @@ import java.util.Map;
  *   <li>Allows storage of additional custom headers in a map</li>
  * </ul>
  * <p>
- * <strong>Required Headers:</strong>
- * <ul>
- *   <li>{@code origin}: Source system identifier (required)</li>
- *   <li>{@code destination}: Target system identifier (required)</li>
- *   <li>{@code path}: Logical path or endpoint identifier (required)</li>
- *   <li>{@code operation}: Operation type (e.g., CREATE, UPDATE, DELETE, PROCESS) (required)</li>
- *   <li>{@code certificate}: Certificate information for authentication (required)</li>
- *   <li>{@code userID}: User identifier for audit and traceability (required)</li>
- * </ul>
+     * <strong>Required Headers:</strong>
+     * <ul>
+     *   <li>{@code origin}: Source system identifier (required)</li>
+     *   <li>{@code destination}: Target system identifier (required)</li>
+     *   <li>{@code path}: Logical path or endpoint identifier (required)</li>
+     *   <li>{@code operation}: Operation type (e.g., CREATE, UPDATE, DELETE, PROCESS) (required)</li>
+     *   <li>{@code userID}: User identifier for audit and traceability (required)</li>
+     *   <li>{@code applicationMode}: Application mode - TRANSMITTER or RECEIVER (required)</li>
+     * </ul>
  * <p>
  * <strong>Optional Headers:</strong>
  * <ul>
@@ -49,12 +49,12 @@ import java.util.Map;
  *     .destination("anonymization-service")
  *     .path("/api/v1/anonymize")
  *     .operation("PROCESS")
- *     .certificate("cert-abc123xyz")
- *     .userID("user-12345")
- *     .correlationID(UUID.randomUUID().toString())
- *     .timestamp(Instant.now().toString())
- *     .headers(Map.of("x-custom-header", "custom-value"))
- *     .build();
+     *     .userID("user-12345")
+     *     .applicationMode("TRANSMITTER")
+     *     .correlationID(UUID.randomUUID().toString())
+     *     .timestamp(Instant.now().toString())
+     *     .headers(Map.of("x-custom-header", "custom-value"))
+     *     .build();
  *
  * // Using in service layer
  * messageService.sendMessageWithHead(jsonPayload, headersDTO);
@@ -115,15 +115,6 @@ public class RequestHeadersDTO {
     private String operation;
 
     /**
-     * Certificate information for authentication/authorization.
-     * <p>
-     * May contain certificate identifier or encoded certificate data used for
-     * authenticating the request origin.
-     */
-    @JsonProperty("certificate")
-    private String certificate;
-
-    /**
      * Correlation identifier for distributed tracing.
      * <p>
      * Optional unique identifier used to correlate related messages across
@@ -141,6 +132,15 @@ public class RequestHeadersDTO {
      */
     @JsonProperty("userID")
     private String userID;
+
+    /**
+     * Application mode identifier.
+     * <p>
+     * Specifies the mode of the application: TRANSMITTER or RECEIVER.
+     * This value determines how the message should be processed in the system.
+     */
+    @JsonProperty("applicationMode")
+    private String applicationMode;
 
     /**
      * Timestamp of the request.

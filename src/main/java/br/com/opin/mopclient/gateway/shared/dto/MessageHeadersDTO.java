@@ -28,8 +28,8 @@ public final class MessageHeadersDTO {
     private final String path;
     private final String operation;
     private final String correlationId;
-    private final String certificate;
     private final String userID;
+    private final String applicationMode;
     private final String timestamp;
     private final Map<String, String> customHeaders;
 
@@ -39,8 +39,8 @@ public final class MessageHeadersDTO {
         this.path = builder.path;
         this.operation = builder.operation;
         this.correlationId = builder.correlationId;
-        this.certificate = builder.certificate;
         this.userID = builder.userID;
+        this.applicationMode = builder.applicationMode;
         this.timestamp = builder.timestamp;
         this.customHeaders = builder.customHeaders != null 
                 ? Collections.unmodifiableMap(builder.customHeaders) 
@@ -67,12 +67,12 @@ public final class MessageHeadersDTO {
         return correlationId;
     }
 
-    public String getCertificate() {
-        return certificate;
-    }
-
     public String getUserID() {
         return userID;
+    }
+
+    public String getApplicationMode() {
+        return applicationMode;
     }
 
     public String getTimestamp() {
@@ -101,8 +101,8 @@ public final class MessageHeadersDTO {
         private String path;
         private String operation;
         private String correlationId;
-        private String certificate;
         private String userID;
+        private String applicationMode;
         private String timestamp;
         private Map<String, String> customHeaders;
 
@@ -134,13 +134,13 @@ public final class MessageHeadersDTO {
             return this;
         }
 
-        public Builder certificate(String certificate) {
-            this.certificate = certificate;
+        public Builder userID(String userID) {
+            this.userID = userID;
             return this;
         }
 
-        public Builder userID(String userID) {
-            this.userID = userID;
+        public Builder applicationMode(String applicationMode) {
+            this.applicationMode = applicationMode;
             return this;
         }
 
@@ -167,8 +167,8 @@ public final class MessageHeadersDTO {
                 ", path='" + path + '\'' +
                 ", operation='" + operation + '\'' +
                 ", correlationId='" + correlationId + '\'' +
-                ", certificate='" + certificate + '\'' +
                 ", userID='" + userID + '\'' +
+                ", applicationMode='" + applicationMode + '\'' +
                 ", timestamp='" + timestamp + '\'' +
                 ", customHeaders=" + customHeaders +
                 '}';

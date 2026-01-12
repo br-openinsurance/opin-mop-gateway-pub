@@ -19,13 +19,13 @@ public final class HttpHeaderConstants {
 
     public static final String RESPONSE = "response";
 
-    public static final String CERTIFCATE = "certificate";
-
     public static final String CORRELATIONID ="correlationID";
 
     public static final String USERID ="userID";
 
     public static final String TIMESTAMP ="timestamp";
 
+    /** Chave para cabeçalho de modo de aplicação: TRANSMITTER ou RECEIVER */
+    public static final String APPLICATION_MODE = "applicationMode";
 
 }

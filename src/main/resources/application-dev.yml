@@ -1,9 +1,9 @@
 # ============================================================================
-# MOP Client Gateway - Base Configuration
+# MOP Client Gateway - Development Profile
 # ============================================================================
-# This is the base configuration file. Environment-specific configurations
-# (e.g., application_local.yml, application_prod.yml) can override these values.
-# Properties can be overridden by environment variables.
+# Configuration for development environment
+# Activate with: SPRING_PROFILES_ACTIVE=dev
+# All values must be provided via environment variables
 # ============================================================================
 
 spring:
@@ -13,9 +13,8 @@ spring:
   # Spring AMQP Configuration for RabbitMQ
   rabbitmq:
     # Connection settings
-    # Environment variables: RABBITMQ_HOST, RABBITMQ_PORT, RABBITMQ_USERNAME, RABBITMQ_PASSWORD
-    host: ${RABBITMQ_HOST}
-    port: ${RABBITMQ_PORT}
+    host: ${RABBITMQ_VALIDATOR_HOST}
+    port: ${RABBITMQ_VALIDATOR_PORT}
     username: ${RABBITMQ_USERNAME}
     password: ${RABBITMQ_PASSWORD}
 
@@ -25,32 +24,26 @@ spring:
         # Enable automatic acknowledgment
         acknowledge-mode: auto
         # Number of concurrent consumers
-        # Environment variable: RABBITMQ_CONCURRENCY
-        concurrency: ${RABBITMQ_CONCURRENCY}
+        concurrency: ${RABBITMQ_CONCURRENCY:1}
         # Maximum number of concurrent consumers
-        # Environment variable: RABBITMQ_MAX_CONCURRENCY
-        max-concurrency: ${RABBITMQ_MAX_CONCURRENCY}
+        max-concurrency: ${RABBITMQ_MAX_CONCURRENCY:5}
         # Prefetch count - number of unacknowledged messages per consumer
-        # Environment variable: RABBITMQ_PREFETCH
-        prefetch: ${RABBITMQ_PREFETCH}
+        prefetch: ${RABBITMQ_PREFETCH:10}
 
     # Application-specific RabbitMQ configuration
     queues:
       # Validator queue configuration (for publishing messages)
-      # Environment variable: RABBITMQ_QUEUE_VALIDATOR
       validator:
-        name: ${RABBITMQ_QUEUE_VALIDATOR}
+        name: ${RABBITMQ_VALIDATOR_QUEUE_NAME:data.validator.input.queue}
       # Output queue configuration (for consuming messages)
-      # Environment variable: RABBITMQ_QUEUE_OUTPUT
       output:
-        name: ${RABBITMQ_QUEUE_OUTPUT}
+        name: ${RABBITMQ_OUTPUT_QUEUE_NAME:data.anonymization.output.queue}
 
     # Retry configuration
-    # Environment variables: RABBITMQ_RETRY_MAX_ATTEMPTS, RABBITMQ_RETRY_BACKOFF
     retry:
-      maxAttempts: ${RABBITMQ_RETRY_MAX_ATTEMPTS}
-      backoff: ${RABBITMQ_RETRY_BACKOFF}
-      enablesTransactionSupport: true
+      maxAttempts: ${RABBITMQ_RETRY_MAX_ATTEMPTS:5}
+      backoff: ${RABBITMQ_RETRY_BACKOFF:2000}
+      enablesTransactionSupport: ${RABBITMQ_ENABLES_TRANSACTION_SUPPORT:true}
 
 # ============================================================================
 # Server Configuration
@@ -63,23 +56,30 @@ server:
 # ============================================================================
 # External API Configuration
 # ============================================================================
-# Environment variable: EXTERNAL_API_URL
 external:
   server:
     request:
-      url: ${EXTERNAL_API_URL}
+      url: ${EXTERNAL_REQUEST_URL}
 
 # ============================================================================
 # Spring Boot Actuator Configuration
 # ============================================================================
-# Environment variables: MANAGEMENT_ENDPOINTS_INCLUDE, MANAGEMENT_HEALTH_SHOW_DETAILS
 management:
   endpoints:
     web:
       exposure:
         # Expose all endpoints by default
         # Can be restricted via MANAGEMENT_ENDPOINTS_INCLUDE env var
-        include: ${MANAGEMENT_ENDPOINTS_INCLUDE}
+        include: ${MANAGEMENT_ENDPOINTS_INCLUDE:*}
   endpoint:
     health:
-      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS}
+      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:always}
+
+# ============================================================================
+# Logging Configuration
+# ============================================================================
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:INFO}
+    br.com.opin.mopclient.gateway: ${LOG_LEVEL_GATEWAY:DEBUG}
+

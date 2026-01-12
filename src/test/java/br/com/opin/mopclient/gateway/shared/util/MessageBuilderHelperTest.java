@@ -78,8 +78,8 @@ class MessageBuilderHelperTest {
                 .destination("test-destination")
                 .path("/test/path")
                 .operation("POST")
-                .certificate("test-certificate")
                 .userID("test-user")
+                .applicationMode("TRANSMITTER")
                 .correlationID("test-correlation-id")
                 .timestamp("2024-01-15T10:30:00Z")
                 .headers(Map.of("custom-key", "custom-value"))
@@ -95,7 +95,6 @@ class MessageBuilderHelperTest {
         assertEquals("test-destination", properties.getHeaders().get(DESTINATION));
         assertEquals("/test/path", properties.getHeaders().get(PATH));
         assertEquals("POST", properties.getHeaders().get(OPERATION));
-        assertEquals("test-certificate", properties.getHeaders().get(CERTIFCATE));
         assertEquals("test-user", properties.getHeaders().get(USERID));
         assertEquals("test-correlation-id", properties.getHeaders().get(CORRELATIONID));
         assertEquals("2024-01-15T10:30:00Z", properties.getHeaders().get(TIMESTAMP));
@@ -110,8 +109,8 @@ class MessageBuilderHelperTest {
                 .destination("test-destination")
                 .path("/test")
                 .operation("POST")
-                .certificate("cert")
                 .userID("user")
+                .applicationMode("TRANSMITTER")
                 .build();
 
         // Act
@@ -133,8 +132,8 @@ class MessageBuilderHelperTest {
                 .destination("test-destination")
                 .path("/test")
                 .operation("POST")
-                .certificate("cert")
                 .userID("user")
+                .applicationMode("TRANSMITTER")
                 .build();
 
         // Act
@@ -156,8 +155,8 @@ class MessageBuilderHelperTest {
                 .destination("")
                 .path("")
                 .operation("")
-                .certificate("")
                 .userID("")
+                .applicationMode("TRANSMITTER")
                 .build();
 
         // Act
@@ -181,8 +180,8 @@ class MessageBuilderHelperTest {
         headers.put(DESTINATION, "extracted-destination");
         headers.put(PATH, "/extracted/path");
         headers.put(OPERATION, "GET");
-        headers.put(CERTIFCATE, "extracted-cert");
         headers.put(USERID, "extracted-user");
+        headers.put(APPLICATION_MODE, "TRANSMITTER");
         headers.put(CORRELATIONID, "extracted-correlation-id");
         headers.put(TIMESTAMP, "2024-01-15T10:30:00Z");
         properties.setHeaders(headers);
@@ -200,8 +199,8 @@ class MessageBuilderHelperTest {
         assertEquals("extracted-destination", extractedHeaders.getDestination());
         assertEquals("/extracted/path", extractedHeaders.getPath());
         assertEquals("GET", extractedHeaders.getOperation());
-        assertEquals("extracted-cert", extractedHeaders.getCertificate());
         assertEquals("extracted-user", extractedHeaders.getUserID());
+        assertEquals("TRANSMITTER", extractedHeaders.getApplicationMode());
         assertEquals("extracted-correlation-id", extractedHeaders.getCorrelationId());
         assertEquals("2024-01-15T10:30:00Z", extractedHeaders.getTimestamp());
     }
@@ -226,6 +225,7 @@ class MessageBuilderHelperTest {
         assertEquals("unknown-destination", extractedHeaders.getDestination());
         assertEquals("unknown-path", extractedHeaders.getPath());
         assertEquals("unknown-operation", extractedHeaders.getOperation());
+        assertEquals("unknown-applicationMode", extractedHeaders.getApplicationMode());
     }
 
     @Test
@@ -271,8 +271,8 @@ class MessageBuilderHelperTest {
                 .destination("test-destination")
                 .path("/test")
                 .operation("POST")
-                .certificate("cert")
                 .userID("user")
+                .applicationMode("TRANSMITTER")
                 .correlationID("correlation-id")
                 .timestamp("2024-01-15T10:30:00Z")
                 .headers(Map.of("key", "value"))
@@ -286,8 +286,8 @@ class MessageBuilderHelperTest {
         assertEquals("test-destination", messageHeaders.getDestination());
         assertEquals("/test", messageHeaders.getPath());
         assertEquals("POST", messageHeaders.getOperation());
-        assertEquals("cert", messageHeaders.getCertificate());
         assertEquals("user", messageHeaders.getUserID());
+        assertEquals("TRANSMITTER", messageHeaders.getApplicationMode());
         assertEquals("correlation-id", messageHeaders.getCorrelationId());
         assertEquals("2024-01-15T10:30:00Z", messageHeaders.getTimestamp());
     }

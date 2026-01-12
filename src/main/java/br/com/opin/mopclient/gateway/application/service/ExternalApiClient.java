@@ -105,7 +105,8 @@ public class ExternalApiClient {
      */
     @PostConstruct
     private void logInitialization() {
-        LOGGER.debug("ExternalApiClient initialized with URL: {}", externalRequestUrl);
+        LOGGER.info("External API Client initialized successfully");
+        LOGGER.info("  - External API URL: {}", externalRequestUrl);
     }
 
     /**

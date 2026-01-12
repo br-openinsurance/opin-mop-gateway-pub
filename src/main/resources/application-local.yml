@@ -1,21 +1,15 @@
 # ============================================================================
-# MOP Client Gateway - Base Configuration
+# MOP Client Gateway - Local Profile
 # ============================================================================
-# This is the base configuration file. Environment-specific configurations
-# (application-dev.yml, application-homolog.yml, application-prod.yml) can override these values.
-# Properties can be overridden by environment variables.
-#
-# To activate a profile, use:
-#   - Environment variable: SPRING_PROFILES_ACTIVE=dev
-#   - JVM argument: -Dspring.profiles.active=dev
-#   - Command line: --spring.profiles.active=dev
+# Configuration for local development environment
+# Activate with: SPRING_PROFILES_ACTIVE=local
+# This profile contains default values for local development
+# All environment variables are optional and have default values
 # ============================================================================
+
 spring:
   application:
     name: mop-client-gateway
-  
-  profiles:
-    active: ${SPRING_PROFILES_ACTIVE}
 
   # Spring AMQP Configuration for RabbitMQ
   rabbitmq:

@@ -56,8 +56,8 @@ public final class MessageBuilderHelper {
     private static final String DEFAULT_DESTINATION = "unknown-destination";
     private static final String DEFAULT_PATH = "unknown-path";
     private static final String DEFAULT_OPERATION = "unknown-operation";
-    private static final String DEFAULT_CERTIFICATE = "unknown-certificate";
     private static final String DEFAULT_USER_ID = "unknown-userID";
+    private static final String DEFAULT_APPLICATION_MODE = "unknown-applicationMode";
     private static final String SERVICE_PREFIX = "mop-gateway";
     private static final DateTimeFormatter CORRELATION_ID_TIMESTAMP_FORMATTER = 
             DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS").withZone(ZoneOffset.UTC);
@@ -101,18 +101,23 @@ public final class MessageBuilderHelper {
             timestamp = Instant.now().toString();
         }
         
+        // Create MessageProperties first to set headers with exact case preservation
+        MessageProperties properties = new MessageProperties();
+        properties.setContentType(MessageProperties.CONTENT_TYPE_JSON);
+        properties.setHeader(ORIGIN, headers.getOrigin());
+        properties.setHeader(DESTINATION, headers.getDestination());
+        properties.setHeader(PATH, headers.getPath());
+        properties.setHeader(HEADERS, headers.getCustomHeaders());
+        properties.setHeader(OPERATION, headers.getOperation());
+        properties.setHeader(CORRELATIONID, correlationId);
+        properties.setHeader(USERID, headers.getUserID());
+        properties.setHeader(APPLICATION_MODE, headers.getApplicationMode());
+        properties.setHeader(TIMESTAMP, timestamp);
+        
+        // Build message with body and properties
         return MessageBuilder
                 .withBody(payload.getBytes(StandardCharsets.UTF_8))
-                .setContentType(MessageProperties.CONTENT_TYPE_JSON)
-                .setHeader(ORIGIN, headers.getOrigin())
-                .setHeader(DESTINATION, headers.getDestination())
-                .setHeader(PATH, headers.getPath())
-                .setHeader(HEADERS, headers.getCustomHeaders())
-                .setHeader(OPERATION, headers.getOperation())
-                .setHeader(CERTIFCATE, headers.getCertificate())
-                .setHeader(CORRELATIONID, correlationId)
-                .setHeader(USERID, headers.getUserID())
-                .setHeader(TIMESTAMP, timestamp)
+                .andProperties(properties)
                 .build();
     }
 
@@ -145,8 +150,8 @@ public final class MessageBuilderHelper {
                 .path(getValueOrDefault(headersDTO.getPath(), DEFAULT_PATH))
                 .operation(getValueOrDefault(headersDTO.getOperation(), DEFAULT_OPERATION))
                 .correlationId(getValueOrDefault(headersDTO.getCorrelationID(), generateTraceableCorrelationId()))
-                .certificate(getValueOrDefault(headersDTO.getCertificate(), DEFAULT_CERTIFICATE))
                 .userID(getValueOrDefault(headersDTO.getUserID(), DEFAULT_USER_ID))
+                .applicationMode(getValueOrDefault(headersDTO.getApplicationMode(), DEFAULT_APPLICATION_MODE))
                 .timestamp(getValueOrDefault(headersDTO.getTimestamp(), Instant.now().toString()))
                 .customHeaders(headersDTO.getHeaders())
                 .build();
@@ -169,8 +174,8 @@ public final class MessageBuilderHelper {
                 .path(extractHeaderValue(messageHeaders, PATH, DEFAULT_PATH))
                 .operation(extractHeaderValue(messageHeaders, OPERATION, DEFAULT_OPERATION))
                 .correlationId(extractHeaderValue(messageHeaders, CORRELATIONID, null))
-                .certificate(extractHeaderValue(messageHeaders, CERTIFCATE, DEFAULT_CERTIFICATE))
                 .userID(extractHeaderValue(messageHeaders, USERID, DEFAULT_USER_ID))
+                .applicationMode(extractHeaderValue(messageHeaders, APPLICATION_MODE, DEFAULT_APPLICATION_MODE))
                 .timestamp(extractHeaderValue(messageHeaders, TIMESTAMP, null))
                 .customHeaders(extractHeadersMap(messageHeaders))
                 .build();
@@ -188,8 +193,8 @@ public final class MessageBuilderHelper {
                 .path(DEFAULT_PATH)
                 .operation(DEFAULT_OPERATION)
                 .correlationId(generateTraceableCorrelationId())
-                .certificate(DEFAULT_CERTIFICATE)
                 .userID(DEFAULT_USER_ID)
+                .applicationMode(DEFAULT_APPLICATION_MODE)
                 .timestamp(Instant.now().toString())
                 .customHeaders(Collections.emptyMap())
                 .build();

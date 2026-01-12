@@ -38,7 +38,6 @@ class RabbitMQServiceTest {
                 .destination("destination-value")
                 .path("/test")
                 .operation("POST")
-                .certificate("cert-value")
                 .userID("user123")
                 .headers(new HashMap<>())
                 .build();
@@ -249,7 +248,6 @@ class RabbitMQServiceTest {
                 .destination(null)
                 .path(null)
                 .operation(null)
-                .certificate(null)
                 .userID(null)
                 .headers(null)
                 .build();

@@ -1,0 +1,49 @@
+{
+  "origin": "A",
+  "destination": "C",
+  "path": "",
+  "headers": {
+    "Content-Type": "application/json",
+    "correlationId": "2025-09-30T11:25:00Z",
+    "userID": "2025-09-30T11:25:00Z",
+    "timestamp": "2025-09-30T11:25:00Z"
+  },
+  "request": {
+    "method": "POST",
+    "host": "mop-server-entrypoint-dev.intranet.opinbrasil",
+    "path": "/process",
+    "url": "http://mop-server-entrypoint-dev.intranet.opinbrasil/process"
+  },
+  "traceabilityFields": {
+    "anonymized": [
+      "cnpjNumber",
+      "incomeFrequency"
+    ],
+    "exposed": [
+      "consentId",
+      "civilName"
+    ],
+    "processingContext": {
+      "module": "MOP",
+      "initiatedBy": "mop-client-gateway",
+      "purpose": "Data anonymization and routing",
+      "environment": "dev"
+    }
+  },
+  "data": {},
+  "validations": [
+    {
+      "violation": "Additional property 'consentId' is not allowed.",
+      "code": 1000,
+      "severity": "ERROR",
+      "attribute": "body.data"
+    },
+    {
+      "violation": "Additional property 'quoteCustomer' is not allowed.",
+      "code": 1000,
+      "severity": "ERROR",
+      "attribute": "body.data"
+    }
+  ]
+}
+
