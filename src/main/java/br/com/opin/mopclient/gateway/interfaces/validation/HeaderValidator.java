@@ -1,5 +1,6 @@
 package br.com.opin.mopclient.gateway.interfaces.validation;
 
+import br.com.opin.mopclient.gateway.interfaces.enums.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -21,7 +22,7 @@ public class HeaderValidator {
      * @param origin          Origin header value
      * @param destination     Destination header value
      * @param path            Path header value
-     * @param operation       Operation header value
+     * @param operation       Operation header value (must be a valid HTTP method)
      * @param userID          UserID header value
      * @param applicationMode ApplicationMode header value
      * @return ValidationResult with error message if validation fails, null otherwise
@@ -39,6 +40,11 @@ public class HeaderValidator {
         }
         if (!StringUtils.hasText(operation)) {
             return ValidationResult.error("Header 'operation' must not be empty");
+        }
+        if (!HttpMethod.isValid(operation)) {
+            return ValidationResult.error(
+                    String.format("Header 'operation' must be one of the following values: %s. Received: '%s'",
+                            HttpMethod.getValidValues(), operation));
         }
         if (!StringUtils.hasText(userID)) {
             return ValidationResult.error("Header 'userID' must not be empty");
