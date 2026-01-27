@@ -17,9 +17,9 @@ Para mais detalhes sobre o RabbitMQ, consulte [RABBITMQ.md](RABBITMQ.md).
 Baixe as três imagens obrigatórias do registry:
 
 ```bash
-docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub:develop
-docker pull ghcr.io/br-openinsurance/opin-mop-client-anonymization-pub:develop
-docker pull ghcr.io/br-openinsurance/mop-client-data-validator-pub:develop
+docker pull ghcr.io/br-openinsurance/openinsurance-mop-gateway-pub:develop
+docker pull ghcr.io/br-openinsurance/openinsurance-mop-anonymization-pub:develop
+docker pull ghcr.io/br-openinsurance/openinsurance-mop-validator-pub:develop
 ```
 
 ## 2. Executar os Containers
@@ -40,7 +40,7 @@ docker run --rm --name mop-gateway \
   -e RABBITMQ_VALIDATOR_HOST=${RABBITMQ_VALIDATOR_HOST:-localhost} \
   -e RABBITMQ_VALIDATOR_PORT=${RABBITMQ_VALIDATOR_PORT:-5672} \
   -p ${SERVER_PORT_GATEWAY:-8080}:${SERVER_PORT_GATEWAY:-8080} \
-  ghcr.io/br-openinsurance/opin-mop-gateway-pub:develop
+  ghcr.io/br-openinsurance/openinsurance-mop-gateway-pub:develop
 ```
 
 ### Anonymization
@@ -62,7 +62,7 @@ docker run --rm --name mop-anonymization \
   -e EXTERNAL_REQUEST_PATH=${EXTERNAL_REQUEST_PATH:-/process} \
   -e EXTERNAL_REQUEST_METHOD=${EXTERNAL_REQUEST_METHOD:-POST} \
   -p ${SERVER_PORT_ANONYMIZATION:-8181}:${SERVER_PORT_ANONYMIZATION:-8181} \
-  ghcr.io/br-openinsurance/opin-mop-client-anonymization-pub:develop
+  ghcr.io/br-openinsurance/openinsurance-mop-anonymization-pub:develop
 ```
 
 ### Validator
@@ -82,7 +82,7 @@ docker run --rm --name mop-validator \
   -e RABBITMQ_INPUT_HOST=${RABBITMQ_INPUT_HOST:-localhost} \
   -e RABBITMQ_INPUT_PORT=${RABBITMQ_INPUT_PORT:-5672} \
   -p ${SERVER_PORT_VALIDATOR:-8084}:${SERVER_PORT_VALIDATOR:-8084} \
-  ghcr.io/br-openinsurance/mop-client-data-validator-pub:develop
+  ghcr.io/br-openinsurance/openinsurance-mop-validator-pub:develop
 ```
 
 ## 3. Verificar os Containers
