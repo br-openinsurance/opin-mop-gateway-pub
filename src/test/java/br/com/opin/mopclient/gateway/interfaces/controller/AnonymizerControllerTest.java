@@ -360,4 +360,127 @@ class AnonymizerControllerTest {
         assertEquals("Header 'applicationMode' must be either 'TRANSMITTER' or 'RECEIVER'", body.getDetails());
         assertNotNull(body.getTimestamp());
     }
+
+    @Test
+    @DisplayName("Deve retornar erro 400 quando operation é inválido")
+    void shouldReturnBadRequestWhenOperationIsInvalid() {
+        // Arrange
+        String errorMessage = "Header 'operation' must be one of the following values: GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS, TRACE. Received: 'INVALID_METHOD'";
+        ApiResponseDTO errorResponse = ApiResponseDTO.builder()
+                .status("ERROR")
+                .error("Invalid header")
+                .details(errorMessage)
+                .timestamp("2024-01-15T14:30:25.123Z")
+                .build();
+
+        when(headerValidator.validate(anyString(), anyString(), anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(HeaderValidator.ValidationResult.error(errorMessage));
+        when(responseBuilder.buildErrorResponse(HttpStatus.BAD_REQUEST, "Invalid header", errorMessage))
+                .thenReturn(ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse));
+
+        // Act
+        ResponseEntity<ApiResponseDTO> response = controller.receivedRequest(
+                validJsonPayload,
+                "origin-value",
+                "destination-value",
+                "/path",
+                "INVALID_METHOD",
+                "user123",
+                "TRANSMITTER",
+                headers
+        );
+
+        // Assert
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        ApiResponseDTO body = response.getBody();
+        assertNotNull(body);
+        assertEquals("ERROR", body.getStatus());
+        assertEquals("Invalid header", body.getError());
+        assertTrue(body.getDetails().contains("Header 'operation' must be one of the following values"));
+        assertTrue(body.getDetails().contains("INVALID_METHOD"));
+        assertNotNull(body.getTimestamp());
+
+        verify(messageService, never()).sendMessageWithHead(anyString(), any());
+    }
+
+    @Test
+    @DisplayName("Deve processar requisição com sucesso quando operation é GET")
+    void shouldProcessRequestSuccessfullyWhenOperationIsGet() throws Exception {
+        // Arrange
+        setupSuccessfulMocks("test-correlation-id", "2024-01-15T14:30:25.123Z");
+
+        // Act
+        ResponseEntity<ApiResponseDTO> response = controller.receivedRequest(
+                validJsonPayload,
+                "origin-value",
+                "destination-value",
+                "/path",
+                "GET",
+                "user123",
+                "TRANSMITTER",
+                headers
+        );
+
+        // Assert
+        assertNotNull(response);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        ApiResponseDTO body = response.getBody();
+        assertNotNull(body);
+        assertEquals("SUCCESS", body.getStatus());
+        verify(messageService, times(1)).sendMessageWithHead(anyString(), any());
+    }
+
+    @Test
+    @DisplayName("Deve processar requisição com sucesso quando operation é PUT")
+    void shouldProcessRequestSuccessfullyWhenOperationIsPut() throws Exception {
+        // Arrange
+        setupSuccessfulMocks("test-correlation-id", "2024-01-15T14:30:25.123Z");
+
+        // Act
+        ResponseEntity<ApiResponseDTO> response = controller.receivedRequest(
+                validJsonPayload,
+                "origin-value",
+                "destination-value",
+                "/path",
+                "PUT",
+                "user123",
+                "TRANSMITTER",
+                headers
+        );
+
+        // Assert
+        assertNotNull(response);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        ApiResponseDTO body = response.getBody();
+        assertNotNull(body);
+        assertEquals("SUCCESS", body.getStatus());
+        verify(messageService, times(1)).sendMessageWithHead(anyString(), any());
+    }
+
+    @Test
+    @DisplayName("Deve processar requisição com sucesso quando operation é DELETE")
+    void shouldProcessRequestSuccessfullyWhenOperationIsDelete() throws Exception {
+        // Arrange
+        setupSuccessfulMocks("test-correlation-id", "2024-01-15T14:30:25.123Z");
+
+        // Act
+        ResponseEntity<ApiResponseDTO> response = controller.receivedRequest(
+                validJsonPayload,
+                "origin-value",
+                "destination-value",
+                "/path",
+                "DELETE",
+                "user123",
+                "TRANSMITTER",
+                headers
+        );
+
+        // Assert
+        assertNotNull(response);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        ApiResponseDTO body = response.getBody();
+        assertNotNull(body);
+        assertEquals("SUCCESS", body.getStatus());
+        verify(messageService, times(1)).sendMessageWithHead(anyString(), any());
+    }
 }

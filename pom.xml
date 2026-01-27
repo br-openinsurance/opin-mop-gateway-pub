@@ -8,7 +8,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.2</version>
+        <version>3.3.11</version>
         <relativePath/>
     </parent>
 
@@ -25,6 +25,10 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <skipTests>false</skipTests>
+        <!-- Dependency versions to override transitive vulnerabilities -->
+        <tomcat-embed-core.version>10.1.45</tomcat-embed-core.version>
+        <netty-handler.version>4.1.118.Final</netty-handler.version>
+        <spring-core.version>6.2.11</spring-core.version>
     </properties>
 
     <dependencies>
@@ -58,6 +62,19 @@
         <dependency>
             <groupId>org.springframework.amqp</groupId>
             <artifactId>spring-rabbit-stream</artifactId>
+            <exclusions>
+                <!-- Exclui lz4-java para evitar loop de correções de vulnerabilidades -->
+                <!-- CVE-2025-12183 e CVE-2025-66566 afetam várias versões do lz4-java -->
+                <!-- Como não utilizamos compressão LZ4, podemos excluir com segurança -->
+                <exclusion>
+                    <groupId>org.lz4</groupId>
+                    <artifactId>lz4-java</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>at.yawk.lz4</groupId>
+                    <artifactId>lz4-java</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- ================================================================== -->
@@ -97,6 +114,36 @@
             </exclusions>
         </dependency>
     </dependencies>
+
+    <!-- ================================================================== -->
+    <!-- Dependency Management -->
+    <!-- Override transitive dependencies to fix security vulnerabilities -->
+    <!-- ================================================================== -->
+    <dependencyManagement>
+        <dependencies>
+            <!-- Override tomcat-embed-core to fix critical vulnerabilities -->
+            <!-- CVE-2025-24813 (CRITICAL), CVE-2025-55754 (CRITICAL), CVE-2025-55752 (HIGH) -->
+            <dependency>
+                <groupId>org.apache.tomcat.embed</groupId>
+                <artifactId>tomcat-embed-core</artifactId>
+                <version>${tomcat-embed-core.version}</version>
+            </dependency>
+            
+            <!-- Override netty-handler to fix CVE-2025-24970 (DoS in SSL) -->
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-handler</artifactId>
+                <version>${netty-handler.version}</version>
+            </dependency>
+            
+            <!-- Override spring-core to fix CVE-2025-41249 (Annotation Detection Vulnerability) -->
+            <dependency>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-core</artifactId>
+                <version>${spring-core.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <build>
         <finalName>${project.artifactId}</finalName>
@@ -155,6 +202,27 @@
                 <configuration>
                     <encoding>${project.build.sourceEncoding}</encoding>
                 </configuration>
+            </plugin>
+
+            <!-- OWASP Dependency-Check Plugin for vulnerability scanning -->
+            <plugin>
+                <groupId>org.owasp</groupId>
+                <artifactId>dependency-check-maven</artifactId>
+                <version>9.0.9</version>
+                <configuration>
+                    <format>ALL</format>
+                    <failOnError>false</failOnError>
+                    <skipProvidedScope>true</skipProvidedScope>
+                    <skipRuntimeScope>false</skipRuntimeScope>
+                    <skipTestScope>false</skipTestScope>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

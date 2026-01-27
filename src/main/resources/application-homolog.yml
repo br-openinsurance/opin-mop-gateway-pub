@@ -9,6 +9,9 @@
 spring:
   application:
     name: mop-client-gateway
+  
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE}
 
   # Spring AMQP Configuration for RabbitMQ
   rabbitmq:
@@ -24,34 +27,34 @@ spring:
         # Enable automatic acknowledgment
         acknowledge-mode: auto
         # Number of concurrent consumers
-        concurrency: ${RABBITMQ_CONCURRENCY:1}
+        concurrency: ${RABBITMQ_CONCURRENCY}
         # Maximum number of concurrent consumers
-        max-concurrency: ${RABBITMQ_MAX_CONCURRENCY:5}
+        max-concurrency: ${RABBITMQ_MAX_CONCURRENCY}
         # Prefetch count - number of unacknowledged messages per consumer
-        prefetch: ${RABBITMQ_PREFETCH:10}
+        prefetch: ${RABBITMQ_PREFETCH}
 
     # Application-specific RabbitMQ configuration
     queues:
       # Validator queue configuration (for publishing messages)
       validator:
-        name: ${RABBITMQ_VALIDATOR_QUEUE_NAME:data.validator.input.queue}
+        name: ${RABBITMQ_VALIDATOR_QUEUE_NAME}
       # Output queue configuration (for consuming messages)
       output:
-        name: ${RABBITMQ_OUTPUT_QUEUE_NAME:data.anonymization.output.queue}
+        name: ${RABBITMQ_OUTPUT_QUEUE_NAME}
 
     # Retry configuration
     retry:
-      maxAttempts: ${RABBITMQ_RETRY_MAX_ATTEMPTS:5}
-      backoff: ${RABBITMQ_RETRY_BACKOFF:2000}
-      enablesTransactionSupport: ${RABBITMQ_ENABLES_TRANSACTION_SUPPORT:true}
+      maxAttempts: ${RABBITMQ_RETRY_MAX_ATTEMPTS}
+      backoff: ${RABBITMQ_RETRY_BACKOFF}
+      enablesTransactionSupport: ${RABBITMQ_ENABLES_TRANSACTION_SUPPORT}
 
 # ============================================================================
 # Server Configuration
 # ============================================================================
 server:
-  port: 8080
+  port: ${SERVER_PORT}
   servlet:
-    context-path: /v1/anonymize
+    context-path: ${SERVER_CONTEXT_PATH}
 
 # ============================================================================
 # External API Configuration
@@ -68,18 +71,16 @@ management:
   endpoints:
     web:
       exposure:
-        # Expose all endpoints by default
-        # Can be restricted via MANAGEMENT_ENDPOINTS_INCLUDE env var
-        include: ${MANAGEMENT_ENDPOINTS_INCLUDE:*}
+        include: ${MANAGEMENT_ENDPOINTS_INCLUDE}
   endpoint:
     health:
-      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:always}
+      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS}
 
 # ============================================================================
 # Logging Configuration
 # ============================================================================
 logging:
   level:
-    root: ${LOG_LEVEL_ROOT:INFO}
-    br.com.opin.mopclient.gateway: ${LOG_LEVEL_GATEWAY:DEBUG}
+    root: ${LOG_LEVEL_ROOT}
+    br.com.opin.mopclient.gateway: ${LOG_LEVEL_GATEWAY}
 

@@ -4,82 +4,54 @@
 # Configuration for local development environment
 # Activate with: SPRING_PROFILES_ACTIVE=local
 # This profile contains default values for local development
-# All environment variables are optional and have default values
 # ============================================================================
 
 spring:
-  application:
-    name: mop-client-gateway
-
-  # Spring AMQP Configuration for RabbitMQ
   rabbitmq:
-    # Connection settings
-    host: ${RABBITMQ_VALIDATOR_HOST}
-    port: ${RABBITMQ_VALIDATOR_PORT}
-    username: ${RABBITMQ_USERNAME}
-    password: ${RABBITMQ_PASSWORD}
-
-    # Listener configuration
+    host: ${RABBITMQ_VALIDATOR_HOST:localhost}
+    port: ${RABBITMQ_VALIDATOR_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    
     listener:
       simple:
-        # Enable automatic acknowledgment
         acknowledge-mode: auto
-        # Number of concurrent consumers
         concurrency: ${RABBITMQ_CONCURRENCY:1}
-        # Maximum number of concurrent consumers
         max-concurrency: ${RABBITMQ_MAX_CONCURRENCY:5}
-        # Prefetch count - number of unacknowledged messages per consumer
         prefetch: ${RABBITMQ_PREFETCH:10}
-
-    # Application-specific RabbitMQ configuration
+    
     queues:
-      # Validator queue configuration (for publishing messages)
       validator:
         name: ${RABBITMQ_VALIDATOR_QUEUE_NAME:data.validator.input.queue}
-      # Output queue configuration (for consuming messages)
       output:
         name: ${RABBITMQ_OUTPUT_QUEUE_NAME:data.anonymization.output.queue}
-
-    # Retry configuration
+    
     retry:
       maxAttempts: ${RABBITMQ_RETRY_MAX_ATTEMPTS:5}
       backoff: ${RABBITMQ_RETRY_BACKOFF:2000}
       enablesTransactionSupport: ${RABBITMQ_ENABLES_TRANSACTION_SUPPORT:true}
 
-# ============================================================================
-# Server Configuration
-# ============================================================================
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
   servlet:
     context-path: /v1/anonymize
 
-# ============================================================================
-# External API Configuration
-# ============================================================================
 external:
   server:
     request:
       url: ${EXTERNAL_REQUEST_URL}
 
-# ============================================================================
-# Spring Boot Actuator Configuration
-# ============================================================================
 management:
   endpoints:
     web:
       exposure:
-        # Expose all endpoints by default
-        # Can be restricted via MANAGEMENT_ENDPOINTS_INCLUDE env var
         include: ${MANAGEMENT_ENDPOINTS_INCLUDE:*}
   endpoint:
     health:
       show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:always}
 
-# ============================================================================
-# Logging Configuration
-# ============================================================================
 logging:
   level:
     root: ${LOG_LEVEL_ROOT:INFO}
     br.com.opin.mopclient.gateway: ${LOG_LEVEL_GATEWAY:DEBUG}
+
