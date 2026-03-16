@@ -56,13 +56,6 @@ global:
   imagePullSecrets:
     - name: ghcr-secret
 
-  registryCredentials:
-    enabled: true
-    secretName: ghcr-secret
-    server: ghcr.io
-    username: <SEU_USUARIO_GITHUB>
-    password: <SEU_PAT_COM_read:packages>
-
 ```
 
 ⚠️ Importante: - Nunca versionar o `values-client.yaml`
