@@ -23,23 +23,7 @@ helm version
 
 ------------------------------------------------------------------------
 
-## 🔐 1. Login no GitHub Container Registry
-
-Execute:
-
-``` bash
-helm registry login ghcr.io
-```
-
-Informe:
-
--   **Username:** seu usuário GitHub\
--   **Password:** Personal Access Token (PAT) com permissão
-    `read:packages`
-
-------------------------------------------------------------------------
-
-## 📄 2. Criar o arquivo `values-client.yaml`
+## 📄 1. Criar o arquivo `values-client.yaml`
 
 Crie o arquivo:
 
@@ -62,7 +46,7 @@ global:
 
 ------------------------------------------------------------------------
 
-## 🚀 3. Instalar o MOP Client
+## 🚀 2. Instalar o MOP Client
 
 ``` bash
 helm install mop-client   oci://ghcr.io/br-openinsurance-infra/mop-client-chart/mop-client   --version 0.5.1   -f values-client.yaml
@@ -70,7 +54,7 @@ helm install mop-client   oci://ghcr.io/br-openinsurance-infra/mop-client-chart/
 
 ------------------------------------------------------------------------
 
-## 🔄 4. Atualizar o MOP Client
+## 🔄 3. Atualizar o MOP Client
 
 ``` bash
 helm upgrade mop-client   oci://ghcr.io/br-openinsurance-infra/mop-client-chart/mop-client   --version <NOVA_VERSAO>   -f values-client.yaml
@@ -78,7 +62,7 @@ helm upgrade mop-client   oci://ghcr.io/br-openinsurance-infra/mop-client-chart/
 
 ------------------------------------------------------------------------
 
-## 🔎 5. Verificação pós-instalação
+## 🔎 4. Verificação pós-instalação
 
 ``` bash
 helm status mop-client
@@ -89,7 +73,7 @@ kubectl get svc -A
 
 ------------------------------------------------------------------------
 
-## 🗑️ 6. Desinstalação
+## 🗑️ 5. Desinstalação
 
 ``` bash
 helm uninstall mop-client
@@ -97,7 +81,7 @@ helm uninstall mop-client
 
 ------------------------------------------------------------------------
 
-## 📞 Suporte
+## 📞 6. Suporte
 
 Para dúvidas técnicas ou ajustes de configuração, contate a equipe
 responsável pelo MOP Client.
