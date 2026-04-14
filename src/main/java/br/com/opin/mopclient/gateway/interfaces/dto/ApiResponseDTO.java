@@ -44,10 +44,17 @@ public class ApiResponseDTO {
     private String details;
     
     /**
-     * Correlation ID for request tracking.
+     * Correlation ID for request tracking (informed by user in header X-Correlation-Id).
+     * Response does not include trace object; trace exists only in the final JSON (MessageDTO).
      */
     @JsonProperty("correlationId")
     private String correlationId;
+
+    /**
+     * MOP report ID for request tracking (internal).
+     */
+    @JsonProperty("mopReportid")
+    private String mopReportid;
     
     /**
      * Timestamp when the request was processed (ISO-8601 format).
@@ -56,16 +63,16 @@ public class ApiResponseDTO {
     private String timestamp;
     
     /**
-     * Origin system identifier.
+     * Client SS (insurer / source system) identifier.
      */
-    @JsonProperty("origin")
-    private String origin;
+    @JsonProperty("clientSSId")
+    private String clientSSId;
     
     /**
-     * Destination system identifier.
+     * Server AS (insurer / destination system) identifier.
      */
-    @JsonProperty("destination")
-    private String destination;
+    @JsonProperty("serverASId")
+    private String serverASId;
     
     /**
      * Path of the request.
@@ -79,10 +86,4 @@ public class ApiResponseDTO {
     @JsonProperty("operation")
     private String operation;
     
-    /**
-     * Application mode (TRANSMITTER or RECEIVER).
-     */
-    @JsonProperty("applicationMode")
-    private String applicationMode;
 }
-

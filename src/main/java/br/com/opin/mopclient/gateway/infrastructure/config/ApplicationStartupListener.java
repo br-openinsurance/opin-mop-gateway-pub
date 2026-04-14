@@ -1,14 +1,11 @@
 package br.com.opin.mopclient.gateway.infrastructure.config;
 
 import br.com.opin.mopclient.gateway.application.service.ExternalApiClient;
-import br.com.opin.mopclient.gateway.infrastructure.adapter.RabbitListener;
+import br.com.opin.mopclient.gateway.application.service.ProcessingOrchestratorService;
+import br.com.opin.mopclient.validator.infrastructure.config.InMemoryCacheManagerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.core.Queue;
-import org.springframework.amqp.rabbit.connection.ConnectionFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.cache.CacheManager;
@@ -17,36 +14,21 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 /**
- * Componente responsável por verificar e logar o status de inicialização
- * da aplicação e todos os seus componentes quando a aplicação estiver pronta.
+ * Verifies and logs initialization status for the application and its main components
+ * once the context is ready.
  * <p>
- * Este listener escuta o evento {@link ApplicationReadyEvent} e verifica:
- * - Conexão com RabbitMQ
- * - Configuração de filas
- * - Componentes de cache
- * - Serviços de API externa
- * - Demais componentes essenciais
+ * This listener handles {@link ApplicationReadyEvent} and checks:
+ * - Cache components
+ * - External API services
+ * - Processing orchestrator
+ * - Other essential components
  * <p>
- * Após verificar todos os componentes, registra um log indicando que
- * a aplicação está pronta para uso.
+ * After the checks, it logs whether the application is ready for use.
  */
 @Component
 public class ApplicationStartupListener implements ApplicationListener<ApplicationReadyEvent> {
 
     private static final Logger logger = LoggerFactory.getLogger(ApplicationStartupListener.class);
-
-    @Autowired(required = false)
-    private ConnectionFactory connectionFactory;
-
-    @Autowired(required = false)
-    @Qualifier("outputQueue")
-    private Queue outputQueue;
-
-    @Autowired(required = false)
-    private RabbitTemplate rabbitTemplate;
-
-    @Autowired(required = false)
-    private RabbitListener rabbitListener;
 
     @Autowired(required = false)
     private CacheManager cacheManager;
@@ -57,14 +39,8 @@ public class ApplicationStartupListener implements ApplicationListener<Applicati
     @Autowired(required = false)
     private ExternalApiClient externalApiClient;
 
-    @Value("${spring.rabbitmq.host:}")
-    private String rabbitmqHost;
-
-    @Value("${spring.rabbitmq.port:5672}")
-    private int rabbitmqPort;
-
-    @Value("${spring.rabbitmq.queues.output.name:}")
-    private String outputQueueName;
+    @Autowired(required = false)
+    private ProcessingOrchestratorService orchestratorService;
 
     @Value("${spring.application.name:mop-client-gateway}")
     private String applicationName;
@@ -81,48 +57,25 @@ public class ApplicationStartupListener implements ApplicationListener<Applicati
 
         boolean allComponentsReady = true;
 
-        // Check RabbitMQ Connection Factory
-        if (connectionFactory != null) {
-            logger.info("✓ RabbitMQ Connection Factory: Initialized successfully");
-            logger.info("  - Host: {}:{}", rabbitmqHost, rabbitmqPort);
-        } else {
-            logger.error("✗ RabbitMQ Connection Factory: NOT initialized");
-            allComponentsReady = false;
-        }
-
-        // Check Output Queue
-        if (outputQueue != null) {
-            logger.info("✓ RabbitMQ Queue (Output Queue): Loaded successfully");
-            logger.info("  - Queue name: {}", outputQueue.getName());
-            logger.info("  - Durable: {}", outputQueue.isDurable());
-        } else {
-            logger.error("✗ RabbitMQ Queue (Output Queue): NOT loaded");
-            allComponentsReady = false;
-        }
-
-        // Check RabbitMQ Template
-        if (rabbitTemplate != null) {
-            logger.info("✓ RabbitMQ Template: Configured successfully");
-        } else {
-            logger.error("✗ RabbitMQ Template: NOT configured");
-            allComponentsReady = false;
-        }
-
-        // Check RabbitMQ Listener
-        if (rabbitListener != null) {
-            logger.info("✓ RabbitMQ Listener: Loaded and ready to receive messages");
-            logger.info("  - Listening to queue: {}", outputQueueName);
-        } else {
-            logger.error("✗ RabbitMQ Listener: NOT loaded");
-            allComponentsReady = false;
-        }
-
         // Check Cache Manager
         if (cacheManager != null) {
             logger.info("✓ Cache Manager: Initialized successfully");
-            logger.info("  - Available cache: {}", CacheConfig.RABBIT_MQ_CONFIG);
+            logger.info("  - Available caches:");
+            logger.info("    * {}", InMemoryCacheManagerConfig.OPEN_API_SPEC);
+            logger.info("    * {}", InMemoryCacheManagerConfig.OPEN_API_SPEC);
+            logger.info("    * {}", InMemoryCacheManagerConfig.NORMALIZED_ENDPOINTS);
+            logger.info("    * {}", InMemoryCacheManagerConfig.ANONYMIZATION_CONFIG);
         } else {
             logger.error("✗ Cache Manager: NOT initialized");
+            allComponentsReady = false;
+        }
+
+        // Check Processing Orchestrator Service
+        if (orchestratorService != null) {
+            logger.info("✓ Processing Orchestrator Service: Loaded successfully");
+            logger.info("  - Unified flow: Validation → Anonymization → External API");
+        } else {
+            logger.error("✗ Processing Orchestrator Service: NOT loaded");
             allComponentsReady = false;
         }
 
@@ -154,7 +107,7 @@ public class ApplicationStartupListener implements ApplicationListener<Applicati
                     ? String.join(", ", event.getApplicationContext().getEnvironment().getActiveProfiles())
                     : "default");
             logger.info("");
-            logger.info("  The application is ready to receive requests and messages from the queue.");
+            logger.info("  The application is ready to receive requests and process them through the unified flow.");
             logger.info("=================================================================");
         } else {
             logger.error("  ✗ SOME COMPONENTS WERE NOT LOADED CORRECTLY");
@@ -165,4 +118,3 @@ public class ApplicationStartupListener implements ApplicationListener<Applicati
         logger.info("");
     }
 }
-

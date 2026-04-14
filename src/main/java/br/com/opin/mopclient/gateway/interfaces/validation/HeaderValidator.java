@@ -13,27 +13,45 @@ import org.springframework.util.StringUtils;
 @Component
 public class HeaderValidator {
 
-    private static final String TRANSMITTER = "TRANSMITTER";
-    private static final String RECEIVER = "RECEIVER";
+    private static final String CLIENT = "client";
+    private static final String SERVER = "server";
+
+    private static final int CORRELATION_ID_MIN_LENGTH = 1;
 
     /**
      * Validates required headers for anonymization requests.
+     * correlationId is independent and mandatory (informed by the user in header X-Correlation-Id).
      *
-     * @param origin          Origin header value
-     * @param destination     Destination header value
-     * @param path            Path header value
-     * @param operation       Operation header value (must be a valid HTTP method)
-     * @param userID          UserID header value
-     * @param applicationMode ApplicationMode header value
-     * @return ValidationResult with error message if validation fails, null otherwise
+     * @param correlationId  Correlation ID from header X-Correlation-Id (required, non-empty, min 1 character)
+     * @param origin         Origin header value (must be "client" or "server")
+     * @param path           Path header value
+     * @param operation      Operation header value (must be a valid HTTP method)
+     * @param step           Step of the flow in the trace (e.g. consent-created)
+     * @param dataEventoStep Timestamp of the step event (ISO-8601)
+     * @param clientSSId     Client SS identifier header value (required)
+     * @param serverASId     Server AS identifier header value (required)
+     * @return ValidationResult with error message if validation fails
      */
-    public ValidationResult validate(String origin, String destination, String path,
-                                     String operation, String userID, String applicationMode) {
+    public ValidationResult validate(String correlationId, String origin, String path,
+                                     String operation,
+                                     String step, String dataEventoStep,
+                                     String clientSSId, String serverASId) {
+        if (correlationId == null) {
+            return ValidationResult.error("Header 'X-Correlation-Id' (correlationId) is required and must not be null");
+        }
+        if (!StringUtils.hasText(correlationId)) {
+            return ValidationResult.error("Header 'X-Correlation-Id' (correlationId) must not be empty");
+        }
+        String trimmed = correlationId.trim();
+        if (trimmed.length() < CORRELATION_ID_MIN_LENGTH) {
+            return ValidationResult.error(
+                    "Header 'X-Correlation-Id' (correlationId) must be at least " + CORRELATION_ID_MIN_LENGTH + " character(s)");
+        }
         if (!StringUtils.hasText(origin)) {
             return ValidationResult.error("Header 'origin' must not be empty");
         }
-        if (!StringUtils.hasText(destination)) {
-            return ValidationResult.error("Header 'destination' must not be empty");
+        if (!CLIENT.equalsIgnoreCase(origin) && !SERVER.equalsIgnoreCase(origin)) {
+            return ValidationResult.error("Header 'origin' must be either 'client' or 'server'");
         }
         if (!StringUtils.hasText(path)) {
             return ValidationResult.error("Header 'path' must not be empty");
@@ -46,14 +64,17 @@ public class HeaderValidator {
                     String.format("Header 'operation' must be one of the following values: %s. Received: '%s'",
                             HttpMethod.getValidValues(), operation));
         }
-        if (!StringUtils.hasText(userID)) {
-            return ValidationResult.error("Header 'userID' must not be empty");
+        if (!StringUtils.hasText(step)) {
+            return ValidationResult.error("Header 'step' must not be empty");
         }
-        if (!StringUtils.hasText(applicationMode)) {
-            return ValidationResult.error("Header 'applicationMode' must not be empty");
+        if (!StringUtils.hasText(dataEventoStep)) {
+            return ValidationResult.error("Header 'dataEventoStep' must not be empty");
         }
-        if (!TRANSMITTER.equalsIgnoreCase(applicationMode) && !RECEIVER.equalsIgnoreCase(applicationMode)) {
-            return ValidationResult.error("Header 'applicationMode' must be either 'TRANSMITTER' or 'RECEIVER'");
+        if (!StringUtils.hasText(clientSSId)) {
+            return ValidationResult.error("Header 'clientSSId' must not be empty");
+        }
+        if (!StringUtils.hasText(serverASId)) {
+            return ValidationResult.error("Header 'serverASId' must not be empty");
         }
         return ValidationResult.success();
     }

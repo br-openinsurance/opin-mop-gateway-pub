@@ -13,149 +13,195 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("HeaderValidator Tests")
 class HeaderValidatorTest {
 
+    private static final String STEP = "consent-created";
+    private static final String DATA_EVENTO_STEP = "2026-02-23T18:44:29.650942812Z";
+    private static final String CLIENT_SS_ID = "RECEIVER A";
+    private static final String SERVER_AS_ID = "TRANSMITTER B";
+
     @InjectMocks
     private HeaderValidator headerValidator;
 
+    private static final String VALID_CORRELATION_ID = "my-correlation-id-123";
+    private static final String VALID_ORIGIN = "client";
+
     @Test
-    @DisplayName("Deve retornar sucesso quando todos os headers são válidos")
+    @DisplayName("Returns success when all headers are valid (including correlationId)")
     void shouldReturnSuccessWhenAllHeadersAreValid() {
-        // Act
         HeaderValidator.ValidationResult result = headerValidator.validate(
-                "origin-value",
-                "destination-value",
+                VALID_CORRELATION_ID,
+                VALID_ORIGIN,
                 "/path",
                 "POST",
-                "user123",
-                "TRANSMITTER"
+                STEP,
+                DATA_EVENTO_STEP,
+                CLIENT_SS_ID,
+                SERVER_AS_ID
         );
-
-        // Assert
         assertTrue(result.isValid());
         assertNull(result.getErrorMessage());
     }
 
     @Test
-    @DisplayName("Deve retornar erro quando origin está vazio")
-    void shouldReturnErrorWhenOriginIsEmpty() {
-        // Act
-        HeaderValidator.ValidationResult result = headerValidator.validate(
-                "",
-                "destination-value",
-                "/path",
-                "POST",
-                "user123",
-                "TRANSMITTER"
-        );
-
-        // Assert
-        assertFalse(result.isValid());
-        assertEquals("Header 'origin' must not be empty", result.getErrorMessage());
-    }
-
-    @Test
-    @DisplayName("Deve retornar erro quando origin é null")
-    void shouldReturnErrorWhenOriginIsNull() {
-        // Act
+    @DisplayName("Returns error when correlationId is null")
+    void shouldReturnErrorWhenCorrelationIdIsNull() {
         HeaderValidator.ValidationResult result = headerValidator.validate(
                 null,
-                "destination-value",
+                VALID_ORIGIN,
                 "/path",
                 "POST",
-                "user123",
-                "TRANSMITTER"
+                STEP,
+                DATA_EVENTO_STEP,
+                CLIENT_SS_ID,
+                SERVER_AS_ID
         );
+        assertFalse(result.isValid());
+        assertTrue(result.getErrorMessage().contains("X-Correlation-Id"));
+        assertTrue(result.getErrorMessage().contains("correlationId"));
+    }
 
-        // Assert
+    @Test
+    @DisplayName("Returns error when correlationId is empty")
+    void shouldReturnErrorWhenCorrelationIdIsEmpty() {
+        HeaderValidator.ValidationResult result = headerValidator.validate(
+                "",
+                VALID_ORIGIN,
+                "/path",
+                "POST",
+                STEP,
+                DATA_EVENTO_STEP,
+                CLIENT_SS_ID,
+                SERVER_AS_ID
+        );
+        assertFalse(result.isValid());
+        assertEquals("Header 'X-Correlation-Id' (correlationId) must not be empty", result.getErrorMessage());
+    }
+
+    @Test
+    @DisplayName("Returns error when origin is empty")
+    void shouldReturnErrorWhenOriginIsEmpty() {
+        HeaderValidator.ValidationResult result = headerValidator.validate(
+                VALID_CORRELATION_ID,
+                "",
+                "/path",
+                "POST",
+                STEP,
+                DATA_EVENTO_STEP,
+                CLIENT_SS_ID,
+                SERVER_AS_ID
+        );
         assertFalse(result.isValid());
         assertEquals("Header 'origin' must not be empty", result.getErrorMessage());
     }
 
     @Test
-    @DisplayName("Deve retornar erro quando destination está vazio")
-    void shouldReturnErrorWhenDestinationIsEmpty() {
-        // Act
+    @DisplayName("Returns error when origin is null")
+    void shouldReturnErrorWhenOriginIsNull() {
         HeaderValidator.ValidationResult result = headerValidator.validate(
-                "origin-value",
-                "",
+                VALID_CORRELATION_ID,
+                null,
                 "/path",
                 "POST",
-                "user123",
-                "TRANSMITTER"
+                STEP,
+                DATA_EVENTO_STEP,
+                CLIENT_SS_ID,
+                SERVER_AS_ID
         );
-
-        // Assert
         assertFalse(result.isValid());
-        assertEquals("Header 'destination' must not be empty", result.getErrorMessage());
+        assertEquals("Header 'origin' must not be empty", result.getErrorMessage());
     }
 
     @Test
-    @DisplayName("Deve retornar erro quando path está vazio")
-    void shouldReturnErrorWhenPathIsEmpty() {
-        // Act
+    @DisplayName("Returns error when origin is invalid (only client or server allowed)")
+    void shouldReturnErrorWhenOriginIsInvalid() {
         HeaderValidator.ValidationResult result = headerValidator.validate(
-                "origin-value",
-                "destination-value",
+                VALID_CORRELATION_ID,
+                "INVALID_ORIGIN",
+                "/path",
+                "POST",
+                STEP,
+                DATA_EVENTO_STEP,
+                CLIENT_SS_ID,
+                SERVER_AS_ID
+        );
+        assertFalse(result.isValid());
+        assertEquals("Header 'origin' must be either 'client' or 'server'", result.getErrorMessage());
+    }
+
+    @Test
+    @DisplayName("Accepts client and server origins (case-insensitive)")
+    void shouldAcceptValidOrigins() {
+        String[] validOrigins = {"client", "server", "Client", "SERVER"};
+        for (String origin : validOrigins) {
+            HeaderValidator.ValidationResult result = headerValidator.validate(
+                    VALID_CORRELATION_ID, origin, "/path", "POST", STEP, DATA_EVENTO_STEP, CLIENT_SS_ID, SERVER_AS_ID);
+            assertTrue(result.isValid(), "Origin " + origin + " should be valid");
+        }
+    }
+
+    @Test
+    @DisplayName("Returns error when path is empty")
+    void shouldReturnErrorWhenPathIsEmpty() {
+        HeaderValidator.ValidationResult result = headerValidator.validate(
+                VALID_CORRELATION_ID,
+                VALID_ORIGIN,
                 "",
                 "POST",
-                "user123",
-                "TRANSMITTER"
+                STEP,
+                DATA_EVENTO_STEP,
+                CLIENT_SS_ID,
+                SERVER_AS_ID
         );
-
-        // Assert
         assertFalse(result.isValid());
         assertEquals("Header 'path' must not be empty", result.getErrorMessage());
     }
 
     @Test
-    @DisplayName("Deve retornar erro quando operation está vazio")
+    @DisplayName("Returns error when operation is empty")
     void shouldReturnErrorWhenOperationIsEmpty() {
-        // Act
         HeaderValidator.ValidationResult result = headerValidator.validate(
-                "origin-value",
-                "destination-value",
+                VALID_CORRELATION_ID,
+                VALID_ORIGIN,
                 "/path",
                 "",
-                "user123",
-                "TRANSMITTER"
+                STEP,
+                DATA_EVENTO_STEP,
+                CLIENT_SS_ID,
+                SERVER_AS_ID
         );
-
-        // Assert
         assertFalse(result.isValid());
         assertEquals("Header 'operation' must not be empty", result.getErrorMessage());
     }
 
     @Test
-    @DisplayName("Deve retornar erro quando operation é null")
+    @DisplayName("Returns error when operation is null")
     void shouldReturnErrorWhenOperationIsNull() {
-        // Act
         HeaderValidator.ValidationResult result = headerValidator.validate(
-                "origin-value",
-                "destination-value",
+                VALID_CORRELATION_ID,
+                VALID_ORIGIN,
                 "/path",
                 null,
-                "user123",
-                "TRANSMITTER"
+                STEP,
+                DATA_EVENTO_STEP,
+                CLIENT_SS_ID,
+                SERVER_AS_ID
         );
-
-        // Assert
         assertFalse(result.isValid());
         assertEquals("Header 'operation' must not be empty", result.getErrorMessage());
     }
 
     @Test
-    @DisplayName("Deve retornar erro quando operation é inválido")
+    @DisplayName("Returns error when operation is invalid")
     void shouldReturnErrorWhenOperationIsInvalid() {
-        // Act
         HeaderValidator.ValidationResult result = headerValidator.validate(
-                "origin-value",
-                "destination-value",
+                VALID_CORRELATION_ID,
+                VALID_ORIGIN,
                 "/path",
                 "INVALID_METHOD",
-                "user123",
-                "TRANSMITTER"
+                STEP,
+                DATA_EVENTO_STEP,
+                CLIENT_SS_ID,
+                SERVER_AS_ID
         );
-
-        // Assert
         assertFalse(result.isValid());
         assertTrue(result.getErrorMessage().contains("Header 'operation' must be one of the following values"));
         assertTrue(result.getErrorMessage().contains("INVALID_METHOD"));
@@ -163,281 +209,81 @@ class HeaderValidatorTest {
     }
 
     @Test
-    @DisplayName("Deve aceitar todos os métodos HTTP válidos - GET")
-    void shouldAcceptValidHttpMethodGet() {
-        // Act
-        HeaderValidator.ValidationResult result = headerValidator.validate(
-                "origin-value",
-                "destination-value",
-                "/path",
-                "GET",
-                "user123",
-                "TRANSMITTER"
-        );
-
-        // Assert
-        assertTrue(result.isValid());
+    @DisplayName("Accepts all valid HTTP methods (case-insensitive)")
+    void shouldAcceptAllValidHttpMethods() {
+        String[] validMethods = {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE", "get", "Post"};
+        for (String method : validMethods) {
+            HeaderValidator.ValidationResult result = headerValidator.validate(
+                    VALID_CORRELATION_ID, VALID_ORIGIN, "/path", method, STEP, DATA_EVENTO_STEP, CLIENT_SS_ID, SERVER_AS_ID);
+            assertTrue(result.isValid(), "Method " + method + " should be valid");
+        }
     }
 
     @Test
-    @DisplayName("Deve aceitar todos os métodos HTTP válidos - POST")
-    void shouldAcceptValidHttpMethodPost() {
-        // Act
+    @DisplayName("Returns error when step is empty")
+    void shouldReturnErrorWhenStepIsEmpty() {
         HeaderValidator.ValidationResult result = headerValidator.validate(
-                "origin-value",
-                "destination-value",
-                "/path",
-                "POST",
-                "user123",
-                "TRANSMITTER"
-        );
-
-        // Assert
-        assertTrue(result.isValid());
-    }
-
-    @Test
-    @DisplayName("Deve aceitar todos os métodos HTTP válidos - PUT")
-    void shouldAcceptValidHttpMethodPut() {
-        // Act
-        HeaderValidator.ValidationResult result = headerValidator.validate(
-                "origin-value",
-                "destination-value",
-                "/path",
-                "PUT",
-                "user123",
-                "TRANSMITTER"
-        );
-
-        // Assert
-        assertTrue(result.isValid());
-    }
-
-    @Test
-    @DisplayName("Deve aceitar todos os métodos HTTP válidos - PATCH")
-    void shouldAcceptValidHttpMethodPatch() {
-        // Act
-        HeaderValidator.ValidationResult result = headerValidator.validate(
-                "origin-value",
-                "destination-value",
-                "/path",
-                "PATCH",
-                "user123",
-                "TRANSMITTER"
-        );
-
-        // Assert
-        assertTrue(result.isValid());
-    }
-
-    @Test
-    @DisplayName("Deve aceitar todos os métodos HTTP válidos - DELETE")
-    void shouldAcceptValidHttpMethodDelete() {
-        // Act
-        HeaderValidator.ValidationResult result = headerValidator.validate(
-                "origin-value",
-                "destination-value",
-                "/path",
-                "DELETE",
-                "user123",
-                "TRANSMITTER"
-        );
-
-        // Assert
-        assertTrue(result.isValid());
-    }
-
-    @Test
-    @DisplayName("Deve aceitar todos os métodos HTTP válidos - HEAD")
-    void shouldAcceptValidHttpMethodHead() {
-        // Act
-        HeaderValidator.ValidationResult result = headerValidator.validate(
-                "origin-value",
-                "destination-value",
-                "/path",
-                "HEAD",
-                "user123",
-                "TRANSMITTER"
-        );
-
-        // Assert
-        assertTrue(result.isValid());
-    }
-
-    @Test
-    @DisplayName("Deve aceitar todos os métodos HTTP válidos - OPTIONS")
-    void shouldAcceptValidHttpMethodOptions() {
-        // Act
-        HeaderValidator.ValidationResult result = headerValidator.validate(
-                "origin-value",
-                "destination-value",
-                "/path",
-                "OPTIONS",
-                "user123",
-                "TRANSMITTER"
-        );
-
-        // Assert
-        assertTrue(result.isValid());
-    }
-
-    @Test
-    @DisplayName("Deve aceitar todos os métodos HTTP válidos - TRACE")
-    void shouldAcceptValidHttpMethodTrace() {
-        // Act
-        HeaderValidator.ValidationResult result = headerValidator.validate(
-                "origin-value",
-                "destination-value",
-                "/path",
-                "TRACE",
-                "user123",
-                "TRANSMITTER"
-        );
-
-        // Assert
-        assertTrue(result.isValid());
-    }
-
-    @Test
-    @DisplayName("Deve aceitar métodos HTTP em minúsculas (case-insensitive)")
-    void shouldAcceptHttpMethodCaseInsensitive() {
-        // Act
-        HeaderValidator.ValidationResult resultLower = headerValidator.validate(
-                "origin-value",
-                "destination-value",
-                "/path",
-                "post",
-                "user123",
-                "TRANSMITTER"
-        );
-
-        HeaderValidator.ValidationResult resultMixed = headerValidator.validate(
-                "origin-value",
-                "destination-value",
-                "/path",
-                "Get",
-                "user123",
-                "TRANSMITTER"
-        );
-
-        // Assert
-        assertTrue(resultLower.isValid());
-        assertTrue(resultMixed.isValid());
-    }
-
-    @Test
-    @DisplayName("Deve retornar erro quando userID está vazio")
-    void shouldReturnErrorWhenUserIDIsEmpty() {
-        // Act
-        HeaderValidator.ValidationResult result = headerValidator.validate(
-                "origin-value",
-                "destination-value",
+                VALID_CORRELATION_ID,
+                VALID_ORIGIN,
                 "/path",
                 "POST",
                 "",
-                "TRANSMITTER"
+                DATA_EVENTO_STEP,
+                CLIENT_SS_ID,
+                SERVER_AS_ID
         );
-
-        // Assert
         assertFalse(result.isValid());
-        assertEquals("Header 'userID' must not be empty", result.getErrorMessage());
+        assertEquals("Header 'step' must not be empty", result.getErrorMessage());
     }
 
     @Test
-    @DisplayName("Deve retornar erro quando applicationMode está vazio")
-    void shouldReturnErrorWhenApplicationModeIsEmpty() {
-        // Act
+    @DisplayName("Returns error when dataEventoStep is empty")
+    void shouldReturnErrorWhenDataEventoStepIsEmpty() {
         HeaderValidator.ValidationResult result = headerValidator.validate(
-                "origin-value",
-                "destination-value",
+                VALID_CORRELATION_ID,
+                VALID_ORIGIN,
                 "/path",
                 "POST",
-                "user123",
+                STEP,
+                "",
+                CLIENT_SS_ID,
+                SERVER_AS_ID
+        );
+        assertFalse(result.isValid());
+        assertEquals("Header 'dataEventoStep' must not be empty", result.getErrorMessage());
+    }
+
+    @Test
+    @DisplayName("Returns error when clientSSId is empty")
+    void shouldReturnErrorWhenClientSSIdIsEmpty() {
+        HeaderValidator.ValidationResult result = headerValidator.validate(
+                VALID_CORRELATION_ID,
+                VALID_ORIGIN,
+                "/path",
+                "POST",
+                STEP,
+                DATA_EVENTO_STEP,
+                "",
+                SERVER_AS_ID
+        );
+        assertFalse(result.isValid());
+        assertEquals("Header 'clientSSId' must not be empty", result.getErrorMessage());
+    }
+
+    @Test
+    @DisplayName("Returns error when serverASId is empty")
+    void shouldReturnErrorWhenServerASIdIsEmpty() {
+        HeaderValidator.ValidationResult result = headerValidator.validate(
+                VALID_CORRELATION_ID,
+                VALID_ORIGIN,
+                "/path",
+                "POST",
+                STEP,
+                DATA_EVENTO_STEP,
+                CLIENT_SS_ID,
                 ""
         );
-
-        // Assert
         assertFalse(result.isValid());
-        assertEquals("Header 'applicationMode' must not be empty", result.getErrorMessage());
-    }
-
-    @Test
-    @DisplayName("Deve retornar erro quando applicationMode é inválido")
-    void shouldReturnErrorWhenApplicationModeIsInvalid() {
-        // Act
-        HeaderValidator.ValidationResult result = headerValidator.validate(
-                "origin-value",
-                "destination-value",
-                "/path",
-                "POST",
-                "user123",
-                "INVALID_MODE"
-        );
-
-        // Assert
-        assertFalse(result.isValid());
-        assertEquals("Header 'applicationMode' must be either 'TRANSMITTER' or 'RECEIVER'", result.getErrorMessage());
-    }
-
-    @Test
-    @DisplayName("Deve aceitar applicationMode TRANSMITTER")
-    void shouldAcceptApplicationModeTransmitter() {
-        // Act
-        HeaderValidator.ValidationResult result = headerValidator.validate(
-                "origin-value",
-                "destination-value",
-                "/path",
-                "POST",
-                "user123",
-                "TRANSMITTER"
-        );
-
-        // Assert
-        assertTrue(result.isValid());
-    }
-
-    @Test
-    @DisplayName("Deve aceitar applicationMode RECEIVER")
-    void shouldAcceptApplicationModeReceiver() {
-        // Act
-        HeaderValidator.ValidationResult result = headerValidator.validate(
-                "origin-value",
-                "destination-value",
-                "/path",
-                "POST",
-                "user123",
-                "RECEIVER"
-        );
-
-        // Assert
-        assertTrue(result.isValid());
-    }
-
-    @Test
-    @DisplayName("Deve aceitar applicationMode case-insensitive")
-    void shouldAcceptApplicationModeCaseInsensitive() {
-        // Act
-        HeaderValidator.ValidationResult resultLower = headerValidator.validate(
-                "origin-value",
-                "destination-value",
-                "/path",
-                "POST",
-                "user123",
-                "transmitter"
-        );
-
-        HeaderValidator.ValidationResult resultMixed = headerValidator.validate(
-                "origin-value",
-                "destination-value",
-                "/path",
-                "POST",
-                "user123",
-                "Receiver"
-        );
-
-        // Assert
-        assertTrue(resultLower.isValid());
-        assertTrue(resultMixed.isValid());
+        assertEquals("Header 'serverASId' must not be empty", result.getErrorMessage());
     }
 }
-

@@ -17,34 +17,49 @@ public class ResponseBuilder {
 
     private static final String STATUS_SUCCESS = "SUCCESS";
     private static final String STATUS_ERROR = "ERROR";
-    private static final String SUCCESS_MESSAGE = "Request processed successfully. Your data has been received and forwarded to the queue.";
+
+    /**
+     * Same text returned for normal delivery and when the payload is enqueued because the MOP server is unavailable.
+     */
+    public static final String API_SUCCESS_BODY_MESSAGE =
+            "Request processed successfully. Your data has been received and forwarded to the server.";
+
+    private static final String SUCCESS_MESSAGE = API_SUCCESS_BODY_MESSAGE;
 
     /**
      * Creates a structured success response with detailed information.
+     * No trace object is included in the response; trace is only in the final JSON (MessageDTO).
      *
-     * @param correlationId   The correlation ID for tracking
+     * @param correlationId  The correlation ID from header X-Correlation-Id (user-supplied)
      * @param timestamp       The timestamp of the request
-     * @param origin          The origin of the request
-     * @param destination    The destination of the request
+     * @param clientSSId      The client SS (receiver) identifier
+     * @param serverASId      The server AS (transmitter) identifier
      * @param path            The path of the request
      * @param operation       The operation type
-     * @param applicationMode The application mode
      * @return ResponseEntity with structured success response
      */
     public ResponseEntity<ApiResponseDTO> buildSuccessResponse(String correlationId, String timestamp,
-                                                               String origin, String destination,
+                                                               String clientSSId, String serverASId,
+                                                               String path, String operation) {
+        return buildSuccessResponse(correlationId, timestamp, clientSSId, serverASId, path, operation, SUCCESS_MESSAGE);
+    }
+
+    /**
+     * Success response with a custom message (defaults to {@link #API_SUCCESS_BODY_MESSAGE}).
+     */
+    public ResponseEntity<ApiResponseDTO> buildSuccessResponse(String correlationId, String timestamp,
+                                                               String clientSSId, String serverASId,
                                                                String path, String operation,
-                                                               String applicationMode) {
+                                                               String message) {
         ApiResponseDTO response = ApiResponseDTO.builder()
                 .status(STATUS_SUCCESS)
-                .message(SUCCESS_MESSAGE)
+                .message(message != null ? message : SUCCESS_MESSAGE)
                 .correlationId(correlationId)
                 .timestamp(timestamp)
-                .origin(origin)
-                .destination(destination)
+                .clientSSId(clientSSId)
+                .serverASId(serverASId)
                 .path(path)
                 .operation(operation)
-                .applicationMode(applicationMode)
                 .build();
 
         return ResponseEntity.ok(response);

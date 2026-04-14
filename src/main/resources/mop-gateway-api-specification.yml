@@ -3,17 +3,18 @@ info:
   title: "MOP Client Gateway API"
   version: "1.0.0"
   description: |
-    API Gateway for MOP (Message Oriented Processing) Client Gateway.
-    This service receives anonymization requests, validates headers and payload,
-    and forwards messages to RabbitMQ queues for processing.
+    API do MOP Client Gateway. Recebe requisições HTTP com payload JSON opcional,
+    processa no mesmo serviço e envia o resultado ao servidor MOP (HTTP POST).
+    Em indisponibilidade do MOP, o payload pode ser enfileirado numa fila RabbitMQ de retry
+    (resiliência); o cliente pode receber HTTP 200 com a mesma mensagem de sucesso — ver documentação do projeto.
   
   contact:
     name: MOP Team
     email: mop-team@opinbrasil.com.br
 
 servers:
-  - url: "http://localhost:8080"
-    description: "Local development server"
+  - url: "http://localhost:8080/v1/anonymize"
+    description: "Servidor local (inclui server.servlet.context-path)"
   - url: "https://api-dev.intranet.opinbrasil"
     description: "Development environment"
   - url: "https://api.intranet.opinbrasil"
@@ -26,28 +27,29 @@ paths:
         - "Anonymization"
       summary: "Submit data for anonymization"
       description: |
-        Receives a JSON payload (optional) and forwards it to the anonymization processing queue.
-        The request must include required headers for routing and traceability.
-        Empty, null, or invalid JSON payloads are treated as empty object ({}).
-        The correlationID and timestamp are automatically generated if not provided in headers.
-        The payload is validated and sent to RabbitMQ for asynchronous processing.
+        Recebe JSON opcional. Headers obrigatórios: X-Correlation-Id, origin ("client" ou "server"),
+        path, operation, step, dataEventoStep, clientSSId, serverASId. Opcionais: destination, traceOrigin.
+        Processamento síncrono no gateway; envio ao MOP ou enfileiramento em retry conforme resiliência.
       operationId: "submitAnonymizationRequest"
       
       parameters:
+        - $ref: '#/components/parameters/correlationIdHeader'
         - $ref: '#/components/parameters/originHeader'
-        - $ref: '#/components/parameters/destinationHeader'
         - $ref: '#/components/parameters/pathHeader'
         - $ref: '#/components/parameters/operationHeader'
-        - $ref: '#/components/parameters/userIdHeader'
-        - $ref: '#/components/parameters/applicationModeHeader'
-        - $ref: '#/components/parameters/correlationIdHeader'
+        - $ref: '#/components/parameters/stepHeader'
+        - $ref: '#/components/parameters/dataEventoStepHeader'
+        - $ref: '#/components/parameters/destinationHeader'
+        - $ref: '#/components/parameters/traceOriginHeader'
+        - $ref: '#/components/parameters/clientSSIdHeader'
+        - $ref: '#/components/parameters/serverASIdHeader'
       
       requestBody:
         required: false
         description: |
           JSON payload to be anonymized (optional). The structure is flexible and can contain
           any valid JSON object. Empty, null, or invalid JSON payloads are treated as empty object ({}).
-          The payload will be forwarded as-is to the processing queue.
+          O corpo é processado pelo fluxo interno antes do envio ao servidor MOP.
         content:
           application/json:
             schema:
@@ -84,7 +86,7 @@ paths:
       
       responses:
         '200':
-          description: "Message sent successfully to the processing queue"
+          description: "Processamento aceito; payload encaminhado ao MOP ou enfileirado para retry (mesmo corpo de sucesso possível)"
           content:
             application/json:
               schema:
@@ -94,14 +96,13 @@ paths:
                   summary: "Successful response with all fields"
                   value:
                     status: "SUCCESS"
-                    message: "Request processed successfully. Your data has been received and forwarded to the queue."
-                    correlationId: "mop-gateway-20240115-143025-123-abc12345"
+                    message: "Request processed successfully. Your data has been received and forwarded to the server."
+                    correlationId: "corr-local-001"
                     timestamp: "2024-01-15T14:30:25.123Z"
-                    origin: "external-api-service"
-                    destination: "anonymization-service"
+                    clientSSId: "RECEPTORA A"
+                    serverASId: "TRANSMISSORA B"
                     path: "/open-insurance/consents/v2/consents"
                     operation: "POST"
-                    applicationMode: "TRANSMITTER"
         
         '400':
           description: "Bad Request - Invalid headers or JSON payload"
@@ -117,12 +118,12 @@ paths:
                     error: "Invalid header"
                     details: "Header 'origin' must not be empty"
                     timestamp: "2024-01-15T14:30:25.123Z"
-                invalidApplicationMode:
-                  summary: "Invalid applicationMode value"
+                invalidOrigin:
+                  summary: "Invalid origin value (must be client or server)"
                   value:
                     status: "ERROR"
                     error: "Invalid header"
-                    details: "Header 'applicationMode' must be either 'TRANSMITTER' or 'RECEIVER'"
+                    details: "Header 'origin' must be either 'client' or 'server'"
                     timestamp: "2024-01-15T14:30:25.123Z"
                 jsonConversionError:
                   summary: "JSON conversion error"
@@ -133,19 +134,12 @@ paths:
                     timestamp: "2024-01-15T14:30:25.123Z"
         
         '500':
-          description: "Internal Server Error - Processing or messaging failure"
+          description: "Erro interno — falha no processamento ou na infraestrutura"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
               examples:
-                rabbitmqError:
-                  summary: "RabbitMQ processing error"
-                  value:
-                    status: "ERROR"
-                    error: "Message processing error"
-                    details: "Failed to process message: Connection timeout"
-                    timestamp: "2024-01-15T14:30:25.123Z"
                 unexpectedError:
                   summary: "Unexpected error"
                   value:
@@ -156,28 +150,36 @@ paths:
 
 components:
   parameters:
-    originHeader:
-      name: "origin"
+    correlationIdHeader:
+      name: "X-Correlation-Id"
       in: "header"
-      description: |
-        Source system identifier. Identifies the system or service that originated the request.
-        This value is used for routing and traceability in the message queue.
+      description: "Identificador de correlação obrigatório (informado pelo cliente)."
       required: true
       schema:
         type: string
         minLength: 1
-        example: "external-api-service"
+        example: "corr-2026-001"
+
+    originHeader:
+      name: "origin"
+      in: "header"
+      description: |
+        Origem da requisição: "client" ou "server".
+      required: true
+      schema:
+        type: string
+        enum: ["client", "server"]
+        example: "client"
     
     destinationHeader:
       name: "destination"
       in: "header"
       description: |
-        Target system identifier. Identifies the intended recipient or logical destination
-        for the message in the processing pipeline.
-      required: true
+        Target system identifier (optional). Identifies the intended recipient or logical destination
+        for the message. When provided via header, used for serverASId fallback and trace.
+      required: false
       schema:
         type: string
-        minLength: 1
         example: "anonymization-service"
     
     pathHeader:
@@ -196,58 +198,78 @@ components:
       name: "operation"
       in: "header"
       description: |
-        Operation type identifier. Specifies the type of operation being performed
-        (e.g., CREATE, UPDATE, DELETE, PROCESS).
+        Método HTTP da operação (ex.: GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS, TRACE).
       required: true
       schema:
         type: string
         minLength: 1
-        enum: ["CREATE", "UPDATE", "DELETE", "PROCESS", "GET", "POST", "PUT", "PATCH"]
-        example: "PROCESS"
+        enum: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"]
+        example: "POST"
     
-    userIdHeader:
-      name: "userID"
+    
+    clientSSIdHeader:
+      name: "clientSSId"
       in: "header"
       description: |
-        User identifier associated with the request. Used for audit and traceability.
-        Identifies the user or system account making the request.
+        Client SS identifier (receiver). Required.
       required: true
       schema:
         type: string
         minLength: 1
-        example: "user-12345"
+        example: "RECEIVER A"
     
-    applicationModeHeader:
-      name: "applicationMode"
+    serverASIdHeader:
+      name: "serverASId"
       in: "header"
       description: |
-        Application mode identifier. Specifies the mode of operation for the gateway.
-        Must be either TRANSMITTER (for sending messages) or RECEIVER (for receiving messages).
+        Server AS identifier (transmitter). Required.
       required: true
       schema:
         type: string
-        enum: ["TRANSMITTER", "RECEIVER"]
-        example: "TRANSMITTER"
-    
-    correlationIdHeader:
-      name: "CORRELATIONID"
+        minLength: 1
+        example: "TRANSMITTER B"
+
+    stepHeader:
+      name: "step"
       in: "header"
       description: |
-        Correlation identifier for distributed tracing (optional).
-        If not provided, a traceable correlation ID will be automatically generated
-        in the format: mop-gateway-YYYYMMdd-HHmmss-SSS-XXXXXXXX
+        Step of the flow in the trace (e.g. consent-created, consent-read). Required.
+        Reflected in the message trace.
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        example: "consent-created"
+
+    dataEventoStepHeader:
+      name: "dataEventoStep"
+      in: "header"
+      description: |
+        Timestamp of the step event in the trace (ISO-8601). Required.
+        Reflected in the message trace.
+      required: true
+      schema:
+        type: string
+        format: date-time
+        minLength: 1
+        example: "2026-02-23T18:44:29.650942812Z"
+
+    traceOriginHeader:
+      name: "traceOrigin"
+      in: "header"
+      description: |
+        Origin of the event in the trace (e.g. CLIENT, SERVER). Optional.
+        When provided, it is reflected in the message trace. If not provided, CLIENT is used.
       required: false
       schema:
         type: string
-        pattern: "^mop-gateway-\\d{8}-\\d{6}-\\d{3}-[a-zA-Z0-9]{8}$"
-        example: "mop-gateway-20240115-143025-123-abc12345"
+        example: "CLIENT"
 
   schemas:
     SuccessResponse:
       type: object
       description: |
-        Successful API response with structured fields containing request details
-        and traceability information. All fields are automatically populated.
+        Resposta de sucesso. O correlationId corresponde ao header X-Correlation-Id.
       properties:
         status:
           type: string
@@ -257,26 +279,24 @@ components:
         message:
           type: string
           description: "Human-readable success message"
-          example: "Request processed successfully. Your data has been received and forwarded to the queue."
+          example: "Request processed successfully. Your data has been received and forwarded to the server."
         correlationId:
           type: string
-          description: |
-            Correlation ID for request tracking. Automatically generated if not provided in header.
-            Format: mop-gateway-YYYYMMdd-HHmmss-SSS-XXXXXXXX
-          example: "mop-gateway-20240115-143025-123-abc12345"
+          description: "Identificador de correlação (header X-Correlation-Id)"
+          example: "corr-2026-001"
         timestamp:
           type: string
           format: date-time
           description: "Timestamp when the request was processed (ISO-8601 format)"
           example: "2024-01-15T14:30:25.123Z"
-        origin:
+        clientSSId:
           type: string
-          description: "Origin system identifier from request header"
-          example: "external-api-service"
-        destination:
+          description: "Identificador clientSSId (receptora)"
+          example: "RECEPTORA A"
+        serverASId:
           type: string
-          description: "Destination system identifier from request header"
-          example: "anonymization-service"
+          description: "Identificador serverASId (transmissora)"
+          example: "TRANSMISSORA B"
         path:
           type: string
           description: "Path identifier from request header"
@@ -285,21 +305,15 @@ components:
           type: string
           description: "Operation type from request header"
           example: "POST"
-        applicationMode:
-          type: string
-          description: "Application mode from request header"
-          enum: ["TRANSMITTER", "RECEIVER"]
-          example: "TRANSMITTER"
       required:
         - status
         - message
         - correlationId
         - timestamp
-        - origin
-        - destination
+        - clientSSId
+        - serverASId
         - path
         - operation
-        - applicationMode
     
     ErrorResponse:
       type: object

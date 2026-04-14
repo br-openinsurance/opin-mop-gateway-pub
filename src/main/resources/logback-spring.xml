@@ -2,12 +2,12 @@
 <configuration>
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 
-    <!-- Logging pattern that includes correlation ID from MDC -->
+    <!-- Logging pattern that includes mop-reportid from MDC -->
     <property name="CONSOLE_LOG_PATTERN" 
-              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{correlationId:-}] %logger{36} - %msg%n"/>
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{mopReportid:-}] %logger{36} - %msg%n"/>
 
     <property name="FILE_LOG_PATTERN" 
-              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{correlationId:-}] %logger{36} - %msg%n"/>
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{mopReportid:-}] %logger{36} - %msg%n"/>
 
     <!-- Console Appender -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
@@ -24,7 +24,8 @@
 
     <!-- Application-specific loggers -->
     <logger name="br.com.opin.mopclient.gateway" level="DEBUG"/>
-    <logger name="org.springframework.amqp" level="INFO"/>
+    <!-- Suppress noisy INFO on each publish (connection / factory) -->
+    <logger name="org.springframework.amqp" level="WARN"/>
     <logger name="org.springframework.web" level="INFO"/>
 </configuration>
 

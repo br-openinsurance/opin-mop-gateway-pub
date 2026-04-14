@@ -36,7 +36,7 @@ public class ApplicationPropertiesLogger implements ApplicationListener<Applicat
 
     @Override
     public void onApplicationEvent(ApplicationReadyEvent event) {
-        logger.info("=== Application Configuration Properties ===");
+        logger.info("=== Application configuration properties ===");
         logger.info("");
 
         // Server configuration
@@ -71,6 +71,7 @@ public class ApplicationPropertiesLogger implements ApplicationListener<Applicat
         logger.info("RabbitMQ Queues Configuration:");
         logProperty("spring.rabbitmq.queues.validator.name");
         logProperty("spring.rabbitmq.queues.output.name");
+        logProperty("mop.client.retry.queue");
         logger.info("");
 
         // RabbitMQ retry configuration

@@ -1,39 +1,50 @@
 package br.com.opin.mopclient.gateway.application.service;
 
-import br.com.opin.mopclient.gateway.shared.util.CorrelationIdContext;
-import br.com.opin.mopclient.gateway.shared.util.MessageBuilderHelper;
+import br.com.opin.mopclient.shared.util.MopReportidContext;
+import br.com.opin.mopclient.shared.util.MopReportidGenerator;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.Instant;
 import java.util.Map;
 
-import static br.com.opin.mopclient.gateway.interfaces.constants.HttpHeaderConstants.CORRELATIONID;
+import static br.com.opin.mopclient.gateway.interfaces.constants.HttpHeaderConstants.MOP_REPORTID;
 
 /**
- * Service for managing traceability information (correlation ID and timestamp).
+ * Service for managing traceability information (mop-reportid and timestamp).
  * <p>
- * Handles generation and management of correlation IDs and timestamps
+ * Handles generation and management of mop-reportids and timestamps
  * for request tracking and audit purposes.
  */
 @Service
 public class TraceabilityService {
 
     /**
-     * Generates or retrieves correlation ID from headers.
-     * If not present in headers, generates a new traceable correlation ID.
-     * Also sets the correlation ID in MDC context.
+     * Sets the correlation ID in MDC context (from mandatory header X-Correlation-Id).
+     *
+     * @param correlationId Correlation ID informed by the user (must not be null or empty)
+     */
+    public void setCorrelationIdInContext(String correlationId) {
+        if (StringUtils.hasText(correlationId)) {
+            MopReportidContext.setMopReportid(correlationId.trim());
+        }
+    }
+
+    /**
+     * Generates or retrieves mop-reportid from headers.
+     * If not present in headers, generates a new traceable mop-reportid.
+     * Also sets the mop-reportid in MDC context.
      *
      * @param headers Map of request headers
-     * @return Correlation ID (generated or from headers)
+     * @return MOP report ID (generated or from headers)
      */
-    public String getOrGenerateCorrelationId(Map<String, String> headers) {
-        String correlationId = headers != null ? headers.get(CORRELATIONID) : null;
-        if (!StringUtils.hasText(correlationId)) {
-            correlationId = MessageBuilderHelper.generateTraceableCorrelationId();
+    public String getOrGenerateMopReportid(Map<String, String> headers) {
+        String mopReportid = headers != null ? headers.get(MOP_REPORTID) : null;
+        if (!StringUtils.hasText(mopReportid)) {
+            mopReportid = MopReportidGenerator.generate();
         }
-        CorrelationIdContext.setCorrelationId(correlationId);
-        return correlationId;
+        MopReportidContext.setMopReportid(mopReportid);
+        return mopReportid;
     }
 
     /**

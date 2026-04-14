@@ -24,19 +24,17 @@ import java.util.Map;
  *   <li>Allows storage of additional custom headers in a map</li>
  * </ul>
  * <p>
-     * <strong>Required Headers:</strong>
-     * <ul>
-     *   <li>{@code origin}: Source system identifier (required)</li>
-     *   <li>{@code destination}: Target system identifier (required)</li>
-     *   <li>{@code path}: Logical path or endpoint identifier (required)</li>
-     *   <li>{@code operation}: Operation type (e.g., CREATE, UPDATE, DELETE, PROCESS) (required)</li>
-     *   <li>{@code userID}: User identifier for audit and traceability (required)</li>
-     *   <li>{@code applicationMode}: Application mode - TRANSMITTER or RECEIVER (required)</li>
-     * </ul>
+ * <strong>Required Headers:</strong>
+ * <ul>
+ *   <li>{@code origin}: Source system identifier (required)</li>
+ *   <li>{@code destination}: Target system identifier (required)</li>
+ *   <li>{@code path}: Logical path or endpoint identifier (required)</li>
+ *   <li>{@code operation}: Operation type (e.g., CREATE, UPDATE, DELETE, PROCESS) (required)</li>
+ * </ul>
  * <p>
  * <strong>Optional Headers:</strong>
  * <ul>
- *   <li>{@code correlationID}: Correlation identifier for distributed tracing (optional)</li>
+ *   <li>{@code mopReportid}: MOP report identifier for distributed tracing (optional)</li>
  *   <li>{@code timestamp}: Timestamp of the request (optional, can be auto-generated)</li>
  *   <li>{@code headers}: Map of additional custom headers (optional)</li>
  * </ul>
@@ -49,9 +47,7 @@ import java.util.Map;
  *     .destination("anonymization-service")
  *     .path("/api/v1/anonymize")
  *     .operation("PROCESS")
-     *     .userID("user-12345")
-     *     .applicationMode("TRANSMITTER")
-     *     .correlationID(UUID.randomUUID().toString())
+     *     .mopReportid(UUID.randomUUID().toString())
      *     .timestamp(Instant.now().toString())
      *     .headers(Map.of("x-custom-header", "custom-value"))
      *     .build();
@@ -62,13 +58,10 @@ import java.util.Map;
  * <p>
  * <strong>Note:</strong>
  * This DTO is typically created in the controller layer from HTTP request headers
- * and passed to the application layer services. The application layer may convert
- * this DTO to {@link br.com.opin.mopclient.gateway.shared.dto.MessageHeadersDTO}
- * for internal message processing with default values applied where needed.
+ * and passed to the application layer services for unified flow processing.
  *
  * @author MOP Team
  * @since 1.0
- * @see br.com.opin.mopclient.gateway.shared.dto.MessageHeadersDTO
  * @see br.com.opin.mopclient.gateway.interfaces.controller.AnonymizerController
  */
 @Data
@@ -86,6 +79,22 @@ public class RequestHeadersDTO {
      */
     @JsonProperty("destination")
     private String destination;
+
+    /**
+     * Client SS (insurer / source system) identifier.
+     * <p>
+     * Identifies the client/receiver participant (e.g. receiver party A).
+     */
+    @JsonProperty("clientSSId")
+    private String clientSSId;
+
+    /**
+     * Server AS (insurer / destination system) identifier.
+     * <p>
+     * Identifies the server/transmitter participant (e.g. transmitter party B).
+     */
+    @JsonProperty("serverASId")
+    private String serverASId;
 
     /**
      * Origin system identifier.
@@ -115,32 +124,17 @@ public class RequestHeadersDTO {
     private String operation;
 
     /**
-     * Correlation identifier for distributed tracing.
-     * <p>
-     * Optional unique identifier used to correlate related messages across
-     * different services in a distributed system. If not provided, a new
-     * correlation ID may be generated during message processing.
+     * Correlation ID (required). Provided by the client in the X-Correlation-Id header.
+     * Independent field used for tracing.
      */
-    @JsonProperty("correlationID")
-    private String correlationID;
+    @JsonProperty("correlationId")
+    private String correlationId;
 
     /**
-     * User identifier associated with the request.
-     * <p>
-     * Identifies the user or system account making the request. Used for
-     * audit logging, traceability, and access control purposes.
+     * MOP report identifier for distributed tracing (internal/legacy).
      */
-    @JsonProperty("userID")
-    private String userID;
-
-    /**
-     * Application mode identifier.
-     * <p>
-     * Specifies the mode of the application: TRANSMITTER or RECEIVER.
-     * This value determines how the message should be processed in the system.
-     */
-    @JsonProperty("applicationMode")
-    private String applicationMode;
+    @JsonProperty("mopReportid")
+    private String mopReportid;
 
     /**
      * Timestamp of the request.
@@ -160,4 +154,28 @@ public class RequestHeadersDTO {
      * extensibility and passing through custom metadata.
      */
     private Map<String, String> headers;
+
+    /**
+     * Step of the flow in the trace (e.g. consent-created, consent-read).
+     * <p>
+     * Optional. When provided via header {@code step}, it is reflected in the message trace.
+     */
+    @JsonProperty("step")
+    private String step;
+
+    /**
+     * Timestamp of the step event in the trace (ISO-8601).
+     * <p>
+     * Optional. When provided via header {@code dataEventoStep}, it is reflected in the message trace.
+     */
+    @JsonProperty("dataEventoStep")
+    private String dataEventoStep;
+
+    /**
+     * Origin of the event in the trace (e.g. CLIENT, SERVER).
+     * <p>
+     * Optional. When provided via header {@code traceOrigin}, it is reflected in the message trace.
+     */
+    @JsonProperty("traceOrigin")
+    private String traceOrigin;
 }

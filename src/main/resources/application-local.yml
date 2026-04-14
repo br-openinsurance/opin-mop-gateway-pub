@@ -1,57 +1,115 @@
 # ============================================================================
-# MOP Client Gateway - Local Profile
+# MOP Client Gateway - Base Configuration   
 # ============================================================================
-# Configuration for local development environment
-# Activate with: SPRING_PROFILES_ACTIVE=local
-# This profile contains default values for local development
-# ============================================================================
-
 spring:
-  rabbitmq:
-    host: ${RABBITMQ_VALIDATOR_HOST:localhost}
-    port: ${RABBITMQ_VALIDATOR_PORT:5672}
-    username: ${RABBITMQ_USERNAME:guest}
-    password: ${RABBITMQ_PASSWORD:guest}
-    
-    listener:
-      simple:
-        acknowledge-mode: auto
-        concurrency: ${RABBITMQ_CONCURRENCY:1}
-        max-concurrency: ${RABBITMQ_MAX_CONCURRENCY:5}
-        prefetch: ${RABBITMQ_PREFETCH:10}
-    
-    queues:
-      validator:
-        name: ${RABBITMQ_VALIDATOR_QUEUE_NAME:data.validator.input.queue}
-      output:
-        name: ${RABBITMQ_OUTPUT_QUEUE_NAME:data.anonymization.output.queue}
-    
-    retry:
-      maxAttempts: ${RABBITMQ_RETRY_MAX_ATTEMPTS:5}
-      backoff: ${RABBITMQ_RETRY_BACKOFF:2000}
-      enablesTransactionSupport: ${RABBITMQ_ENABLES_TRANSACTION_SUPPORT:true}
+  application:
+    name: mop-client-gateway
 
+  rabbitmq:
+    host: ${RABBITMQ_VALIDATOR_HOST}
+    port: ${RABBITMQ_VALIDATOR_PORT}
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
+
+  # Cache configuration
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=5m
+
+# ============================================================================
+# Server Configuration
+# ============================================================================
 server:
-  port: ${SERVER_PORT:8080}
+  port: 8080
   servlet:
     context-path: /v1/anonymize
 
+# ============================================================================
+# External API Configuration
+# ============================================================================
 external:
   server:
     request:
-      url: ${EXTERNAL_REQUEST_URL}
+      url:  https://mop-server-entrypoint-sandbox.opinbrasil.com.br/process
+  api:
+    #  External API URL to get anonymization configuration
+    data-anonymization: ${EXTERNAL_API_DATA_ANONYMIZATION:https://mop-server-entrypoint-sandbox.opinbrasil.com.br/anonymization-fields?schema=Consents}
+  request:
+    url: ${EXTERNAL_REQUEST_URL:http:https://mop-server-entrypoint-sandbox.opinbrasil.com.br/process}
+    host: ${EXTERNAL_REQUEST_HOST:http:https://mop-server-entrypoint-sandbox.opinbrasil.com.br}
+    path: ${EXTERNAL_REQUEST_PATH:/process}
+    method: ${EXTERNAL_REQUEST_METHOD:POST}
 
+# ============================================================================
+# Cache Configuration
+# ============================================================================
+cache:
+  max-size: ${CACHE_MAX_SIZE:10000}
+  open-api-spec:
+    ttl-seconds: ${CACHE_OPEN_API_SPEC_TTL_SECONDS:3600}
+  app-config:
+    ttl-seconds: ${CACHE_APP_CONFIG_TTL_SECONDS:1800}
+  normalized-endpoints:
+    ttl-seconds: ${CACHE_NORMALIZED_ENDPOINTS_TTL_SECONDS:300}
+
+# ============================================================================
+# Spring Boot Actuator Configuration
+# ============================================================================
 management:
   endpoints:
     web:
       exposure:
-        include: ${MANAGEMENT_ENDPOINTS_INCLUDE:*}
+        # Expose all endpoints by default
+        # Can be restricted via MANAGEMENT_ENDPOINTS_INCLUDE env var
+        include: "*"
   endpoint:
     health:
-      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:always}
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
 
+# ============================================================================
+# Logging Configuration
+# ============================================================================
 logging:
   level:
     root: ${LOG_LEVEL_ROOT:INFO}
     br.com.opin.mopclient.gateway: ${LOG_LEVEL_GATEWAY:DEBUG}
 
+# Client retry queue + circuit breakers (anonymization-fields + /process)
+mop:
+  client:
+    retry:
+      queue: ${MOP_CLIENT_RETRY_QUEUE:mop.client.retry.queue}
+      replay:
+        enabled: ${MOP_CLIENT_RETRY_REPLAY_ENABLED:true}
+        # How often to try draining the retry queue when MOP is reported available
+        interval-ms: ${MOP_CLIENT_RETRY_REPLAY_INTERVAL_MS:10000}
+        max-messages-per-tick: ${MOP_CLIENT_RETRY_REPLAY_MAX_PER_TICK:25}
+  server:
+    availability:
+      enabled: ${MOP_SERVER_AVAILABILITY_CHECK_ENABLED:true}
+      # Interval between HTTP probes to MOP (anonymization-fields), independent of the circuit breaker
+      check-interval-ms: ${MOP_SERVER_AVAILABILITY_CHECK_INTERVAL_MS:30000}
+      connect-timeout-ms: ${MOP_SERVER_AVAILABILITY_CONNECT_TIMEOUT_MS:3000}
+      read-timeout-ms: ${MOP_SERVER_AVAILABILITY_READ_TIMEOUT_MS:5000}
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        registerHealthIndicator: true
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 30s
+        failureRateThreshold: 50
+    instances:
+      mopAnonymizationConfig:
+        baseConfig: default
+      mopProcessEndpoint:
+        baseConfig: default

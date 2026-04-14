@@ -1,22 +1,17 @@
 package br.com.opin.mopclient.gateway.application.service;
 
 import br.com.opin.mopclient.gateway.shared.exception.ErrorResponseException;
+import br.com.opin.mopclient.retry.infrastructure.outbound.ProcessEndpointCircuitClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.HttpServerErrorException;
-import org.springframework.web.client.ResourceAccessException;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -24,7 +19,7 @@ import static org.mockito.Mockito.*;
 class ExternalApiClientTest {
 
     @Mock
-    private RestTemplate restTemplate;
+    private ProcessEndpointCircuitClient processEndpointCircuitClient;
 
     private ExternalApiClient externalApiClient;
 
@@ -33,251 +28,69 @@ class ExternalApiClientTest {
 
     @BeforeEach
     void setUp() {
-        externalApiClient = new ExternalApiClient(restTemplate, TEST_URL);
+        externalApiClient = new ExternalApiClient(processEndpointCircuitClient, TEST_URL);
     }
 
     @Test
-    @DisplayName("Deve lançar IllegalStateException quando URL é null no construtor")
+    @DisplayName("Throws NullPointerException when URL is null in constructor")
     void shouldThrowIllegalStateExceptionWhenUrlIsNull() {
-        // Act & Assert
         assertThrows(NullPointerException.class, () -> {
-            new ExternalApiClient(restTemplate, null);
+            new ExternalApiClient(processEndpointCircuitClient, null);
         });
     }
 
     @Test
-    @DisplayName("Deve lançar IllegalStateException quando URL está vazia no construtor")
+    @DisplayName("Throws IllegalStateException when URL is blank in constructor")
     void shouldThrowIllegalStateExceptionWhenUrlIsBlank() {
-        // Act & Assert
         assertThrows(IllegalStateException.class, () -> {
-            new ExternalApiClient(restTemplate, "   ");
+            new ExternalApiClient(processEndpointCircuitClient, "   ");
         });
     }
 
     @Test
-    @DisplayName("Deve lançar NullPointerException quando RestTemplate é null no construtor")
+    @DisplayName("Throws NullPointerException when ProcessEndpointCircuitClient is null in constructor")
     void shouldThrowNullPointerExceptionWhenRestTemplateIsNull() {
-        // Act & Assert
         assertThrows(NullPointerException.class, () -> {
             new ExternalApiClient(null, TEST_URL);
         });
     }
 
     @Test
-    @DisplayName("Deve enviar payload JSON com sucesso")
+    @DisplayName("Sends JSON payload successfully")
     void shouldSendJsonPayloadSuccessfully() {
-        // Arrange
-        ResponseEntity<String> mockResponse = ResponseEntity.ok("Success");
-        when(restTemplate.postForEntity(eq(TEST_URL), any(), eq(String.class)))
-                .thenReturn(mockResponse);
+        doNothing().when(processEndpointCircuitClient).postJson(eq(TEST_URL), eq(VALID_JSON_PAYLOAD));
 
-        // Act
         assertDoesNotThrow(() -> externalApiClient.sendJsonPayload(VALID_JSON_PAYLOAD));
 
-        // Assert
-        verify(restTemplate, times(1)).postForEntity(eq(TEST_URL), any(), eq(String.class));
+        verify(processEndpointCircuitClient, times(1)).postJson(eq(TEST_URL), eq(VALID_JSON_PAYLOAD));
     }
 
     @Test
-    @DisplayName("Deve lançar IllegalArgumentException quando payload é null")
-    void shouldThrowIllegalArgumentExceptionWhenPayloadIsNull() {
-        // Act & Assert
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> externalApiClient.sendJsonPayload(null)
-        );
-
-        assertEquals("JSON payload cannot be null or blank", exception.getMessage());
-        verify(restTemplate, never()).postForEntity(anyString(), any(), any());
+    @DisplayName("Throws IllegalArgumentException when payload is null, empty, or blank")
+    void shouldThrowIllegalArgumentExceptionWhenPayloadIsInvalid() {
+        String[] invalidPayloads = {null, "", "   "};
+        for (String payload : invalidPayloads) {
+            IllegalArgumentException exception = assertThrows(
+                    IllegalArgumentException.class,
+                    () -> externalApiClient.sendJsonPayload(payload)
+            );
+            assertEquals("JSON payload cannot be null or blank", exception.getMessage());
+        }
+        verify(processEndpointCircuitClient, never()).postJson(anyString(), anyString());
     }
 
     @Test
-    @DisplayName("Deve lançar IllegalArgumentException quando payload está vazio")
-    void shouldThrowIllegalArgumentExceptionWhenPayloadIsEmpty() {
-        // Act & Assert
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> externalApiClient.sendJsonPayload("")
-        );
+    @DisplayName("Propagates ErrorResponseException when the circuit client fails")
+    void shouldPropagateErrorResponseExceptionWhenCircuitClientFails() {
+        ErrorResponseException cause = new ErrorResponseException("Connection error", "timeout");
+        doThrow(cause).when(processEndpointCircuitClient).postJson(eq(TEST_URL), eq(VALID_JSON_PAYLOAD));
 
-        assertEquals("JSON payload cannot be null or blank", exception.getMessage());
-        verify(restTemplate, never()).postForEntity(anyString(), any(), any());
-    }
-
-    @Test
-    @DisplayName("Deve lançar IllegalArgumentException quando payload contém apenas espaços")
-    void shouldThrowIllegalArgumentExceptionWhenPayloadIsBlank() {
-        // Act & Assert
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
-                () -> externalApiClient.sendJsonPayload("   ")
-        );
-
-        assertEquals("JSON payload cannot be null or blank", exception.getMessage());
-        verify(restTemplate, never()).postForEntity(anyString(), any(), any());
-    }
-
-    @Test
-    @DisplayName("Deve lançar ErrorResponseException quando ResourceAccessException ocorre")
-    void shouldThrowErrorResponseExceptionWhenResourceAccessExceptionOccurs() {
-        // Arrange
-        ResourceAccessException exception = new ResourceAccessException("Connection timeout");
-        when(restTemplate.postForEntity(eq(TEST_URL), any(), eq(String.class)))
-                .thenThrow(exception);
-
-        // Act & Assert
         ErrorResponseException errorResponse = assertThrows(
                 ErrorResponseException.class,
                 () -> externalApiClient.sendJsonPayload(VALID_JSON_PAYLOAD)
         );
 
         assertEquals("Connection error", errorResponse.getError());
-        assertTrue(errorResponse.getDetails().contains("The server could not be reached"));
-        assertNotNull(errorResponse.getCause());
-        verify(restTemplate, times(1)).postForEntity(eq(TEST_URL), any(), eq(String.class));
-    }
-
-    @Test
-    @DisplayName("Deve lançar ErrorResponseException quando HttpClientErrorException ocorre (4xx)")
-    void shouldThrowErrorResponseExceptionWhenHttpClientErrorExceptionOccurs() {
-        // Arrange
-        HttpClientErrorException exception = new HttpClientErrorException(
-                HttpStatus.BAD_REQUEST,
-                "Bad Request",
-                null,
-                "Error details".getBytes(),
-                null
-        );
-        when(restTemplate.postForEntity(eq(TEST_URL), any(), eq(String.class)))
-                .thenThrow(exception);
-
-        // Act & Assert
-        ErrorResponseException errorResponse = assertThrows(
-                ErrorResponseException.class,
-                () -> externalApiClient.sendJsonPayload(VALID_JSON_PAYLOAD)
-        );
-
-        assertEquals("Client error", errorResponse.getError());
-        assertTrue(errorResponse.getDetails().contains("400"));
-        assertNotNull(errorResponse.getCause());
-        verify(restTemplate, times(1)).postForEntity(eq(TEST_URL), any(), eq(String.class));
-    }
-
-    @Test
-    @DisplayName("Deve lançar ErrorResponseException quando HttpServerErrorException ocorre (5xx)")
-    void shouldThrowErrorResponseExceptionWhenHttpServerErrorExceptionOccurs() {
-        // Arrange
-        HttpServerErrorException exception = new HttpServerErrorException(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                "Internal Server Error",
-                null,
-                "Server error details".getBytes(),
-                null
-        );
-        when(restTemplate.postForEntity(eq(TEST_URL), any(), eq(String.class)))
-                .thenThrow(exception);
-
-        // Act & Assert
-        ErrorResponseException errorResponse = assertThrows(
-                ErrorResponseException.class,
-                () -> externalApiClient.sendJsonPayload(VALID_JSON_PAYLOAD)
-        );
-
-        assertEquals("Server error", errorResponse.getError());
-        assertTrue(errorResponse.getDetails().contains("500"));
-        assertNotNull(errorResponse.getCause());
-        verify(restTemplate, times(1)).postForEntity(eq(TEST_URL), any(), eq(String.class));
-    }
-
-    @Test
-    @DisplayName("Deve lançar ErrorResponseException quando RestClientException genérica ocorre")
-    void shouldThrowErrorResponseExceptionWhenGenericRestClientExceptionOccurs() {
-        // Arrange
-        RestClientException exception = new RestClientException("Generic REST client error");
-        when(restTemplate.postForEntity(eq(TEST_URL), any(), eq(String.class)))
-                .thenThrow(exception);
-
-        // Act & Assert
-        ErrorResponseException errorResponse = assertThrows(
-                ErrorResponseException.class,
-                () -> externalApiClient.sendJsonPayload(VALID_JSON_PAYLOAD)
-        );
-
-        assertEquals("Request error", errorResponse.getError());
-        assertTrue(errorResponse.getDetails().contains("An unexpected error occurred"));
-        assertNotNull(errorResponse.getCause());
-        verify(restTemplate, times(1)).postForEntity(eq(TEST_URL), any(), eq(String.class));
-    }
-
-    @Test
-    @DisplayName("Deve tratar HttpClientErrorException com response body null")
-    void shouldHandleHttpClientErrorExceptionWithNullResponseBody() {
-        // Arrange
-        HttpClientErrorException exception = new HttpClientErrorException(
-                HttpStatus.NOT_FOUND,
-                "Not Found"
-        );
-        when(restTemplate.postForEntity(eq(TEST_URL), any(), eq(String.class)))
-                .thenThrow(exception);
-
-        // Act & Assert
-        ErrorResponseException errorResponse = assertThrows(
-                ErrorResponseException.class,
-                () -> externalApiClient.sendJsonPayload(VALID_JSON_PAYLOAD)
-        );
-
-        assertEquals("Client error", errorResponse.getError());
-        assertTrue(errorResponse.getDetails().contains("N/A"));
-        verify(restTemplate, times(1)).postForEntity(eq(TEST_URL), any(), eq(String.class));
-    }
-
-    @Test
-    @DisplayName("Deve tratar HttpServerErrorException com response body null")
-    void shouldHandleHttpServerErrorExceptionWithNullResponseBody() {
-        // Arrange
-        HttpServerErrorException exception = new HttpServerErrorException(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                "Internal Server Error"
-        );
-        when(restTemplate.postForEntity(eq(TEST_URL), any(), eq(String.class)))
-                .thenThrow(exception);
-
-        // Act & Assert
-        ErrorResponseException errorResponse = assertThrows(
-                ErrorResponseException.class,
-                () -> externalApiClient.sendJsonPayload(VALID_JSON_PAYLOAD)
-        );
-
-        assertEquals("Server error", errorResponse.getError());
-        assertTrue(errorResponse.getDetails().contains("N/A"));
-        verify(restTemplate, times(1)).postForEntity(eq(TEST_URL), any(), eq(String.class));
-    }
-
-    @Test
-    @DisplayName("Deve criar HttpEntity com headers JSON corretos")
-    void shouldCreateHttpEntityWithCorrectJsonHeaders() {
-        // Arrange
-        ResponseEntity<String> mockResponse = ResponseEntity.ok("Success");
-        when(restTemplate.postForEntity(eq(TEST_URL), any(), eq(String.class)))
-                .thenReturn(mockResponse);
-
-        // Act
-        externalApiClient.sendJsonPayload(VALID_JSON_PAYLOAD);
-
-        // Assert
-        verify(restTemplate, times(1)).postForEntity(
-                eq(TEST_URL),
-                argThat(entity -> {
-                    if (entity instanceof org.springframework.http.HttpEntity) {
-                        org.springframework.http.HttpEntity<?> httpEntity = 
-                                (org.springframework.http.HttpEntity<?>) entity;
-                        return httpEntity.getHeaders().getContentType() != null &&
-                               httpEntity.getHeaders().getContentType()
-                                       .toString().contains("application/json");
-                    }
-                    return false;
-                }),
-                eq(String.class)
-        );
+        verify(processEndpointCircuitClient, times(1)).postJson(eq(TEST_URL), eq(VALID_JSON_PAYLOAD));
     }
 }

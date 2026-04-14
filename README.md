@@ -1,12 +1,40 @@
-# MOP Client
+# MOP Client Gateway
 
-Gateway responsável por receber requisições de anonimização e encaminhá-las para processamento via RabbitMQ no ecossistema Open Insurance.
+API HTTP do ecossistema **Open Insurance** que recebe payloads, executa o pipeline interno de processamento e envia o resultado ao **servidor MOP** (POST). Em situações de indisponibilidade do MOP, o serviço pode persistir o trabalho pendente numa **fila RabbitMQ de retry** (com *circuit breaker* e *replay*), sem expor microsserviços separados de validação ou anonimização.
+
+---
+
+### Ambiente sandbox OPIN Brasil
+
+O **sandbox** é o ambiente de testes da OPIN Brasil: você usa o mesmo gateway localmente, mas as chamadas que ele faz “para fora” (servidor MOP) passam a ir para os endpoints públicos de sandbox — **não é preciso cadastro nem chave extra** para “ativar” o sandbox; só configurar as URLs.
+
+**Host base**
+
+| | |
+|--|--|
+| **URL** | **[https://mop-server-entrypoint-sandbox.opinbrasil.com.br](https://mop-server-entrypoint-sandbox.opinbrasil.com.br)** |
+
+**O que apontar para onde**
+
+| Uso | Endereço completo (exemplo) |
+|-----|-----------------------------|
+| Enviar o payload processado ao MOP (POST) | `https://mop-server-entrypoint-sandbox.opinbrasil.com.br/process` |
+| Buscar as regras de campos (GET) | `https://mop-server-entrypoint-sandbox.opinbrasil.com.br/anonymization-fields?schema=Consent` |
+
+**Como configurar na prática**
+
+1. Defina a URL do **POST** e a URL do **GET** para os valores da tabela acima (normalmente via variáveis de ambiente **`EXTERNAL_REQUEST_URL`** e **`EXTERNAL_API_DATA_ANONYMIZATION`**, ou pelas propriedades `external.server.request.url` e `external.api.data-anonymization` no YAML).
+2. Suba a aplicação — ela passará a conversar com o sandbox automaticamente.
+
+Detalhes de nomes de propriedades e perfis: [docs/VARIAVEIS_DE_AMBIENTE.md](docs/VARIAVEIS_DE_AMBIENTE.md).
+
+---
 
 ## Público-Alvo
 
-Esta documentação é destinada a desenvolvedores e equipes técnicas responsáveis pela integração, operação e manutenção do MOP Client no ecossistema Open Insurance.
+Esta documentação é destinada a desenvolvedores e equipes técnicas responsáveis pela integração, operação e manutenção do MOP Client Gateway no ecossistema Open Insurance.
 
-## 📋 Índice
+## Índice
 
 - [Sobre o MOP](#sobre-o-mop)
 - [Início Rápido](#início-rápido)
@@ -21,49 +49,63 @@ Esta documentação é destinada a desenvolvedores e equipes técnicas responsá
 
 ## Sobre o MOP
 
-O **Módulo de Operações OPIN (MOP)** promove transparência e confiabilidade no Open Insurance, facilitando comunicação entre sistemas e garantindo qualidade dos dados.
+O **Módulo de Operações OPIN (MOP)** promove transparência e confiabilidade no Open Insurance, facilitando comunicação entre sistemas e qualidade dos dados.
 
 **Objetivos:**
+
 - Facilitar acesso direto à infraestrutura dos participantes
 - Eliminar obstáculos na comunicação entre sistemas
 - Acelerar implementação e análise de qualidade dos dados
 - Prevenir riscos de cibersegurança e fraudes
 
-> 📖 Para mais detalhes sobre arquitetura e fluxo de mensagens, consulte [ARQUITETURA.md](docs/ARQUITETURA.md)
-
 ---
 
 ## Início Rápido
 
+### URLs externas (`application.yml`)
+
+| Finalidade | Propriedade principal | Variável de ambiente típica |
+|------------|------------------------|-----------------------------|
+| POST para o servidor MOP | `external.server.request.url` | `EXTERNAL_REQUEST_URL` (via profile `local`; ver [docs/VARIAVEIS_DE_AMBIENTE.md](docs/VARIAVEIS_DE_AMBIENTE.md)) |
+| GET de regras de campos | `external.api.data-anonymization` | `EXTERNAL_API_DATA_ANONYMIZATION` |
+
+Valores padrão no YAML apontam para o ambiente de desenvolvimento interno; para **sandbox**, use o host da seção acima.
+
 ### Pré-requisitos
+
 - Java 17+
 - Maven 3.x
-- Docker e Docker Compose (para RabbitMQ)
+- **RabbitMQ** acessível quando se usa a fila de retry (`spring-boot-starter-amqp`); para desenvolvimento local, o `docker-compose.yml` sobe uma instância em `localhost:5672`.
 
 ### Passos
 
-1. **Iniciar RabbitMQ:**
+1. **Subir o RabbitMQ (recomendado localmente):**
+
 ```bash
 docker-compose up -d
 ```
 
-> 💡 **Dica**: Para mais informações sobre RabbitMQ, consulte [RABBITMQ.md](docs/RABBITMQ.md)
+2. **Executar a aplicação** (profile `local` aplica `application-local.yml` e facilita sobrescritas por variáveis):
 
-2. **Executar aplicação:**
 ```bash
+export SPRING_PROFILES_ACTIVE=local
 mvn spring-boot:run
 ```
 
-3. **Testar endpoint:**
+3. **Testar o endpoint** (`POST` com context path padrão `/v1/anonymize`):
+
 ```bash
 curl -X POST http://localhost:8080/v1/anonymize/data \
-  -H "origin: Sistema" \
-  -H "destination: Sistema" \
-  -H "path: /test" \
+  -H "X-Correlation-Id: corr-local-001" \
+  -H "origin: client" \
+  -H "path: /open-insurance/consents/v2/consents" \
   -H "operation: POST" \
-  -H "userID: user123" \
-  -H "applicationMode: TRANSMITTER" \
-  -H "Content-Type: application/json"
+  -H "step: consent-created" \
+  -H "dataEventoStep: 2026-02-23T18:44:29.650942812Z" \
+  -H "clientSSId: RECEPTORA-A" \
+  -H "serverASId: TRANSMISSORA-B" \
+  -H "Content-Type: application/json" \
+  -d "{}"
 ```
 
 ---
@@ -72,224 +114,123 @@ curl -X POST http://localhost:8080/v1/anonymize/data \
 
 ### Endpoint
 
-**POST** `/v1/anonymize/data`
+**POST** `{context-path}/data` — padrão: **`/v1/anonymize/data`**.
 
-Recebe requisições de anonimização e encaminha para processamento via RabbitMQ.
+O corpo JSON é **opcional**; vazio ou inválido é normalizado conforme o `JsonPayloadParser`.
 
-**Características:**
-- ✅ Body **opcional** (vazio/null/inválido = `{}`)
-- ✅ Gera `correlationID` e `timestamp` automaticamente
-- ✅ Atualmente suporta apenas `Content-Type: application/json`
-- ✅ Retorna JSON estruturado com informações de traceability
-
-### Headers Obrigatórios
+### Headers obrigatórios
 
 | Header | Descrição | Exemplo |
 |--------|-----------|---------|
-| `origin` | Sistema originador | `Sistema` |
-| `destination` | Destino esperado | `Sistema` |
-| `path` | Rota alvo (logs) | `/open-insurance/consents/v2/consents` |
-| `operation` | Método da operação | `POST`, `GET`, `PUT`, `DELETE`, `PROCESS` |
-| `userID` | ID do usuário/sistema | `user-12345` |
-| `applicationMode` | Modo: `TRANSMITTER` ou `RECEIVER` | `TRANSMITTER` |
+| `X-Correlation-Id` | ID de correlação informado pelo cliente | `corr-2026-001` |
+| `origin` | Origem da chamada | `client` ou `server` |
+| `path` | Rota lógica / recurso | `/open-insurance/consents/v2/consents` |
+| `operation` | Método HTTP da operação | `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, … |
+| `step` | Etapa do fluxo no trace | `consent-created` |
+| `dataEventoStep` | Data/hora do passo (ISO-8601) | `2026-02-23T18:44:29.650942812Z` |
+| `clientSSId` | Identificador SS (receptora) | `RECEPTORA-A` |
+| `serverASId` | Identificador AS (transmissora) | `TRANSMISSORA-B` |
 
-### Headers Opcionais
+### Respostas de sucesso (200)
 
-| Header | Descrição |
-|--------|-----------|
-| `correlationID` | ID de correlação (gerado automaticamente se não fornecido) |
+JSON com `status`, `message`, `correlationId`, `timestamp`, `clientSSId`, `serverASId`, `path`, `operation`. A mensagem de sucesso padrão indica que os dados foram recebidos e encaminhados ao servidor; quando o envio imediato ao MOP não é possível e o payload entra na **fila de retry**, o corpo HTTP permanece de sucesso — detalhes em [docs/REPROCESSAMENTO.md](docs/REPROCESSAMENTO.md).
 
-### Respostas
+### Erros
 
-**Sucesso (200):**
-```json
-{
-  "status": "SUCCESS",
-  "message": "Request processed successfully. Your data has been received and forwarded to the queue.",
-  "correlationId": "mop-gateway-20240115-143025-123-abc12345",
-  "timestamp": "2024-01-15T14:30:25.123Z",
-  "origin": "Sistema",
-  "destination": "Sistema",
-  "path": "/open-insurance/consents/v2/consents",
-  "operation": "POST",
-  "applicationMode": "TRANSMITTER"
-}
-```
-
-**Erro de Validação (400):**
-```json
-{
-  "status": "ERROR",
-  "error": "Invalid header",
-  "details": "Header 'applicationMode' must be either 'TRANSMITTER' or 'RECEIVER'",
-  "timestamp": "2024-01-15T14:30:25.123Z"
-}
-```
-
-**Erro de Processamento (500):**
-```json
-{
-  "status": "ERROR",
-  "error": "Message processing error",
-  "details": "Failed to process message: [detalhes]",
-  "timestamp": "2024-01-15T14:30:25.123Z"
-}
-```
+- **400:** cabeçalhos inválidos ou erro de JSON no fluxo do controlador.
+- **400:** cabeçalho obrigatório ausente ou corpo ilegível — o `GlobalExceptionHandler` pode devolver **lista de strings** (formato distinto do JSON de sucesso acima).
+- **500:** falha inesperada no processamento.
 
 ---
 
 ## Configuração
 
-### Profiles de Ambiente
+### Profiles Spring
 
-A aplicação suporta diferentes profiles para diferentes ambientes:
+| Profile | Arquivo | Descrição |
+|---------|---------|-----------|
+| `default` | `application.yml` | Configuração base (quando `SPRING_PROFILES_ACTIVE` não define outro perfil). |
+| `local` | `application-local.yml` | Desenvolvimento local: porta, context path, URL do POST, fila de retry, logging. |
 
-| Profile | Arquivo | Descrição | Valores Default |
-|---------|---------|-----------|-----------------|
-| `local` | `application-local.yml` | Desenvolvimento local | ✅ Sim |
-| `dev` | `application-dev.yml` | Ambiente de desenvolvimento | ❌ Não |
-| `homolog` | `application-homolog.yml` | Ambiente de homologação | ❌ Não |
+Ativação do profile `local`:
 
-**Ativação:**
 ```bash
-export SPRING_PROFILES_ACTIVE=dev
-# ou
-java -jar app.jar --spring.profiles.active=dev
-# ou
-mvn spring-boot:run -Dspring-boot.run.profiles=dev
+export SPRING_PROFILES_ACTIVE=local
+mvn spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-> ⚠️ **Importante**: Profiles `dev` e `homolog` **não possuem valores default**. Todas as variáveis de ambiente devem ser configuradas.
+### Variáveis de ambiente
 
-### Variáveis de Ambiente Essenciais
-
-Para os profiles `dev` e `homolog`, as seguintes variáveis são **obrigatórias**:
-
-| Variável | Descrição |
-|----------|-----------|
-| `SPRING_PROFILES_ACTIVE` | Profile ativo (`dev`, `homolog`, `local`) |
-| `RABBITMQ_VALIDATOR_HOST` | Host do RabbitMQ |
-| `RABBITMQ_USERNAME` | Usuário do RabbitMQ |
-| `RABBITMQ_PASSWORD` | Senha do RabbitMQ |
-| `EXTERNAL_REQUEST_URL` | URL da API externa |
-
-> 💡 **Nota**: O profile `local` possui valores padrão para todas as variáveis, permitindo execução sem configuração adicional.
-
-📌 **A lista completa de variáveis está disponível em:** [docs/VARIAVEIS_DE_AMBIENTE.md](docs/VARIAVEIS_DE_AMBIENTE.md)
+Tabela completa e notas de *binding*: **[docs/VARIAVEIS_DE_AMBIENTE.md](docs/VARIAVEIS_DE_AMBIENTE.md)** (inclui RabbitMQ, `mop.client.retry.*`, disponibilidade do MOP, cache, Resilience4j onde aplicável).
 
 ---
 
 ## Execução
 
-### Local (Maven)
+### Maven
 
 ```bash
-# Com profile local (padrão)
 mvn spring-boot:run
-
-# Com profile específico
-mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
-
-> 💡 **Dica**: O RabbitMQ deve estar rodando. Consulte [RABBITMQ.md](docs/RABBITMQ.md) para mais informações.
 
 ### Docker
 
-Para executar o ecossistema MOP Client via Docker (Gateway, Anonymization e Validator), consulte a documentação completa em [EXECUCAO_DOCKER.md](docs/EXECUCAO_DOCKER.md).
-
-**Resumo rápido:**
-
-1. Inicie o RabbitMQ: `docker-compose up -d`
-2. Baixe as imagens do registry
-3. Execute os containers na ordem: Gateway → Anonymization → Validator
-
-Para comandos detalhados, configurações e troubleshooting, acesse [docs/EXECUCAO_DOCKER.md](docs/EXECUCAO_DOCKER.md).
+Use o `Dockerfile` do repositório e injete variáveis de ambiente conforme o ambiente (ver [docs/VARIAVEIS_DE_AMBIENTE.md](docs/VARIAVEIS_DE_AMBIENTE.md)).
 
 ---
 
 ## Exemplos
 
-### Requisição com Body Vazio
+### Corpo vazio
 
 ```bash
 curl -X POST http://localhost:8080/v1/anonymize/data \
-  -H "origin: Sistema" \
-  -H "destination: Sistema" \
+  -H "X-Correlation-Id: example-corr-id" \
+  -H "origin: client" \
   -H "path: /open-insurance/consents/v2/consents" \
   -H "operation: POST" \
-  -H "userID: user-12345" \
-  -H "applicationMode: TRANSMITTER" \
+  -H "step: consent-created" \
+  -H "dataEventoStep: 2026-02-23T18:44:29.650942812Z" \
+  -H "clientSSId: RECEPTORA-A" \
+  -H "serverASId: TRANSMISSORA-B" \
   -H "Content-Type: application/json"
 ```
 
-**Resposta:**
-```json
-{
-  "status": "SUCCESS",
-  "message": "Request processed successfully. Your data has been received and forwarded to the queue.",
-  "correlationId": "mop-gateway-20240115-143025-123-abc12345",
-  "timestamp": "2024-01-15T14:30:25.123Z",
-  "origin": "Sistema",
-  "destination": "Sistema",
-  "path": "/open-insurance/consents/v2/consents",
-  "operation": "POST",
-  "applicationMode": "TRANSMITTER"
-}
-```
-
-### Requisição com Payload JSON
+### Payload JSON
 
 ```bash
 curl -X POST http://localhost:8080/v1/anonymize/data \
-  -H "origin: Sistema" \
-  -H "destination: Sistema" \
+  -H "X-Correlation-Id: example-corr-id" \
+  -H "origin: server" \
   -H "path: /open-insurance/consents/v2/consents" \
   -H "operation: POST" \
-  -H "userID: user-12345" \
-  -H "applicationMode: TRANSMITTER" \
+  -H "step: consent-created" \
+  -H "dataEventoStep: 2026-02-23T18:44:29.650942812Z" \
+  -H "clientSSId: RECEPTORA-A" \
+  -H "serverASId: TRANSMISSORA-B" \
   -H "Content-Type: application/json" \
-  -d '{"data": {"key": "value"}}'
-```
-
-### Com CorrelationID Customizado
-
-```bash
-curl -X POST http://localhost:8080/v1/anonymize/data \
-  -H "origin: Sistema" \
-  -H "destination: Sistema" \
-  -H "path: /test" \
-  -H "operation: POST" \
-  -H "userID: user123" \
-  -H "applicationMode: TRANSMITTER" \
-  -H "correlationID: custom-correlation-id-123" \
-  -H "Content-Type: application/json"
+  -d "{\"data\":{\"id\":\"123\"}}"
 ```
 
 ---
 
 ## Documentação Completa
 
-Para informações detalhadas, consulte os guias específicos:
-
-- **[Arquitetura](docs/ARQUITETURA.md)** - Diagrama e explicação completa da arquitetura
-- **[Execução via Docker](docs/EXECUCAO_DOCKER.md)** - Passo a passo detalhado para execução via Docker
-- **[Variáveis de Ambiente](docs/VARIAVEIS_DE_AMBIENTE.md)** - Tabela completa de variáveis de ambiente
-- **[Mensageria](docs/MENSAGERIA.md)** - Filas, retry, DLQ e configuração RabbitMQ
-- **[Configuração RabbitMQ](docs/RABBITMQ.md)** - Guia de configuração e uso do RabbitMQ
-- **[FAQ](docs/FAQ.md)** - Erros comuns e troubleshooting
+- **[Variáveis de ambiente](docs/VARIAVEIS_DE_AMBIENTE.md)** — propriedades e variáveis
+- **[Reprocessamento, retry e tempos](docs/REPROCESSAMENTO.md)** — fila de retry, caches e retentativas do cliente
+- **[Wiki técnico](wiki.md)** — arquitetura resumida
+- **[Notas LZ4](docs/VULNERABILIDADES_LZ4.md)** — histórico de dependências
+- Especificações em `src/main/resources/mop-gateway-api-specification.yml` e `src/main/resources/swagger/swagger.yaml`
 
 ---
 
 ## Referências
 
-### Repositórios do Ecossistema MOP
+- **[Repositório](https://github.com/br-openinsurance/opin-mop-gateway-pub)** — este projeto (nomes antigos como “validator”/“anonymization” como serviços separados referem-se a repositórios legados, não ao deploy atual unificado)
 
-- **[MOP Client](https://github.com/br-openinsurance/opin-mop-gateway-pub)** - Este repositório
-- **[MOP Client Data Validator](https://github.com/br-openinsurance/mop-client-data-validator-pub)** - Serviço de validação
-- **[MOP Client Anonymization](https://github.com/br-openinsurance/opin-mop-client-anonymization-pub)** - Serviço de anonimização
+### Documentação técnica
 
-### Documentação Técnica
-
-- [RabbitMQ Documentation](https://www.rabbitmq.com/documentation.html)
-- [Spring AMQP Reference](https://docs.spring.io/spring-amqp/reference/html/)
+- [RabbitMQ](https://www.rabbitmq.com/documentation.html)
+- [Resilience4j](https://resilience4j.readme.io/)
+- [Spring Boot](https://docs.spring.io/spring-boot/documentation.html)
 - [Open Insurance Brasil](https://www.gov.br/susep/pt-br/assuntos/open-insurance)

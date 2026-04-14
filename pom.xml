@@ -16,7 +16,7 @@
     <artifactId>gateway</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>openinsurance-gateway</name>
-    <description>MOP Client Gateway - Service for handling anonymization requests and RabbitMQ messaging</description>
+    <description>MOP Client Gateway - Unified service for validation, anonymization and external API communication</description>
 
     <properties>
         <java.version>17</java.version>
@@ -29,6 +29,10 @@
         <tomcat-embed-core.version>10.1.45</tomcat-embed-core.version>
         <netty-handler.version>4.1.118.Final</netty-handler.version>
         <spring-core.version>6.2.11</spring-core.version>
+        <!-- External dependency versions -->
+        <openapi4j.version>1.0.7</openapi4j.version>
+        <gson.version>2.13.1</gson.version>
+        <caffeine.version>3.1.8</caffeine.version>
     </properties>
 
     <dependencies>
@@ -54,27 +58,67 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
+        <!-- Prometheus scrape format for Micrometer metrics -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+
+        <!-- Cache Support -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-cache</artifactId>
+        </dependency>
+
+        <!-- RabbitMQ (client retry queue) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+
+        <!-- AOP + Resilience4j circuit breakers for downstream HTTP -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-spring-boot3</artifactId>
+            <version>2.2.0</version>
+        </dependency>
+
+        <!-- Caffeine Cache -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+            <version>${caffeine.version}</version>
+        </dependency>
+
         <!-- ================================================================== -->
-        <!-- Messaging -->
+        <!-- OpenAPI Validation -->
         <!-- ================================================================== -->
         
-        <!-- RabbitMQ Stream Support -->
         <dependency>
-            <groupId>org.springframework.amqp</groupId>
-            <artifactId>spring-rabbit-stream</artifactId>
-            <exclusions>
-                <!-- Exclui lz4-java para evitar loop de correções de vulnerabilidades -->
-                <!-- CVE-2025-12183 e CVE-2025-66566 afetam várias versões do lz4-java -->
-                <!-- Como não utilizamos compressão LZ4, podemos excluir com segurança -->
-                <exclusion>
-                    <groupId>org.lz4</groupId>
-                    <artifactId>lz4-java</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>at.yawk.lz4</groupId>
-                    <artifactId>lz4-java</artifactId>
-                </exclusion>
-            </exclusions>
+            <groupId>org.openapi4j</groupId>
+            <artifactId>openapi-operation-validator</artifactId>
+            <version>${openapi4j.version}</version>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.openapi4j</groupId>
+            <artifactId>openapi-parser</artifactId>
+            <version>${openapi4j.version}</version>
+        </dependency>
+
+        <!-- ================================================================== -->
+        <!-- JSON Processing -->
+        <!-- ================================================================== -->
+        
+        <!-- Gson for JSON serialization -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>${gson.version}</version>
         </dependency>
 
         <!-- ================================================================== -->
@@ -184,6 +228,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
+                    <mainClass>br.com.opin.mopclient.MopClientApplication</mainClass>
                     <excludes>
                         <!-- Exclude devtools from production build -->
                         <exclude>
