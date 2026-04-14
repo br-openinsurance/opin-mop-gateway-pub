@@ -1,4 +1,4 @@
-# MOP Client Gateway
+# MOP Client
 
 API HTTP do ecossistema **Open Insurance** que recebe payloads, executa o pipeline interno de processamento e envia o resultado ao **servidor MOP** (POST). Em situações de indisponibilidade do MOP, o serviço pode persistir o trabalho pendente numa **fila RabbitMQ de retry** (com *circuit breaker* e *replay*), sem expor microsserviços separados de validação ou anonimização.
 
