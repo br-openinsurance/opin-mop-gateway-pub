@@ -26,7 +26,7 @@
         <maven.compiler.target>17</maven.compiler.target>
         <skipTests>false</skipTests>
         <!-- Dependency versions to override transitive vulnerabilities -->
-        <tomcat-embed-core.version>10.1.45</tomcat-embed-core.version>
+        <tomcat.version>10.1.54</tomcat.version>
         <netty-handler.version>4.1.118.Final</netty-handler.version>
         <spring-core.version>6.2.11</spring-core.version>
         <!-- External dependency versions -->
@@ -165,14 +165,6 @@
     <!-- ================================================================== -->
     <dependencyManagement>
         <dependencies>
-            <!-- Override tomcat-embed-core to fix critical vulnerabilities -->
-            <!-- CVE-2025-24813 (CRITICAL), CVE-2025-55754 (CRITICAL), CVE-2025-55752 (HIGH) -->
-            <dependency>
-                <groupId>org.apache.tomcat.embed</groupId>
-                <artifactId>tomcat-embed-core</artifactId>
-                <version>${tomcat-embed-core.version}</version>
-            </dependency>
-            
             <!-- Override netty-handler to fix CVE-2025-24970 (DoS in SSL) -->
             <dependency>
                 <groupId>io.netty</groupId>
