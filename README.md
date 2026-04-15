@@ -2,6 +2,19 @@
 
 API HTTP do ecossistema **Open Insurance** que recebe payloads, executa o pipeline interno de processamento e envia o resultado ao **servidor MOP** (POST). Em situações de indisponibilidade do MOP, o serviço pode persistir o trabalho pendente numa **fila RabbitMQ de retry** (com *circuit breaker* e *replay*), sem expor microsserviços separados de validação ou anonimização.
 
+### Unificação (validator/anonymization descontinuados)
+
+Este repositório **já contempla** o que antes existia em serviços separados de **validator** e **anonymization**.
+
+- **validator (descontinuado)**: [`br-openinsurance/mop-client-data-validator-pub`](https://github.com/br-openinsurance/mop-client-data-validator-pub)
+- **anonymization (descontinuado)**: [`br-openinsurance/opin-mop-client-anonymization-pub`](https://github.com/br-openinsurance/opin-mop-client-anonymization-pub)
+
+**Importante**: esses repositórios **descontinuados** **não são mais necessários** para o **envio das mensagens** (nem para o pipeline de validator/anonymization) no deploy atual — o fluxo foi **unificado** neste MOP Client.
+
+> **Alerta (continuidade/atualização)**  
+> Para manter a continuidade, **não é necessário reconfigurar os componentes** (validator/anonymization).  
+> Basta **atualizar** este gateway (imagem/artefato) para a versão mais recente, mantendo as configurações já aplicadas.
+
 ---
 
 ### Ambiente sandbox OPIN Brasil
@@ -23,8 +36,23 @@ O **sandbox** é o ambiente de testes da OPIN Brasil: você usa o mesmo gateway 
 
 **Como configurar na prática**
 
-1. Defina a URL do **POST** e a URL do **GET** para os valores da tabela acima (normalmente via variáveis de ambiente **`EXTERNAL_REQUEST_URL`** e **`EXTERNAL_API_DATA_ANONYMIZATION`**, ou pelas propriedades `external.server.request.url` e `external.api.data-anonymization` no YAML).
-2. Suba a aplicação — ela passará a conversar com o sandbox automaticamente.
+1. Configure as duas URLs com os **valores exatos** do sandbox:
+   - **POST (/process)**:
+     - variável: `EXTERNAL_REQUEST_URL=https://mop-server-entrypoint-sandbox.opinbrasil.com.br/process`
+     - ou propriedade: `external.server.request.url=https://mop-server-entrypoint-sandbox.opinbrasil.com.br/process`
+   - **GET (regras de campos)**:
+     - variável: `EXTERNAL_API_DATA_ANONYMIZATION=https://mop-server-entrypoint-sandbox.opinbrasil.com.br/anonymization-fields?schema=Consent`
+     - ou propriedade: `external.api.data-anonymization=https://mop-server-entrypoint-sandbox.opinbrasil.com.br/anonymization-fields?schema=Consent`
+2. Suba a aplicação — a partir daí, ela passa a consultar o sandbox (GET) e enviar o processamento para o sandbox (POST).
+
+Exemplo (Windows PowerShell):
+
+```bash
+set SPRING_PROFILES_ACTIVE=local
+set EXTERNAL_REQUEST_URL=https://mop-server-entrypoint-sandbox.opinbrasil.com.br/process
+set EXTERNAL_API_DATA_ANONYMIZATION=https://mop-server-entrypoint-sandbox.opinbrasil.com.br/anonymization-fields?schema=Consent
+mvn spring-boot:run
+```
 
 Detalhes de nomes de propriedades e perfis: [docs/VARIAVEIS_DE_AMBIENTE.md](docs/VARIAVEIS_DE_AMBIENTE.md).
 
@@ -227,6 +255,9 @@ curl -X POST http://localhost:8080/v1/anonymize/data \
 ## Referências
 
 - **[Repositório](https://github.com/br-openinsurance/opin-mop-gateway-pub)** — este projeto (nomes antigos como “validator”/“anonymization” como serviços separados referem-se a repositórios legados, não ao deploy atual unificado)
+- **Repositórios descontinuados (não necessários no deploy unificado)**:
+  - [`br-openinsurance/mop-client-data-validator-pub`](https://github.com/br-openinsurance/mop-client-data-validator-pub)
+  - [`br-openinsurance/opin-mop-client-anonymization-pub`](https://github.com/br-openinsurance/opin-mop-client-anonymization-pub)
 
 ### Documentação técnica
 
