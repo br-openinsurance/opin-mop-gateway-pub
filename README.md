@@ -4,16 +4,16 @@ API HTTP do ecossistema **Open Insurance** que recebe payloads, executa o pipeli
 
 ### Unificação (validator/anonymization descontinuados)
 
-Este repositório **já contempla** o que antes existia em serviços separados de **validator** e **anonymization**.
+Este repositório **(opin-mop-gateway-pub)** já contempla o que antes existia em serviços separados de **validator** e **anonymization**.
 
 - **validator (descontinuado)**: [`br-openinsurance/mop-client-data-validator-pub`](https://github.com/br-openinsurance/mop-client-data-validator-pub)
 - **anonymization (descontinuado)**: [`br-openinsurance/opin-mop-client-anonymization-pub`](https://github.com/br-openinsurance/opin-mop-client-anonymization-pub)
 
-**Importante**: esses repositórios **descontinuados** **não são mais necessários** para o **envio das mensagens** (nem para o pipeline de validator/anonymization) no deploy atual — o fluxo foi **unificado** neste MOP Client.
+**Importante**: Os repositórios **descontinuados** **não são mais necessários** para o **envio das mensagens** (nem para o pipeline de validator/anonymization) no deploy atual — o fluxo foi **unificado** neste MOP Client.
 
 > **Alerta (continuidade/atualização)**  
 > Para manter a continuidade, **não é necessário reconfigurar os componentes** (validator/anonymization).  
-> Basta **atualizar** este gateway (imagem/artefato) para a versão mais recente, mantendo as configurações já aplicadas.
+> Basta **atualizar** o componente **opin-mop-gateway** (imagem/artefato) para a versão mais recente, mantendo as configurações já aplicadas.
 
 ---
 
