@@ -103,7 +103,7 @@ Valores padrão no YAML apontam para o ambiente de desenvolvimento interno; para
 
 - Java 17+
 - Maven 3.x
-- **RabbitMQ** Obrigatório.
+- **RabbitMQ** - Obrigatório.
 
 ### Passos
 
