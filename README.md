@@ -103,7 +103,7 @@ Valores padrão no YAML apontam para o ambiente de desenvolvimento interno; para
 
 - Java 17+
 - Maven 3.x
-- **RabbitMQ** acessível quando se usa a fila de retry (`spring-boot-starter-amqp`); para desenvolvimento local, o `docker-compose.yml` sobe uma instância em `localhost:5672`.
+- **RabbitMQ** Obrigatório.
 
 ### Passos
 
