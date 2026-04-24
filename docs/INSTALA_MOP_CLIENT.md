@@ -35,7 +35,7 @@ Exemplo mínimo funcional:
 
 ``` yaml
 global:
-  imageRegistry: ghcr.io/br-openinsurance-infra
+  imageRegistry: ghcr.io/br-openinsurance
 
   imagePullSecrets:
     - name: ghcr-secret
@@ -49,7 +49,7 @@ global:
 ## 🚀 2. Instalar o MOP Client
 
 ``` bash
-helm install mop-client   oci://ghcr.io/br-openinsurance-infra/mop-client-chart/mop-client   --version 0.5.1   -f values-client.yaml
+helm install mop-client   oci://ghcr.io/br-openinsurance/mop-client-chart/mop-client   --version 0.5.3   -f values-client.yaml
 ```
 
 ------------------------------------------------------------------------
@@ -57,7 +57,7 @@ helm install mop-client   oci://ghcr.io/br-openinsurance-infra/mop-client-chart/
 ## 🔄 3. Atualizar o MOP Client
 
 ``` bash
-helm upgrade mop-client   oci://ghcr.io/br-openinsurance-infra/mop-client-chart/mop-client   --version <NOVA_VERSAO>   -f values-client.yaml
+helm upgrade mop-client   oci://ghcr.io/br-openinsurance/mop-client-chart/mop-client   --version <NOVA_VERSAO>   -f values-client.yaml
 ```
 
 ------------------------------------------------------------------------
