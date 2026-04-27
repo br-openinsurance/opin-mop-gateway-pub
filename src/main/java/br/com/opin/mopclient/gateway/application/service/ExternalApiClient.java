@@ -39,7 +39,8 @@ import java.util.Objects;
  * <strong>Configuration:</strong>
  * <p>
  * The external API URL must be configured via the property:
- * <pre>{@code external.server.request.url=http://external-api.example.com/api}</pre>
+ * <pre>{@code external.request.url=http://external-api.example.com/api}</pre>
+ * (legacy fallback: {@code external.server.request.url})
  * <p>
  * <strong>Usage Example:</strong>
  * <pre>{@code
@@ -78,13 +79,13 @@ public class ExternalApiClient {
      */
     public ExternalApiClient(
             ProcessEndpointCircuitClient processEndpointCircuitClient,
-            @Value("${external.server.request.url}") String externalRequestUrl) {
+            @Value("${external.request.url:${external.server.request.url:}}") String externalRequestUrl) {
         this.processEndpointCircuitClient = Objects.requireNonNull(
                 processEndpointCircuitClient, "ProcessEndpointCircuitClient cannot be null");
         String url = Objects.requireNonNull(externalRequestUrl,
-                "external.server.request.url must be configured");
+                "external.request.url (or legacy external.server.request.url) must be configured");
         if (!StringUtils.hasText(url)) {
-            throw new IllegalStateException("external.server.request.url must be configured and cannot be blank");
+            throw new IllegalStateException("external.request.url (or legacy external.server.request.url) must be configured and cannot be blank");
         }
         this.externalRequestUrl = url;
     }

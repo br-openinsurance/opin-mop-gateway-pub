@@ -44,4 +44,7 @@ public class TraceDTO {
 
     @JsonProperty("origin")
     private String origin;
+
+    @JsonProperty("OrgId")
+    private String orgId;
 }

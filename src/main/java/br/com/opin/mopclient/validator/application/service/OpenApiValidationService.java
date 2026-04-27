@@ -15,6 +15,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -57,9 +58,11 @@ public class OpenApiValidationService {
     public ValidationResponseDTO validate(String rawPayload, HttpHeaders headers, String endpointUrl) {
         // Restrictive input validations
         validateInputs(rawPayload, endpointUrl);
+
+        String normalizedEndpointUrl = normalizeEndpointUrl(endpointUrl);
         
         long startTime = System.currentTimeMillis();
-        logger.info("Starting validation for endpoint: {}", endpointUrl);
+        logger.info("Starting validation for endpoint: {}", normalizedEndpointUrl);
         logger.debug("Payload received (size: {} bytes)", rawPayload != null ? rawPayload.length() : 0);
         logger.debug("Request headers: {}", headers);
 
@@ -71,16 +74,16 @@ public class OpenApiValidationService {
             Body requestBody = createRequestBody(normalizedPayload);
             
             // OpenAPI request construction
-            Request openApiRequest = buildOpenApiRequest(endpointUrl, headers, requestBody);
+            Request openApiRequest = buildOpenApiRequest(normalizedEndpointUrl, headers, requestBody);
             
             // Validation
             new RequestValidator(openApi).validate(openApiRequest);
             
-            logger.info("Validation successful for endpoint: {}", endpointUrl);
+            logger.info("Validation successful for endpoint: {}", normalizedEndpointUrl);
             response.setValidationResult(buildSuccessResponse());
             
         } catch (ValidationException e) {
-            logger.warn("Validation failed for endpoint: {}. Reason: {}", endpointUrl, e.getMessage());
+            logger.warn("Validation failed for endpoint: {}. Reason: {}", normalizedEndpointUrl, e.getMessage());
             if (e.results() != null && e.results().items() != null) {
                 logger.debug("Validation error details: {}", e.results().items());
             } else {
@@ -138,6 +141,48 @@ public class OpenApiValidationService {
             logger.warn("Error normalizing payload, using original value: {}", e.getMessage());
             return payload;
         }
+    }
+
+    /**
+     * Normalizes the endpoint URL/path used for OpenAPI validation.
+     * <p>
+     * The OpenAPI spec typically defines paths without a trailing slash. Some callers send
+     * values like {@code /resource/}. This method removes trailing slashes (except root),
+     * and if a full URL is provided, it extracts only the path component.
+     */
+    private String normalizeEndpointUrl(String endpointUrl) {
+        if (endpointUrl == null) {
+            return null;
+        }
+
+        String value = endpointUrl.trim();
+        if (value.isEmpty()) {
+            return value;
+        }
+
+        // If a full URL is accidentally provided, validate against its path.
+        try {
+            if (value.startsWith("http://") || value.startsWith("https://")) {
+                URI uri = URI.create(value);
+                if (uri.getPath() != null && !uri.getPath().isBlank()) {
+                    value = uri.getPath();
+                }
+            }
+        } catch (Exception e) {
+            // Ignore parsing issues and keep the original value.
+        }
+
+        // Ensure leading slash for openapi4j routing.
+        if (!value.startsWith("/")) {
+            value = "/" + value;
+        }
+
+        // Remove trailing slashes (except when it's just "/").
+        while (value.length() > 1 && value.endsWith("/")) {
+            value = value.substring(0, value.length() - 1);
+        }
+
+        return value;
     }
 
     /**
@@ -353,14 +398,11 @@ public class OpenApiValidationService {
         try {
             // Removes control characters and limits size
             String sanitized = message.replaceAll("[\\x00-\\x1F\\x7F]", "").trim();
-            // Shorten "Operation path not found from URL '...'" to "path not found from '...'"
+            // Shorten "Operation path not found from URL '...'" (WAF false-positive mitigation)
             // (reason: frontdoor was flagging the original message as SQL injection)
-            if (sanitized.contains("Operation path not found from URL '/open-insurance/consents/v2/consents/'.")) {
-                sanitized = sanitized.replace("Operation path not found from URL '/open-insurance/consents/v2/consents/'.", "path not found from");
-                if (sanitized.endsWith(".")) {
-                    sanitized = sanitized.substring(0, sanitized.length() - 1);
-                }
-            }
+            sanitized = sanitized.replaceAll(
+                    "Operation path not found from URL '([^']+)'\\.",
+                    "path not found from");
             if (sanitized.length() > 1000) {
                 sanitized = sanitized.substring(0, 1000) + "...";
             }

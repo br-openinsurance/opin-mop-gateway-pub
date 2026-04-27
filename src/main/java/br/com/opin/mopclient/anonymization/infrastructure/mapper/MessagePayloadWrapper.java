@@ -49,15 +49,12 @@ public class MessagePayloadWrapper {
             }
 
             if (node == null || node.isEmpty()) {
-                logger.info("Node is null or empty, inserting empty object in data field");
                 payloadNode.set(DATA_NODE_NAME, objectMapper.createObjectNode());
             } else {
                 JsonNode dataNode = node.get(DATA_NODE_NAME);
                 if (dataNode != null && !dataNode.isEmpty()) {
                     payloadNode.set(DATA_NODE_NAME, dataNode);
-                    logger.info("Data field inserted into payload node");
                 } else {
-                    logger.info("Field 'data' is missing or empty in the provided node. Using node itself as data");
                     payloadNode.set(DATA_NODE_NAME, node);
                 }
             }

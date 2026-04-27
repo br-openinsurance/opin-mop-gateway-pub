@@ -9,7 +9,6 @@ import br.com.opin.mopclient.anonymization.shared.exception.infrastructure.Confi
 import br.com.opin.mopclient.anonymization.shared.util.MopReportidManager;
 import br.com.opin.mopclient.validator.infrastructure.config.InMemoryCacheManagerConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.CacheManager;
@@ -25,8 +24,7 @@ import java.util.Set;
 @Service
 public class AnonymizeDataUseCase {
 
-    private
-    static final Logger logger = LoggerFactory.getLogger(AnonymizeDataUseCase.class);
+    private static final Logger logger = LoggerFactory.getLogger(AnonymizeDataUseCase.class);
     private static final String EMPTY_JSON = "{}";
 
     private final JsonAnonymizer jsonAnonymizer;
@@ -100,53 +98,40 @@ public class AnonymizeDataUseCase {
         Set<String> anonymizedFields = fieldsToAnonymize != null ? fieldsToAnonymize : Collections.emptySet();
         Set<String> exposedFields = fieldsToExpose != null ? fieldsToExpose : Collections.emptySet();
 
-        logger.info("=================================================================================");
-        logger.info("[INPUT] JSON to be anonymized | MOP Report ID: {}", mopReportid);
-        logger.info("---------------------------------------------------------------------------------");
-        
-        String formattedJsonInput = jsonInput;
-        try {
-            JsonNode jsonNode = objectMapper.readTree(jsonInput);
-            formattedJsonInput = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonNode);
-        } catch (Exception e) {
-            logger.warn("[WARN] Could not format input JSON, using raw format | MOP Report ID: {}", mopReportid);
-        }
-        
-        logger.info("JSON INPUT (pretty-printed):\n{}", formattedJsonInput);
-        logger.info("FIELDS TO ANONYMIZE (fieldsToAnonymize): {}", anonymizedFields);
-        logger.info("FIELDS TO EXPOSE (fieldsToExpose): {}", exposedFields);
-        logger.info("=================================================================================");
+        logger.debug(
+                "[STEP 3] Anonymization detail | MOP Report ID: {} | inputLength={} chars | fieldsToAnonymize={} | fieldsToExpose={}",
+                mopReportid,
+                jsonInput.length(),
+                anonymizedFields.size(),
+                exposedFields.size());
 
         try {
             String anonymizedResult = jsonAnonymizer.anonymize(jsonInput, anonymizedFields, exposedFields);
-            
-            logger.info("=================================================================================");
-            logger.info("[OUTPUT] JSON after anonymization | MOP Report ID: {}", mopReportid);
-            logger.info("---------------------------------------------------------------------------------");
-            
-            String formattedJsonOutput = anonymizedResult;
-            try {
-                if (anonymizedResult != null && !anonymizedResult.trim().isEmpty() && !EMPTY_JSON.equals(anonymizedResult.trim())) {
-                    JsonNode jsonNode = objectMapper.readTree(anonymizedResult);
-                    formattedJsonOutput = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonNode);
-                }
-            } catch (Exception e) {
-                logger.warn("[WARN] Could not format output JSON, using raw format | MOP Report ID: {} | Error: {}", mopReportid, e.getMessage());
+
+            if (logger.isDebugEnabled()) {
+                int outLen = anonymizedResult != null ? anonymizedResult.length() : 0;
+                logger.debug(
+                        "[STEP 3] Anonymization output length | MOP Report ID: {} | outputLength={} chars",
+                        mopReportid,
+                        outLen);
             }
-            
-            logger.info("ANONYMIZED JSON (pretty-printed):\n{}", formattedJsonOutput);
-            logger.info("=================================================================================");
-            
+
             return anonymizedResult;
         } catch (IllegalArgumentException e) {
-            logger.error("[ERROR] Invalid argument during anonymization | MOP Report ID: {} | Error: {}",
-                    mopReportid, e.getMessage(), e);
-            logger.error("[ERROR] ORIGINAL JSON (before error): {}", jsonInput);
+            logger.error(
+                    "[ERROR] Invalid argument during anonymization | MOP Report ID: {} | Error: {} | inputLength={}",
+                    mopReportid,
+                    e.getMessage(),
+                    jsonInput.length(),
+                    e);
             return EMPTY_JSON;
         } catch (Exception e) {
-            logger.error("[ERROR] Unexpected error during anonymization | MOP Report ID: {} | Error: {}",
-                    mopReportid, e.getMessage(), e);
-            logger.error("[ERROR] ORIGINAL JSON (before error): {}", jsonInput);
+            logger.error(
+                    "[ERROR] Unexpected error during anonymization | MOP Report ID: {} | Error: {} | inputLength={}",
+                    mopReportid,
+                    e.getMessage(),
+                    jsonInput.length(),
+                    e);
             return EMPTY_JSON;
         }
     }

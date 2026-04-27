@@ -122,6 +122,15 @@
         </dependency>
 
         <!-- ================================================================== -->
+        <!-- Security: JWT/JWS signing for outbound payloads -->
+        <!-- ================================================================== -->
+        <dependency>
+            <groupId>com.nimbusds</groupId>
+            <artifactId>nimbus-jose-jwt</artifactId>
+            <version>10.9</version>
+        </dependency>
+
+        <!-- ================================================================== -->
         <!-- Development Tools -->
         <!-- ================================================================== -->
         

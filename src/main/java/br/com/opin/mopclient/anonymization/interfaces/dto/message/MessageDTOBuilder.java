@@ -9,20 +9,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-/**
- * Builder utility class for creating MessageDTO instances.
- * Adapted for the unified architecture (no RabbitMQ in this flow).
- */
-public class MessageDTOBuilder {
+public final class MessageDTOBuilder {
 
     private MessageDTOBuilder() {
-        // Utility class - prevent instantiation
     }
 
-    /**
-     * Creates a MessageDTO from RequestHeadersDTO and other processing context.
-     * Adapted for the unified architecture.
-     */
     public static MessageDTO buildFromHeaders(
             RequestHeadersDTO headersDTO,
             Set<String> anonymizedFields,
@@ -31,7 +22,8 @@ public class MessageDTOBuilder {
             String payloadData,
             String host,
             String url,
-            String step) {
+            String step,
+            String orgId) {
 
         String correlationId = headersDTO.getCorrelationId();
         if (correlationId == null || correlationId.isBlank()) {
@@ -39,13 +31,12 @@ public class MessageDTOBuilder {
         }
         String mopReportid = headersDTO.getMopReportid();
         String origin = headersDTO.getOrigin();
-        String destination = headersDTO.getDestination();
         String path = headersDTO.getPath();
         String operation = headersDTO.getOperation();
         String clientSSId = headersDTO.getClientSSId() != null && !headersDTO.getClientSSId().isBlank()
                 ? headersDTO.getClientSSId() : origin;
         String serverASId = headersDTO.getServerASId() != null && !headersDTO.getServerASId().isBlank()
-                ? headersDTO.getServerASId() : destination;
+                ? headersDTO.getServerASId() : "";
         String timestamp = headersDTO.getTimestamp();
 
         if (timestamp == null || timestamp.isBlank()) {
@@ -82,8 +73,8 @@ public class MessageDTOBuilder {
                 .serverASId(serverASId != null ? serverASId : "")
                 .step(traceStep)
                 .dataEventoStep(traceDataEventoStep)
-                // Header `origin`: "client" | "server" (request origin)
                 .origin(origin != null ? origin : "")
+                .orgId(orgId != null ? orgId : "")
                 .build();
 
         HttpRequestInfoDTO request = HttpRequestInfoDTO.builder()

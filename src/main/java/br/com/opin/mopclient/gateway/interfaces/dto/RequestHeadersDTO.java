@@ -24,12 +24,9 @@ import java.util.Map;
  *   <li>Allows storage of additional custom headers in a map</li>
  * </ul>
  * <p>
- * <strong>Required Headers:</strong>
+ * <strong>Required HTTP headers (controller):</strong>
  * <ul>
- *   <li>{@code origin}: Source system identifier (required)</li>
- *   <li>{@code destination}: Target system identifier (required)</li>
- *   <li>{@code path}: Logical path or endpoint identifier (required)</li>
- *   <li>{@code operation}: Operation type (e.g., CREATE, UPDATE, DELETE, PROCESS) (required)</li>
+ *   <li>{@code X-Correlation-Id}, {@code origin}, {@code path}, {@code operation}, {@code step}, {@code dataEventoStep}, {@code clientSSId}, {@code serverASId}</li>
  * </ul>
  * <p>
  * <strong>Optional Headers:</strong>
@@ -43,14 +40,13 @@ import java.util.Map;
  * <pre>{@code
  * // Building from HTTP request headers
  * RequestHeadersDTO headersDTO = RequestHeadersDTO.builder()
- *     .origin("external-api-service")
- *     .destination("anonymization-service")
- *     .path("/api/v1/anonymize")
- *     .operation("PROCESS")
-     *     .mopReportid(UUID.randomUUID().toString())
-     *     .timestamp(Instant.now().toString())
-     *     .headers(Map.of("x-custom-header", "custom-value"))
-     *     .build();
+ *     .origin("client")
+ *     .path("/open-insurance/consents/v2/consents")
+ *     .operation("POST")
+ *     .mopReportid(UUID.randomUUID().toString())
+ *     .timestamp(Instant.now().toString())
+ *     .headers(Map.of("x-custom-header", "custom-value"))
+ *     .build();
  *
  * // Using in service layer
  * messageService.sendMessageWithHead(jsonPayload, headersDTO);
@@ -69,16 +65,6 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 public class RequestHeadersDTO {
-
-    /**
-     * Destination system identifier.
-     * <p>
-     * Identifies the intended recipient or logical destination for the message
-     * in the processing pipeline. This value is used for routing messages to
-     * the appropriate queue or service.
-     */
-    @JsonProperty("destination")
-    private String destination;
 
     /**
      * Client SS (insurer / source system) identifier.

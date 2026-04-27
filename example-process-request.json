@@ -1,6 +1,5 @@
 {
   "origin": "A",
-  "destination": "C",
   "path": "",
   "headers": {
     "Content-Type": "application/json",

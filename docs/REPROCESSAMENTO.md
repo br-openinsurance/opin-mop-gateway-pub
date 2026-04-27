@@ -1,6 +1,6 @@
 # Reprocessamento, fila de retry e tempos
 
-Este documento descreve o comportamento do **MOP Client Gateway** em relação a **fila de retry**, **resiliência** (circuit breaker, disponibilidade do MOP) e **tempos** configuráveis (cache).
+Este documento descreve o comportamento do **MOP Client** em relação a **fila de retry**, **resiliência** (circuit breaker, disponibilidade do MOP) e **tempos** configuráveis (cache).
 
 ---
 

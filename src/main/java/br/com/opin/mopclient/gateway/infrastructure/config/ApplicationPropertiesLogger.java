@@ -83,6 +83,13 @@ public class ApplicationPropertiesLogger implements ApplicationListener<Applicat
 
         // External API configuration
         logger.info("External API Configuration:");
+        logProperty("external.host");
+        logProperty("external.request.url");
+        logProperty("external.request.host");
+        logProperty("external.request.path");
+        logProperty("external.request.method");
+        logProperty("external.api.data-anonymization");
+        // legacy (mantido para migração sem quebra)
         logProperty("external.server.request.url");
         logger.info("");
 

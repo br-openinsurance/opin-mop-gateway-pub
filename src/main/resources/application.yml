@@ -1,19 +1,9 @@
-# ============================================================================
-# MOP Client Gateway - Base Configuration   
-# ============================================================================
-# This is the base configuration file. Environment-specific configurations
-# (application-dev.yml, application-homolog.yml, application-prod.yml) can override these values.
-# Properties can be overridden by environment variables.
-#
-# To activate a profile, use:
-#   - Environment variable: SPRING_PROFILES_ACTIVE=dev
-#   - JVM argument: -Dspring.profiles.active=dev
-#   - Command line: --spring.profiles.active=dev
-# ============================================================================
-
 spring:
   application:
     name: mop-client-gateway
+  
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:default}
 
   rabbitmq:
     host: ${RABBITMQ_VALIDATOR_HOST}
@@ -39,16 +29,17 @@ server:
 # External API Configuration
 # ============================================================================
 external:
+  # Base URL do MOP (evita repetição em request/api)
+  host: ${EXTERNAL_HOST}
   server:
     request:
-      url:  https://mop-server-entrypoint-sandbox.opinbrasil.com.br/process
+      url: ${external.request.url}
   api:
-    #  External API URL to get anonymization configuration
-    data-anonymization: ${EXTERNAL_API_DATA_ANONYMIZATION:https://mop-server-entrypoint-sandbox.opinbrasil.com.br/anonymization-fields?schema=Consents}
+    data-anonymization: ${EXTERNAL_API_DATA_ANONYMIZATION:${external.host}/anonymization-fields?schema=Consent}
   request:
-    url: ${EXTERNAL_REQUEST_URL:http:https://mop-server-entrypoint-sandbox.opinbrasil.com.br/process}
-    host: ${EXTERNAL_REQUEST_HOST:http:https://mop-server-entrypoint-sandbox.opinbrasil.com.br}
+    host: ${EXTERNAL_REQUEST_HOST:${external.host}}
     path: ${EXTERNAL_REQUEST_PATH:/process}
+    url: ${EXTERNAL_REQUEST_URL:${external.request.host}${external.request.path}}
     method: ${EXTERNAL_REQUEST_METHOD:POST}
 
 # ============================================================================
@@ -70,12 +61,10 @@ management:
   endpoints:
     web:
       exposure:
-        # Expose all endpoints by default
-        # Can be restricted via MANAGEMENT_ENDPOINTS_INCLUDE env var
-        include: "*"
+        include: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:*}
   endpoint:
     health:
-      show-details: always
+      show-details: ${MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS:always}
   metrics:
     tags:
       application: ${spring.application.name}
@@ -90,18 +79,22 @@ logging:
 
 # Client retry queue + circuit breakers (anonymization-fields + /process)
 mop:
+  payload-signing:
+    enabled: ${MOP_PAYLOAD_SIGNING_ENABLED}
+    private-key-pem: ${JWS_PRIVATE_KEY}
+    key-id: ${JWS_KID}
+    org-id: ${JWS_ORG_ID}
   client:
     retry:
       queue: ${MOP_CLIENT_RETRY_QUEUE:mop.client.retry.queue}
       replay:
         enabled: ${MOP_CLIENT_RETRY_REPLAY_ENABLED:true}
-        # How often to try draining the retry queue when MOP is reported available
+        initial-delay-ms: ${MOP_CLIENT_RETRY_REPLAY_INITIAL_DELAY_MS:15000}
         interval-ms: ${MOP_CLIENT_RETRY_REPLAY_INTERVAL_MS:10000}
         max-messages-per-tick: ${MOP_CLIENT_RETRY_REPLAY_MAX_PER_TICK:25}
   server:
     availability:
       enabled: ${MOP_SERVER_AVAILABILITY_CHECK_ENABLED:true}
-      # Interval between HTTP probes to MOP (anonymization-fields), independent of the circuit breaker
       check-interval-ms: ${MOP_SERVER_AVAILABILITY_CHECK_INTERVAL_MS:30000}
       connect-timeout-ms: ${MOP_SERVER_AVAILABILITY_CONNECT_TIMEOUT_MS:3000}
       read-timeout-ms: ${MOP_SERVER_AVAILABILITY_READ_TIMEOUT_MS:5000}

@@ -66,7 +66,7 @@ public class AnonymizerController {
      * <p>
      * Body is optional: null/empty or invalid JSON are treated as empty object ({}).
      * Required headers: X-Correlation-Id (correlationId), origin (client/server), path, operation, step, dataEventoStep, clientSSId, serverASId.
-     * Optional: destination, traceOrigin (default CLIENT).
+     * Optional: traceOrigin (repassado no mapa de headers quando informado). Opcional: X-Mop-Reportid (gerado se ausente).
      * Response does not include trace object; trace is only present in the final JSON (MessageDTO) sent internally.
      *
      * @param requestBody    JSON payload (can be null or empty)
@@ -123,7 +123,7 @@ public class AnonymizerController {
             String responseClientSSId = headersDTO.getClientSSId() != null && !headersDTO.getClientSSId().isBlank()
                     ? headersDTO.getClientSSId() : headersDTO.getOrigin();
             String responseServerASId = headersDTO.getServerASId() != null && !headersDTO.getServerASId().isBlank()
-                    ? headersDTO.getServerASId() : (headersDTO.getDestination() != null ? headersDTO.getDestination() : "");
+                    ? headersDTO.getServerASId() : "";
 
             LOGGER.info("Payload successfully processed. clientSSId: {}, serverASId: {}, correlationId: {}",
                     responseClientSSId, responseServerASId, headersDTO.getCorrelationId());
@@ -148,7 +148,7 @@ public class AnonymizerController {
             String responseClientSSId = h.getClientSSId() != null && !h.getClientSSId().isBlank()
                     ? h.getClientSSId() : h.getOrigin();
             String responseServerASId = h.getServerASId() != null && !h.getServerASId().isBlank()
-                    ? h.getServerASId() : (h.getDestination() != null ? h.getDestination() : "");
+                    ? h.getServerASId() : "";
             String mopReportIdForLog = h.getMopReportid() != null && !h.getMopReportid().isBlank()
                     ? h.getMopReportid()
                     : "-";

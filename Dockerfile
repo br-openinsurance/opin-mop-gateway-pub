@@ -1,13 +1,13 @@
 # Usa uma imagem base do Eclipse Temurin (sucessor do OpenJDK)
-# Base: Ubuntu 22.04 (Jammy) - Atualizada para corrigir vulnerabilidades de segurança
-FROM eclipse-temurin:17-jre-jammy
+# Base: Ubuntu 24.04 (Noble) - systemd 255+ elimina CVEs presentes em Jammy (systemd 249).
+FROM eclipse-temurin:17-jre-noble
 
-# Atualiza os pacotes do sistema para corrigir vulnerabilidades conhecidas
-# Especialmente importante para corrigir CVE-2025-68973 (GnuPG out-of-bounds write) 
-# e outras 11 vulnerabilidades HIGH no ecossistema GnuPG
-# O upgrade atualiza todos os pacotes instalados, incluindo gnupg, gnupg2, dirmngr, etc.
+# Atualiza pacotes do sistema e remove libs systemd/udev (não usadas pela JRE).
+# A purga é best-effort: se algum core dep travar, segue o build — Noble já não traz
+# as versões vulneráveis.
 RUN apt-get update && \
     apt-get upgrade -y && \
+    (DEBIAN_FRONTEND=noninteractive apt-get -y purge --auto-remove libsystemd0 libudev1 2>/dev/null || true) && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

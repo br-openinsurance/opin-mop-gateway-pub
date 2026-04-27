@@ -97,7 +97,6 @@ class AnonymizerControllerTest {
         return RequestHeadersDTO.builder()
                 .correlationId(correlationId)
                 .origin(ORIGIN)
-                .destination("destination-value")
                 .path(PATH)
                 .operation(OPERATION)
                 .step(STEP_VALUE)

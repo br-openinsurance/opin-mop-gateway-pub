@@ -3,238 +3,234 @@ info:
   title: "MOP Client Gateway API"
   version: "1.0.0"
   description: |
-    API do MOP Client Gateway. Recebe requisições HTTP com payload JSON opcional,
-    processa no mesmo serviço e envia o resultado ao servidor MOP (HTTP POST).
-    Em indisponibilidade do MOP, o payload pode ser enfileirado numa fila RabbitMQ de retry
-    (resiliência); o cliente pode receber HTTP 200 com a mesma mensagem de sucesso — ver documentação do projeto.
-  
+    Especificação alinhada ao serviço **mop-client-gateway** (Spring Boot).
+
+    **Endpoint HTTP**
+    - `POST {context-path}/data`
+    - `server.servlet.context-path` padrão: `/v1/anonymize` → URL completa `POST /v1/anonymize/data`
+    - Implementação: `AnonymizerController`
+
+    **Fluxo interno (síncrono)**
+    1. Validação de headers obrigatórios (`HeaderValidator`).
+    2. Parse do corpo JSON opcional (vazio / inválido → `{}`).
+    3. Validação OpenAPI do payload (`OpenApiValidationService`).
+    4. Busca de configuração de anonimização no MOP e anonimização de campos.
+    5. Montagem do `MessageDTO`, wrap do payload e envio ao endpoint **/process** do MOP configurado (`external.request.url`).
+    6. Na saída para o MOP, o corpo é o **JWT compacto** (string) com `Content-Type: application/jwt` (exigência do `/process`).
+
+    **Resiliência**
+    - Se o MOP estiver indisponível (config, circuit breaker ou erro HTTP), o gateway pode **enfileirar** o pedido na fila RabbitMQ de retry.
+    - Nesse caso o cliente ainda recebe **HTTP 200** com o mesmo JSON de sucesso (`ResponseBuilder.API_SUCCESS_BODY_MESSAGE`); o indisponível fica apenas nos logs.
+
   contact:
     name: MOP Team
     email: mop-team@opinbrasil.com.br
 
 servers:
   - url: "http://localhost:8080/v1/anonymize"
-    description: "Servidor local (inclui server.servlet.context-path)"
-  - url: "https://api-dev.intranet.opinbrasil"
-    description: "Development environment"
-  - url: "https://api.intranet.opinbrasil"
-    description: "Production environment"
+    description: |
+      Ambiente local: host/porta conforme `server.port` (padrão 8080) + `server.servlet.context-path=/v1/anonymize`.
+      Operação documentada: `POST /data` (URL absoluta = base acima + `/data`).
+  - url: "https://gateway-exemplo.intranet.opinbrasil/v1/anonymize"
+    description: "Exemplo de base URL em ambiente remoto; substitua o host e o context-path conforme o deployment e `application-*.yml`."
 
 paths:
   /data:
     post:
       tags:
-        - "Anonymization"
-      summary: "Submit data for anonymization"
+        - "Gateway"
+      summary: "Recebe payload para validação, anonimização e encaminhamento ao MOP"
       description: |
-        Recebe JSON opcional. Headers obrigatórios: X-Correlation-Id, origin ("client" ou "server"),
-        path, operation, step, dataEventoStep, clientSSId, serverASId. Opcionais: destination, traceOrigin.
-        Processamento síncrono no gateway; envio ao MOP ou enfileiramento em retry conforme resiliência.
-      operationId: "submitAnonymizationRequest"
-      
+        Contrato espelha `AnonymizerController.receivedRequest`.
+
+        **Headers obrigatórios** (todos repassados ao fluxo; `X-Correlation-Id` é o ID de correlação informado pelo cliente):
+        `X-Correlation-Id`, `origin`, `path`, `operation`, `step`, `dataEventoStep`, `clientSSId`, `serverASId`.
+
+        **Headers opcionais:** `traceOrigin`, `X-Mop-Reportid` (se ausente, o gateway gera um identificador interno).
+
+        **Corpo:** JSON opcional. O objeto de rastreio completo (`MessageDTO`) **não** é devolvido na resposta HTTP; só campos planos de sucesso/erro abaixo.
+
+      operationId: "submitGatewayAnonymizationRequest"
+
       parameters:
         - $ref: '#/components/parameters/correlationIdHeader'
+        - $ref: '#/components/parameters/mopReportidHeader'
         - $ref: '#/components/parameters/originHeader'
         - $ref: '#/components/parameters/pathHeader'
         - $ref: '#/components/parameters/operationHeader'
         - $ref: '#/components/parameters/stepHeader'
         - $ref: '#/components/parameters/dataEventoStepHeader'
-        - $ref: '#/components/parameters/destinationHeader'
         - $ref: '#/components/parameters/traceOriginHeader'
         - $ref: '#/components/parameters/clientSSIdHeader'
         - $ref: '#/components/parameters/serverASIdHeader'
-      
+
       requestBody:
         required: false
         description: |
-          JSON payload to be anonymized (optional). The structure is flexible and can contain
-          any valid JSON object. Empty, null, or invalid JSON payloads are treated as empty object ({}).
-          O corpo é processado pelo fluxo interno antes do envio ao servidor MOP.
+          JSON arbitrário (objeto). Corpo ausente, em branco ou JSON inválido é tratado como `{}` antes do fluxo.
         content:
           application/json:
             schema:
               type: object
-              description: "Arbitrary JSON payload"
+              description: "Payload de negócio (estrutura livre conforme recurso Open Insurance / institucional)."
               additionalProperties: true
             examples:
-              example1:
-                summary: "Simple payload example"
+              consentWrite:
+                summary: "Exemplo alinhado a consentimento (path/operation típicos nos headers)"
                 value:
-                  id: "12345"
-                  name: "John Doe"
-                  email: "john.doe@example.com"
-                  timestamp: "2025-01-15T10:30:00Z"
-              example2:
-                summary: "Complex nested payload"
-                value:
-                  requestId: "req-abc-123"
-                  metadata:
-                    source: "external-system"
-                    version: "1.0"
                   data:
-                    user:
-                      id: "user-123"
-                      profile:
-                        name: "Jane Smith"
-                        preferences: ["pref1", "pref2"]
-              example3:
-                summary: "Empty body (optional)"
+                    status: "AUTHORISED"
+                    document:
+                      identification: "11111111111"
+                      rel: "CPF"
+              emptyBody:
+                summary: "Corpo vazio / omitido (aceito)"
                 value: {}
-              example4:
-                summary: "Null body (optional)"
-                value: null
-      
+
       responses:
         '200':
-          description: "Processamento aceito; payload encaminhado ao MOP ou enfileirado para retry (mesmo corpo de sucesso possível)"
+          description: |
+            Processamento concluído sem erro de aplicação no gateway.
+            A mensagem de sucesso é a mesma quando o MOP aceita o envio **ou** quando o payload foi apenas enfileirado para retry (resiliência).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessResponse'
               examples:
                 success:
-                  summary: "Successful response with all fields"
+                  summary: "Resposta de sucesso (campos retornados por `ResponseBuilder`)"
                   value:
                     status: "SUCCESS"
                     message: "Request processed successfully. Your data has been received and forwarded to the server."
-                    correlationId: "corr-local-001"
-                    timestamp: "2024-01-15T14:30:25.123Z"
-                    clientSSId: "RECEPTORA A"
-                    serverASId: "TRANSMISSORA B"
+                    correlationId: "550e8400-e29b-41d4-a716-446655440000"
+                    timestamp: "2026-04-23T14:10:09.777Z"
+                    clientSSId: "RECEPTORA_A"
+                    serverASId: "TRANSMISSORA_B"
                     path: "/open-insurance/consents/v2/consents"
                     operation: "POST"
-        
+
         '400':
-          description: "Bad Request - Invalid headers or JSON payload"
+          description: "Headers inválidos ou falha ao interpretar o JSON do corpo (`HttpStatus.BAD_REQUEST`)."
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
               examples:
                 invalidHeader:
-                  summary: "Missing or empty header"
-                  value:
-                    status: "ERROR"
-                    error: "Invalid header"
-                    details: "Header 'origin' must not be empty"
-                    timestamp: "2024-01-15T14:30:25.123Z"
-                invalidOrigin:
-                  summary: "Invalid origin value (must be client or server)"
+                  summary: "Header obrigatório vazio ou inválido"
                   value:
                     status: "ERROR"
                     error: "Invalid header"
                     details: "Header 'origin' must be either 'client' or 'server'"
-                    timestamp: "2024-01-15T14:30:25.123Z"
+                    timestamp: "2026-04-23T14:10:09.777Z"
                 jsonConversionError:
-                  summary: "JSON conversion error"
+                  summary: "Erro de conversão JSON"
                   value:
                     status: "ERROR"
                     error: "JSON conversion error"
-                    details: "Failed to process JSON payload: ..."
-                    timestamp: "2024-01-15T14:30:25.123Z"
-        
+                    details: "Failed to process JSON payload: Unexpected character..."
+                    timestamp: "2026-04-23T14:10:09.777Z"
+
         '500':
-          description: "Erro interno — falha no processamento ou na infraestrutura"
+          description: "Erro inesperado no processamento (`HttpStatus.INTERNAL_SERVER_ERROR`)."
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
               examples:
                 unexpectedError:
-                  summary: "Unexpected error"
+                  summary: "Erro genérico"
                   value:
                     status: "ERROR"
                     error: "Unexpected error"
                     details: "An unexpected error occurred while processing the request"
-                    timestamp: "2024-01-15T14:30:25.123Z"
+                    timestamp: "2026-04-23T14:10:09.777Z"
 
 components:
   parameters:
     correlationIdHeader:
       name: "X-Correlation-Id"
       in: "header"
-      description: "Identificador de correlação obrigatório (informado pelo cliente)."
+      description: |
+        Identificador de correlação **obrigatório**, informado pelo cliente (independente do `X-Mop-Reportid` interno).
+        Validado em `HeaderValidator` (não vazio após trim).
       required: true
       schema:
         type: string
         minLength: 1
-        example: "corr-2026-001"
+        example: "550e8400-e29b-41d4-a716-446655440000"
+
+    mopReportidHeader:
+      name: "X-Mop-Reportid"
+      in: "header"
+      description: |
+        Identificador de rastreio MOP **opcional**. Se omitido, o gateway gera um valor (`TraceabilityService.getOrGenerateMopReportid`).
+        **Não** é incluído no JSON de sucesso HTTP atual (`ApiResponseDTO` omite campos nulos).
+      required: false
+      schema:
+        type: string
+        minLength: 1
+        example: "mop-report-7f3c9a2b"
 
     originHeader:
       name: "origin"
       in: "header"
       description: |
-        Origem da requisição: "client" ou "server".
+        Origem da chamada: `client` ou `server` (**comparação case-insensitive** em `HeaderValidator`).
       required: true
       schema:
         type: string
-        enum: ["client", "server"]
+        minLength: 1
         example: "client"
-    
-    destinationHeader:
-      name: "destination"
-      in: "header"
-      description: |
-        Target system identifier (optional). Identifies the intended recipient or logical destination
-        for the message. When provided via header, used for serverASId fallback and trace.
-      required: false
-      schema:
-        type: string
-        example: "anonymization-service"
-    
+
     pathHeader:
       name: "path"
       in: "header"
       description: |
-        Logical path or endpoint identifier. Represents the business route or endpoint
-        related to the message processing.
+        Caminho lógico do recurso de negócio (ex.: rota Open Insurance). Obrigatório, não vazio.
       required: true
       schema:
         type: string
         minLength: 1
         example: "/open-insurance/consents/v2/consents"
-    
+
     operationHeader:
       name: "operation"
       in: "header"
       description: |
-        Método HTTP da operação (ex.: GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS, TRACE).
+        Método HTTP da operação de negócio. Valores aceitos: os de `br.com.opin.mopclient.gateway.interfaces.enums.HttpMethod`
+        (**case-insensitive**): GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS, TRACE.
       required: true
       schema:
         type: string
         minLength: 1
-        enum: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"]
         example: "POST"
-    
-    
+
     clientSSIdHeader:
       name: "clientSSId"
       in: "header"
-      description: |
-        Client SS identifier (receiver). Required.
+      description: "Identificador da parte receptora (SS). Obrigatório, não vazio."
       required: true
       schema:
         type: string
         minLength: 1
-        example: "RECEIVER A"
-    
+        example: "RECEPTORA_A"
+
     serverASIdHeader:
       name: "serverASId"
       in: "header"
-      description: |
-        Server AS identifier (transmitter). Required.
+      description: "Identificador da parte transmissora (AS). Obrigatório, não vazio."
       required: true
       schema:
         type: string
         minLength: 1
-        example: "TRANSMITTER B"
+        example: "TRANSMISSORA_B"
 
     stepHeader:
       name: "step"
       in: "header"
       description: |
-        Step of the flow in the trace (e.g. consent-created, consent-read). Required.
-        Reflected in the message trace.
+        Nome do passo no fluxo (ex.: `consent-created`). Obrigatório; usado no `MessageDTO`/rastreio interno.
       required: true
       schema:
         type: string
@@ -245,21 +241,18 @@ components:
       name: "dataEventoStep"
       in: "header"
       description: |
-        Timestamp of the step event in the trace (ISO-8601). Required.
-        Reflected in the message trace.
+        Instantâneo do evento do passo (texto ISO-8601). Obrigatório; validação atual exige não vazio (formato livre em string).
       required: true
       schema:
         type: string
-        format: date-time
         minLength: 1
-        example: "2026-02-23T18:44:29.650942812Z"
+        example: "2026-04-23T14:10:09.650942812Z"
 
     traceOriginHeader:
       name: "traceOrigin"
       in: "header"
       description: |
-        Origin of the event in the trace (e.g. CLIENT, SERVER). Optional.
-        When provided, it is reflected in the message trace. If not provided, CLIENT is used.
+        Opcional. Lido de `RequestHeadersDTO` / mapa de headers para contexto; **não** compõe o `TraceDTO` serializado no `MessageDTO` na implementação atual.
       required: false
       schema:
         type: string
@@ -269,41 +262,42 @@ components:
     SuccessResponse:
       type: object
       description: |
-        Resposta de sucesso. O correlationId corresponde ao header X-Correlation-Id.
+        Corpo JSON retornado em HTTP 200 por `ResponseBuilder.buildSuccessResponse`.
+        Campos `error` e `details` não são usados no sucesso. `mopReportid` pode existir no DTO mas **é omitido** na serialização quando nulo.
       properties:
         status:
           type: string
-          description: "Response status, always 'SUCCESS' for successful requests"
           enum: ["SUCCESS"]
           example: "SUCCESS"
         message:
           type: string
-          description: "Human-readable success message"
+          description: "Texto fixo de sucesso ou mensagem customizada (ex.: fila de retry — hoje igual ao sucesso normal)."
           example: "Request processed successfully. Your data has been received and forwarded to the server."
         correlationId:
           type: string
-          description: "Identificador de correlação (header X-Correlation-Id)"
-          example: "corr-2026-001"
+          description: "Eco do header `X-Correlation-Id`."
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        mopReportid:
+          type: string
+          description: "Reservado; normalmente **ausente** na resposta de sucesso atual."
         timestamp:
           type: string
           format: date-time
-          description: "Timestamp when the request was processed (ISO-8601 format)"
-          example: "2024-01-15T14:30:25.123Z"
+          description: "Gerado no gateway (`Instant` ISO-8601)."
+          example: "2026-04-23T14:10:09.777Z"
         clientSSId:
           type: string
-          description: "Identificador clientSSId (receptora)"
-          example: "RECEPTORA A"
+          description: "Eco do header ou `origin` quando `clientSSId` estiver em branco na lógica do controller."
+          example: "RECEPTORA_A"
         serverASId:
           type: string
-          description: "Identificador serverASId (transmissora)"
-          example: "TRANSMISSORA B"
+          description: "Eco do header `serverASId` (obrigatório na entrada)."
+          example: "TRANSMISSORA_B"
         path:
           type: string
-          description: "Path identifier from request header"
           example: "/open-insurance/consents/v2/consents"
         operation:
           type: string
-          description: "Operation type from request header"
           example: "POST"
       required:
         - status
@@ -314,47 +308,34 @@ components:
         - serverASId
         - path
         - operation
-    
+
     ErrorResponse:
       type: object
       description: |
-        Error API response with structured fields. Contains error information
-        and timestamp for debugging purposes.
+        Corpo JSON de erro (`ResponseBuilder.buildErrorResponse`). **Não** inclui `correlationId`, `path` nem `operation` na implementação atual.
       properties:
         status:
           type: string
-          description: "Response status, always 'ERROR' for error responses"
           enum: ["ERROR"]
           example: "ERROR"
         error:
           type: string
-          description: "Error type or category"
+          description: "Categoria curta (ex.: Invalid header, JSON conversion error, Unexpected error)."
           example: "Invalid header"
         details:
           type: string
-          description: "Detailed error message explaining what went wrong"
-          example: "Header 'origin' must not be empty"
+          description: "Mensagem detalhada para diagnóstico."
+          example: "Header 'operation' must be one of the following values: GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS, TRACE. Received: 'FOO'"
         timestamp:
           type: string
           format: date-time
-          description: "Timestamp when the error occurred (ISO-8601 format)"
-          example: "2024-01-15T14:30:25.123Z"
+          example: "2026-04-23T14:10:09.777Z"
       required:
         - status
         - error
         - details
         - timestamp
 
-  securitySchemes:
-    # Note: Currently no authentication is required, but this can be extended
-    # with API keys, OAuth2, or other authentication mechanisms
-    ApiKeyAuth:
-      type: apiKey
-      in: header
-      name: X-API-Key
-      description: "API Key for authentication (future implementation)"
-
 tags:
-  - name: "Anonymization"
-    description: "Operations for submitting data anonymization requests"
-
+  - name: "Gateway"
+    description: "Entrada HTTP do mop-client-gateway (`POST /data`) — validação, anonimização e encaminhamento ao MOP"

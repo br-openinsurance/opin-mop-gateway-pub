@@ -36,7 +36,7 @@ public class RequestHeadersBuilder {
      * @param operation      Operation header value
      * @param step           Step of the flow in the trace (required)
      * @param dataEventoStep Timestamp of the step event, ISO-8601 (required)
-     * @param headers        Map of all request headers (destination, traceOrigin optional)
+     * @param headers        Map of all request headers (traceOrigin optional)
      * @param clientSSId     Client SS identifier
      * @param serverASId     Server AS identifier
      * @return Built RequestHeadersDTO
@@ -50,7 +50,6 @@ public class RequestHeadersBuilder {
         traceabilityService.setCorrelationIdInContext(correlationIdTrimmed);
         String mopReportid = traceabilityService.getOrGenerateMopReportid(headers);
         String timestamp = traceabilityService.generateTimestamp();
-        String destination = getHeaderIgnoreCase(headers, HttpHeaderConstants.DESTINATION);
         String resolvedClientSSId = (clientSSId != null && !clientSSId.isBlank())
                 ? clientSSId
                 : (headers != null ? headers.get("clientSSId") : null);
@@ -62,7 +61,6 @@ public class RequestHeadersBuilder {
         return RequestHeadersDTO.builder()
                 .correlationId(correlationIdTrimmed)
                 .origin(origin)
-                .destination(destination)
                 .path(path)
                 .operation(operation)
                 .mopReportid(mopReportid)

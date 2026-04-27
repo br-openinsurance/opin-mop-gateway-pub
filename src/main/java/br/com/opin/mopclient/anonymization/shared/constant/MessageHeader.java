@@ -6,7 +6,6 @@ package br.com.opin.mopclient.anonymization.shared.constant;
 public final class MessageHeader {
 
     public static final String ORIGIN = "origin";
-    public static final String DESTINATION = "destination";
     public static final String RESPONSE = "response";
     public static final String OPERATION = "operation";
     public static final String PATH = "path";

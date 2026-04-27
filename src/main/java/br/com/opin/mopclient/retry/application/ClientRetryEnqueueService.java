@@ -94,7 +94,6 @@ public class ClientRetryEnqueueService {
         Map<String, String> raw = h.getHeaders();
         Map<String, String> headersCopy = raw == null ? null : new LinkedHashMap<>(raw);
         return RequestHeadersDTO.builder()
-                .destination(h.getDestination())
                 .clientSSId(h.getClientSSId())
                 .serverASId(h.getServerASId())
                 .origin(h.getOrigin())

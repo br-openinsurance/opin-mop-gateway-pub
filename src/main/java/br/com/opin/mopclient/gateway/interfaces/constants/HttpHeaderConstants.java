@@ -8,9 +8,6 @@ public final class HttpHeaderConstants {
     /** Header name for origin. */
     public static final String ORIGIN = "origin";
 
-    /** Header name for destination. */
-    public static final String DESTINATION = "destination";
-
     /** Header name for clientSSId (receiver). */
     public static final String CLIENT_SS_ID = "clientSSId";
 

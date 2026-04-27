@@ -1,5 +1,6 @@
 package br.com.opin.mopclient.retry.infrastructure.outbound;
 
+import br.com.opin.mopclient.anonymization.shared.util.MopReportidManager;
 import br.com.opin.mopclient.gateway.shared.exception.ErrorResponseException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
@@ -37,9 +38,11 @@ public class ProcessEndpointCircuitClient {
 
     @CircuitBreaker(name = "mopProcessEndpoint")
     public void postJson(String externalRequestUrl, String jsonPayload) {
-        LOGGER.info("Sending JSON to external server | URL: {} | character length: {}",
-                externalRequestUrl, jsonPayload.length());
-        LOGGER.info("Request body (JSON) sent to server: {}", jsonPayload);
+        LOGGER.info(
+                "[STEP 6.2] Outbound: POST via circuit breaker | URL: {} | JSON length before signing: {} chars | Correlation ID: {}",
+                externalRequestUrl,
+                jsonPayload.length(),
+                correlationIdOrDash());
 
         try {
             HttpEntity<String> requestEntity = createJsonRequestEntity(jsonPayload);
@@ -51,12 +54,18 @@ public class ProcessEndpointCircuitClient {
                     String.class);
             Duration duration = Duration.between(start, Instant.now());
 
-            LOGGER.info("Request completed successfully. Status: {} | Duration: {} ms",
+            LOGGER.info(
+                    "[STEP 6.4] Outbound: HTTP response received | status: {} | durationMs: {} | Correlation ID: {}",
                     response.getStatusCode(),
-                    duration.toMillis());
+                    duration.toMillis(),
+                    correlationIdOrDash());
 
-            if (LOGGER.isDebugEnabled() && response.getBody() != null) {
-                LOGGER.info("Response Body: {}", response.getBody());
+            if (LOGGER.isDebugEnabled()) {
+                String body = response.getBody();
+                LOGGER.debug(
+                        "[STEP 6.4] Outbound: response body length={} | Correlation ID: {}",
+                        body != null ? body.length() : 0,
+                        correlationIdOrDash());
             }
 
         } catch (ResourceAccessException e) {
@@ -68,6 +77,11 @@ public class ProcessEndpointCircuitClient {
         } catch (RestClientException e) {
             handleRestClientException(externalRequestUrl, e);
         }
+    }
+
+    private static String correlationIdOrDash() {
+        String id = MopReportidManager.getMopReportid();
+        return id != null && !id.isBlank() ? id : "n/a";
     }
 
     private static HttpEntity<String> createJsonRequestEntity(String jsonPayload) {

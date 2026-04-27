@@ -15,6 +15,7 @@ import br.com.opin.mopclient.retry.ClientRetryUserMessages;
 import br.com.opin.mopclient.retry.application.ClientRetryEnqueueService;
 import br.com.opin.mopclient.retry.domain.ClientRetryFailureStage;
 import br.com.opin.mopclient.retry.exception.ClientRetryEnqueuedException;
+import br.com.opin.mopclient.security.SigningProperties;
 import br.com.opin.mopclient.validator.application.service.OpenApiValidationService;
 import br.com.opin.mopclient.validator.interfaces.dto.ValidationResponseDTO;
 import br.com.opin.mopclient.validator.interfaces.dto.ValidationViolationDTO;
@@ -34,12 +35,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Service that orchestrates the complete processing flow:
- * 1. Validation
- * 2. Anonymization
- * 3. External API call
- * 
- * This service replaces the RabbitMQ-based communication with direct internal calls.
+ * Orchestrates the synchronous request pipeline: validate → fetch anonymization config → anonymize →
+ * build MessageDTO → wrap → POST to MOP (JWT body when signing is active). On MOP unavailability the
+ * request can be enqueued to the retry queue unless {@code suppressRetryEnqueue} is set (used by the replay path).
+ * Log entries follow the {@code [STEP n]} / {@code [STEP 6.x]} convention for traceability.
  */
 @Service
 public class ProcessingOrchestratorService {
@@ -52,6 +51,7 @@ public class ProcessingOrchestratorService {
     private final MessagePayloadWrapper messagePayloadWrapper;
     private final ObjectMapper objectMapper;
     private final ClientRetryEnqueueService clientRetryEnqueueService;
+    private final SigningProperties signingProperties;
 
     public ProcessingOrchestratorService(
             OpenApiValidationService validationService,
@@ -59,29 +59,25 @@ public class ProcessingOrchestratorService {
             ExternalApiClient externalApiClient,
             MessagePayloadWrapper messagePayloadWrapper,
             ObjectMapper objectMapper,
-            ClientRetryEnqueueService clientRetryEnqueueService) {
+            ClientRetryEnqueueService clientRetryEnqueueService,
+            SigningProperties signingProperties) {
         this.validationService = Objects.requireNonNull(validationService, "OpenApiValidationService cannot be null");
         this.anonymizeDataUseCase = Objects.requireNonNull(anonymizeDataUseCase, "AnonymizeDataUseCase cannot be null");
         this.externalApiClient = Objects.requireNonNull(externalApiClient, "ExternalApiClient cannot be null");
         this.messagePayloadWrapper = Objects.requireNonNull(messagePayloadWrapper, "MessagePayloadWrapper cannot be null");
         this.objectMapper = Objects.requireNonNull(objectMapper, "ObjectMapper cannot be null");
         this.clientRetryEnqueueService = Objects.requireNonNull(clientRetryEnqueueService, "ClientRetryEnqueueService cannot be null");
+        this.signingProperties = Objects.requireNonNull(signingProperties, "SigningProperties cannot be null");
     }
 
-    /**
-     * Processes a request through the complete flow: validation -> anonymization -> external API.
-     *
-     * @param originalRequestBody Exact HTTP body as received (stored on retry for lossless replay)
-     * @param normalizedPayload JSON after gateway parse/normalize (validation and anonymization use this)
-     * @param headersDTO The request headers DTO
-     * @return The final processed JSON to be sent to external API
-     */
     public String processRequest(String originalRequestBody, String normalizedPayload, RequestHeadersDTO headersDTO) {
         return processRequest(originalRequestBody, normalizedPayload, headersDTO, false);
     }
 
     /**
-     * @param suppressRetryEnqueue when {@code true} (replay from queue), MOP failures are not written again to the retry queue
+     * @param originalRequestBody exact HTTP body as received (preserved on enqueue for lossless replay)
+     * @param normalizedPayload JSON after gateway parse/normalize (used for validation and anonymization)
+     * @param suppressRetryEnqueue when {@code true} (replay from the retry queue), MOP failures are not re-enqueued
      */
     public String processRequest(
             String originalRequestBody,
@@ -92,14 +88,12 @@ public class ProcessingOrchestratorService {
         MopReportidManager.setMopReportid(correlationId);
         
         try {
-            logger.info("Starting request processing | Correlation ID: {}", correlationId);
+            logger.info("[STEP 0] Starting request processing | Correlation ID: {}", correlationId);
 
-            // Step 1: Validation
             logger.info("[STEP 1] Starting validation | Correlation ID: {}", correlationId);
             ValidationResponseDTO validationResult = performValidation(normalizedPayload, headersDTO);
             logger.info("[STEP 1] Validation completed | Correlation ID: {}", correlationId);
 
-            // Step 2: Get anonymization configuration
             logger.info("[STEP 2] Fetching anonymization configuration | Correlation ID: {}", correlationId);
             AnonymizationConfigDTO config;
             try {
@@ -129,25 +123,24 @@ public class ProcessingOrchestratorService {
             logger.info("[STEP 2] Configuration loaded | Anonymized: {} fields | Exposed: {} fields | Correlation ID: {}",
                     anonymizedFields.size(), exposedFields.size(), correlationId);
 
-            // Step 3: Anonymization
             logger.info("[STEP 3] Starting anonymization | Correlation ID: {}", correlationId);
             String anonymizedPayload = anonymizeDataUseCase.anonymizePayload(normalizedPayload, anonymizedFields, exposedFields);
             logger.info("[STEP 3] Anonymization completed | Correlation ID: {}", correlationId);
 
-            // Step 4: Build MessageDTO (trace with correlationId is only in this final JSON, not in API response)
             logger.info("[STEP 4] Building MessageDTO | Correlation ID: {}", correlationId);
             List<Validation> validations = convertValidations(validationResult);
             MessageDTO messageDTO = buildMessageDTO(headersDTO, anonymizedFields, exposedFields, validations, anonymizedPayload);
             String messageJson = JsonConverter.toJson(messageDTO);
 
-            // Step 5: Wrap payload
             logger.info("[STEP 5] Wrapping payload | Correlation ID: {}", correlationId);
             JsonNode payloadNode = parseJsonNode(anonymizedPayload);
             String wrappedJson = messagePayloadWrapper.wrap(messageJson, payloadNode);
             logger.info("[STEP 5] Payload wrapped | Correlation ID: {}", correlationId);
 
-            // Step 6: Send to external API
-            logger.info("[STEP 6] Sending to external API | Correlation ID: {}", correlationId);
+            logger.info(
+                    "[STEP 6.1] Outbound: calling MOP process endpoint | wrapped payload length: {} chars | Correlation ID: {}",
+                    wrappedJson.length(),
+                    correlationId);
             try {
                 externalApiClient.sendJsonPayload(wrappedJson);
             } catch (CallNotPermittedException e) {
@@ -190,7 +183,7 @@ public class ProcessingOrchestratorService {
                 }
                 throw e;
             }
-            logger.info("[STEP 6] Request sent successfully | Correlation ID: {}", correlationId);
+            logger.info("[STEP 6.5] Outbound: MOP process call completed successfully | Correlation ID: {}", correlationId);
 
             return wrappedJson;
 
@@ -199,17 +192,11 @@ public class ProcessingOrchestratorService {
         }
     }
 
-    /**
-     * Performs validation against OpenAPI specification.
-     */
     private ValidationResponseDTO performValidation(String payload, RequestHeadersDTO headersDTO) {
         HttpHeaders httpHeaders = convertHeadersToHttpHeaders(headersDTO.getHeaders());
         return validationService.validate(payload, httpHeaders, headersDTO.getPath());
     }
 
-    /**
-     * Converts validation result from Validator format to Anonymization format.
-     */
     private List<Validation> convertValidations(ValidationResponseDTO validatorResponse) {
         if (validatorResponse == null || validatorResponse.getValidationResult() == null) {
             return List.of();
@@ -225,9 +212,6 @@ public class ProcessingOrchestratorService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Converts a ValidationViolationDTO to Validation.
-     */
     private Validation convertValidationViolation(ValidationViolationDTO violation) {
         return Validation.builder()
                 .violation(violation.getMessage())
@@ -237,9 +221,6 @@ public class ProcessingOrchestratorService {
                 .build();
     }
 
-    /**
-     * Builds MessageDTO from headers and processing results.
-     */
     private MessageDTO buildMessageDTO(
             RequestHeadersDTO headersDTO,
             Set<String> anonymizedFields,
@@ -247,11 +228,11 @@ public class ProcessingOrchestratorService {
             List<Validation> validations,
             String anonymizedPayload) {
 
-        // Extract properties from headers
         Map<String, String> headers = headersDTO.getHeaders() != null ? headersDTO.getHeaders() : Map.of();
         String host = extractHost(headers);
         String url = extractUrl(headers);
         String step = deriveStepFromPathAndOperation(headersDTO.getPath(), headersDTO.getOperation());
+        String orgId = signingProperties.getOrgId() != null ? signingProperties.getOrgId() : "";
 
         return MessageDTOBuilder.buildFromHeaders(
                 headersDTO,
@@ -261,12 +242,10 @@ public class ProcessingOrchestratorService {
                 anonymizedPayload,
                 host,
                 url,
-                step);
+                step,
+                orgId);
     }
 
-    /**
-     * Derives trace step from path and operation (e.g. POST /consents -> consent-created).
-     */
     private String deriveStepFromPathAndOperation(String path, String operation) {
         if (path == null) path = "";
         if (operation == null) operation = "";
@@ -281,9 +260,6 @@ public class ProcessingOrchestratorService {
         return "request-received";
     }
 
-    /**
-     * Converts Map headers to HttpHeaders.
-     */
     private HttpHeaders convertHeadersToHttpHeaders(Map<String, String> headers) {
         HttpHeaders httpHeaders = new HttpHeaders();
         if (headers != null) {
@@ -292,9 +268,6 @@ public class ProcessingOrchestratorService {
         return httpHeaders;
     }
 
-    /**
-     * Parses JSON string to JsonNode.
-     */
     private JsonNode parseJsonNode(String jsonString) {
         try {
             if (jsonString == null || jsonString.isBlank()) {
@@ -307,23 +280,15 @@ public class ProcessingOrchestratorService {
         }
     }
 
-    /**
-     * Extracts host from headers.
-     */
     private String extractHost(Map<String, String> headers) {
-        // Try common host header names
-        return headers.getOrDefault("host", 
-                headers.getOrDefault("Host", 
+        return headers.getOrDefault("host",
+                headers.getOrDefault("Host",
                         headers.getOrDefault("X-Forwarded-Host", "unknown")));
     }
 
-    /**
-     * Extracts URL from headers.
-     */
     private String extractUrl(Map<String, String> headers) {
-        // Try common URL header names
-        return headers.getOrDefault("url", 
-                headers.getOrDefault("Url", 
+        return headers.getOrDefault("url",
+                headers.getOrDefault("Url",
                         headers.getOrDefault("X-Forwarded-Uri", "/")));
     }
 
