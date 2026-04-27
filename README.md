@@ -26,7 +26,7 @@ API HTTP **auto-hospedada** que cada participante do **Open Insurance Brasil** i
 ## Como funciona em 30 segundos
 
 1. **Sua aplicação** envia `POST /v1/anonymize/data` com os headers de trace.
-2. **O gateway** valida os headers, anonimiza o payload e assina com JWS.
+2. **O gateway** valida os headers, anonimiza o payload e assina.
 3. **Envia ao MOP** — se o MOP estiver fora, **enfileira no RabbitMQ** e tenta de novo automaticamente.
 4. **Você recebe `HTTP 200 SUCCESS`** *nos dois casos*. Quando o MOP volta, o replay drena a fila.
 
@@ -56,7 +56,7 @@ flowchart LR
 | Docker / Docker Compose | qualquer | Para subir o RabbitMQ |
 | Credenciais JWS | — | `mop-client-sandbox.pem` (PKCS#8), `JWS_KID`, `JWS_ORG_ID` |
 
-### Passo 1 — Clonar e subir o broker (~2 min)
+### Passo 1 — Clonar e subir (~2 min)
 
 ```bash
 git clone --branch develop https://github.com/br-openinsurance/opin-mop-gateway-pub.git
