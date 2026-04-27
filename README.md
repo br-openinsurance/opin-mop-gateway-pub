@@ -56,7 +56,7 @@ flowchart LR
 | Docker / Docker Compose | qualquer | Para subir o RabbitMQ |
 | Credenciais JWS | — | `mop-client-sandbox.pem` (PKCS#8), `JWS_KID`, `JWS_ORG_ID` |
 
-### Passo 1 — Clonar e subir o broker (~2 min)
+### Passo 1 — Clonar e subir (~2 min)
 
 ```bash
 git clone --branch develop https://github.com/br-openinsurance/opin-mop-gateway-pub.git
