@@ -49,7 +49,7 @@ global:
 ## 🚀 2. Instalar o MOP Client
 
 ``` bash
-helm install mop-client   oci://ghcr.io/br-openinsurance/mop-client-chart/mop-client   --version 0.5.3   -f values-client.yaml
+helm install mop-client   oci://ghcr.io/br-openinsurance/mop-client-chart/mop-client   --version 0.5.4   -f values-client.yaml
 ```
 
 ------------------------------------------------------------------------
