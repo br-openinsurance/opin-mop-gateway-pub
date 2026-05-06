@@ -42,6 +42,13 @@ public class AnonymizerController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AnonymizerController.class);
     private static final DateTimeFormatter LOG_DATE_TIME_BR = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+
+    /**
+     * Ingress contract: one business payload per POST. Batching as a JSON array (or other non-object roots)
+     * is rejected so clients cannot send multiple MOP-style envelopes in one call.
+     */
+    private static final String JSON_BODY_ROOT_NOT_OBJECT_DETAILS =
+            "Request body must be a single JSON object. JSON arrays and other root types are not allowed—send one event per HTTP request.";
     
     private final ProcessingOrchestratorService orchestratorService;
     private final JsonPayloadParser jsonParser;
@@ -65,6 +72,8 @@ public class AnonymizerController {
      * Receives POST request with JSON payload and processes it through unified flow.
      * <p>
      * Body is optional: null/empty or invalid JSON are treated as empty object ({}).
+     * If the body parses to a JSON array or any non-object root, the request is rejected with HTTP 400
+     * (one business event per request — no batch arrays).
      * Required headers: X-Correlation-Id (correlationId), origin (client/server), path, operation, step, dataEventoStep, clientSSId, serverASId.
      * Optional: traceOrigin (repassado no mapa de headers quando informado). Opcional: X-Mop-Reportid (gerado se ausente).
      * Response does not include trace object; trace is only present in the final JSON (MessageDTO) sent internally.
@@ -79,7 +88,7 @@ public class AnonymizerController {
      * @param clientSSId     Client SS identifier - receiver (required)
      * @param serverASId     Server AS identifier - transmitter (required)
      * @param headers        All request headers
-     * @return ResponseEntity with success (200) or error (400/500)
+     * @return ResponseEntity with delivered (200), accepted-for-retry (202) or error (400/500)
      */
     @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponseDTO> receivedRequest(
@@ -109,6 +118,15 @@ public class AnonymizerController {
         try {
             // Parse JSON payload
             JsonNode jsonNode = jsonParser.parse(requestBody);
+            if (!jsonNode.isObject()) {
+                LOGGER.warn(
+                        "Rejected request body: root JSON must be an object (not an array or other type) | correlationId={}",
+                        correlationId);
+                return responseBuilder.buildErrorResponse(
+                        HttpStatus.BAD_REQUEST,
+                        "Invalid JSON body",
+                        JSON_BODY_ROOT_NOT_OBJECT_DETAILS);
+            }
             String jsonPayload = jsonParser.toJsonString(jsonNode);
 
             // Build headers DTO (correlationId is independent, from user header)
@@ -154,11 +172,11 @@ public class AnonymizerController {
                     : "-";
             String dateTimeBr = LocalDateTime.now().format(LOG_DATE_TIME_BR);
             LOGGER.warn(
-                    "[MOP retry] Client received HTTP 200; body sent to retry queue | correlationId={} | mopReportId={} | dateTime={}",
+                    "[MOP retry] Client received HTTP 202; body sent to retry queue | correlationId={} | mopReportId={} | dateTime={}",
                     h.getCorrelationId(),
                     mopReportIdForLog,
                     dateTimeBr);
-            return responseBuilder.buildSuccessResponse(
+            return responseBuilder.buildAcceptedResponse(
                     h.getCorrelationId(),
                     h.getTimestamp(),
                     responseClientSSId,

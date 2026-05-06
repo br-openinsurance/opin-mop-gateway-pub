@@ -1,9 +1,9 @@
 openapi: 3.0.3
 info:
-  title: "MOP Client Gateway API"
+  title: "MOP Client API"
   version: "1.0.0"
   description: |
-    Especificação alinhada ao serviço **mop-client-gateway** (Spring Boot).
+    Especificação alinhada ao **MOP Client** (Spring Boot).
 
     **Endpoint HTTP**
     - `POST {context-path}/data`
@@ -15,12 +15,12 @@ info:
     2. Parse do corpo JSON opcional (vazio / inválido → `{}`).
     3. Validação OpenAPI do payload (`OpenApiValidationService`).
     4. Busca de configuração de anonimização no MOP e anonimização de campos.
-    5. Montagem do `MessageDTO`, wrap do payload e envio ao endpoint **/process** do MOP configurado (`external.request.url`).
+    5. Montagem do `MessageDTO`, wrap do payload e envio ao endpoint **/process** do MOP configurado (`mop.endpoints.process.url`).
     6. Na saída para o MOP, o corpo é o **JWT compacto** (string) com `Content-Type: application/jwt` (exigência do `/process`).
 
     **Resiliência**
-    - Se o MOP estiver indisponível (config, circuit breaker ou erro HTTP), o gateway pode **enfileirar** o pedido na fila RabbitMQ de retry.
-    - Nesse caso o cliente ainda recebe **HTTP 200** com o mesmo JSON de sucesso (`ResponseBuilder.API_SUCCESS_BODY_MESSAGE`); o indisponível fica apenas nos logs.
+    - Quando o MOP aceita o envio síncrono, o cliente recebe **HTTP 200 OK** com `status=SUCCESS` (`ResponseBuilder.API_SUCCESS_BODY_MESSAGE`).
+    - Se o MOP estiver indisponível (config, circuit breaker ou erro HTTP), o gateway **enfileira** o pedido na fila RabbitMQ de retry e responde **HTTP 202 Accepted** com `status=ACCEPTED` (`ResponseBuilder.API_ACCEPTED_BODY_MESSAGE`). A entrega ocorre depois, via `ClientRetryReplayScheduler`.
 
   contact:
     name: MOP Team
@@ -67,7 +67,8 @@ paths:
       requestBody:
         required: false
         description: |
-          JSON arbitrário (objeto). Corpo ausente, em branco ou JSON inválido é tratado como `{}` antes do fluxo.
+          JSON de negócio como **único objeto** na raiz (`{}`). Corpo ausente, em branco ou JSON inválido é tratado como `{}` antes do fluxo.
+          **Não** envie um array JSON na raiz (ex.: `[{...},{...}]`): o gateway responde **400** — um evento por requisição HTTP.
         content:
           application/json:
             schema:
@@ -90,15 +91,14 @@ paths:
       responses:
         '200':
           description: |
-            Processamento concluído sem erro de aplicação no gateway.
-            A mensagem de sucesso é a mesma quando o MOP aceita o envio **ou** quando o payload foi apenas enfileirado para retry (resiliência).
+            Payload entregue ao MOP de forma **síncrona**. Resposta gerada por `ResponseBuilder.buildSuccessResponse`.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessResponse'
               examples:
                 success:
-                  summary: "Resposta de sucesso (campos retornados por `ResponseBuilder`)"
+                  summary: "Sucesso síncrono — entregue ao MOP"
                   value:
                     status: "SUCCESS"
                     message: "Request processed successfully. Your data has been received and forwarded to the server."
@@ -109,13 +109,41 @@ paths:
                     path: "/open-insurance/consents/v2/consents"
                     operation: "POST"
 
+        '202':
+          description: |
+            MOP indisponível (erro de rede, timeout ou circuit breaker aberto) — payload **persistido na fila de retry** (`mop.client.retry.queue`) e será reentregue por `ClientRetryReplayScheduler`. Resposta gerada por `ResponseBuilder.buildAcceptedResponse`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptedResponse'
+              examples:
+                accepted:
+                  summary: "Aceito para entrega assíncrona — enfileirado"
+                  value:
+                    status: "ACCEPTED"
+                    message: "Request accepted and queued for later delivery to the server (MOP unavailable)."
+                    correlationId: "550e8400-e29b-41d4-a716-446655440000"
+                    timestamp: "2026-04-23T14:10:09.777Z"
+                    clientSSId: "RECEPTORA_A"
+                    serverASId: "TRANSMISSORA_B"
+                    path: "/open-insurance/consents/v2/consents"
+                    operation: "POST"
+
         '400':
-          description: "Headers inválidos ou falha ao interpretar o JSON do corpo (`HttpStatus.BAD_REQUEST`)."
+          description: |
+            Headers inválidos, corpo JSON com raiz que não é objeto (ex.: array em lote), ou falha ao interpretar o corpo (`HttpStatus.BAD_REQUEST`).
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
               examples:
+                invalidJsonRoot:
+                  summary: "Raiz do corpo não é um objeto (ex. array em lote)"
+                  value:
+                    status: "ERROR"
+                    error: "Invalid JSON body"
+                    details: "Request body must be a single JSON object. JSON arrays and other root types are not allowed—send one event per HTTP request."
+                    timestamp: "2026-04-23T14:10:09.777Z"
                 invalidHeader:
                   summary: "Header obrigatório vazio ou inválido"
                   value:
@@ -262,7 +290,7 @@ components:
     SuccessResponse:
       type: object
       description: |
-        Corpo JSON retornado em HTTP 200 por `ResponseBuilder.buildSuccessResponse`.
+        Corpo JSON retornado em HTTP 200 por `ResponseBuilder.buildSuccessResponse` — payload entregue ao MOP de forma síncrona.
         Campos `error` e `details` não são usados no sucesso. `mopReportid` pode existir no DTO mas **é omitido** na serialização quando nulo.
       properties:
         status:
@@ -271,7 +299,7 @@ components:
           example: "SUCCESS"
         message:
           type: string
-          description: "Texto fixo de sucesso ou mensagem customizada (ex.: fila de retry — hoje igual ao sucesso normal)."
+          description: "Texto fixo de sucesso síncrono."
           example: "Request processed successfully. Your data has been received and forwarded to the server."
         correlationId:
           type: string
@@ -292,6 +320,48 @@ components:
         serverASId:
           type: string
           description: "Eco do header `serverASId` (obrigatório na entrada)."
+          example: "TRANSMISSORA_B"
+        path:
+          type: string
+          example: "/open-insurance/consents/v2/consents"
+        operation:
+          type: string
+          example: "POST"
+      required:
+        - status
+        - message
+        - correlationId
+        - timestamp
+        - clientSSId
+        - serverASId
+        - path
+        - operation
+
+    AcceptedResponse:
+      type: object
+      description: |
+        Corpo JSON retornado em HTTP 202 por `ResponseBuilder.buildAcceptedResponse` — payload aceito mas **ainda não entregue** ao MOP. Foi persistido na fila de retry (`mop.client.retry.queue`) e será reentregue de forma assíncrona pelo `ClientRetryReplayScheduler`.
+      properties:
+        status:
+          type: string
+          enum: ["ACCEPTED"]
+          example: "ACCEPTED"
+        message:
+          type: string
+          description: "Texto fixo de aceite assíncrono (entrega deferida)."
+          example: "Request accepted and queued for later delivery to the server (MOP unavailable)."
+        correlationId:
+          type: string
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2026-04-23T14:10:09.777Z"
+        clientSSId:
+          type: string
+          example: "RECEPTORA_A"
+        serverASId:
+          type: string
           example: "TRANSMISSORA_B"
         path:
           type: string
@@ -338,4 +408,4 @@ components:
 
 tags:
   - name: "Gateway"
-    description: "Entrada HTTP do mop-client-gateway (`POST /data`) — validação, anonimização e encaminhamento ao MOP"
+    description: "Entrada HTTP do MOP Client (`POST /data`) — validação, anonimização e encaminhamento ao MOP"

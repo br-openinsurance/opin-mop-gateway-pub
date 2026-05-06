@@ -22,7 +22,12 @@ import java.util.Objects;
  * {@code Content-Type: application/jwt}, conforme exigido pelo endpoint {@code /process} do MOP.
  *
  * <p>O JWT é gerado a partir do JSON original (claims em {@link br.com.opin.mopclient.security.JwtPayloadSigner}).
- * O JSON em claro não é enviado na rede.</p>
+ * O JSON em claro não é enviado na rede quando há chave configurada.</p>
+ *
+ * <p><b>Modo passthrough sem assinatura</b>: quando construído com {@code allowUnsignedPassthrough=true}
+ * (e {@code enabled=false}), permite que o body JSON saia em claro — destinado <i>somente</i> a desenvolvimento
+ * local sem credenciais JWS. Cada requisição emite WARN com {@code correlationId}. Esse modo é ativado pelo
+ * {@code PayloadSigningConfig} apenas quando nenhuma chave privada foi configurada.</p>
  */
 public final class PayloadSigningInterceptor implements ClientHttpRequestInterceptor {
 
@@ -30,10 +35,16 @@ public final class PayloadSigningInterceptor implements ClientHttpRequestInterce
 
     private final PayloadSigner signer;
     private final boolean enabled;
+    private final boolean allowUnsignedPassthrough;
 
     public PayloadSigningInterceptor(PayloadSigner signer, boolean enabled) {
+        this(signer, enabled, false);
+    }
+
+    public PayloadSigningInterceptor(PayloadSigner signer, boolean enabled, boolean allowUnsignedPassthrough) {
         this.signer = Objects.requireNonNull(signer, "signer cannot be null");
         this.enabled = enabled;
+        this.allowUnsignedPassthrough = allowUnsignedPassthrough;
     }
 
     @Override
@@ -44,9 +55,18 @@ public final class PayloadSigningInterceptor implements ClientHttpRequestInterce
 
         if (!enabled) {
             if (wouldSendUnsignedJson(request, body)) {
-                throw new IllegalStateException(
-                        "Outbound payload signing is disabled but a JSON body would be sent unsigned. "
-                                + "Configure mop.payload-signing.private-key-pem (and do not set enabled=false when the key is present).");
+                if (!allowUnsignedPassthrough) {
+                    throw new IllegalStateException(
+                            "Outbound payload signing is disabled but a JSON body would be sent unsigned. "
+                                    + "Configure mop.payload-signing.private-key-pem (and do not set enabled=false when the key is present).");
+                }
+                LOGGER.warn(
+                        "[JWS] Sending JSON body UNSIGNED to MOP — no private key configured (dev mode). "
+                                + "method={} URI={} bodyLength={} correlationId={}",
+                        request.getMethod(),
+                        request.getURI(),
+                        body.length,
+                        correlationIdOrDash());
             }
             return execution.execute(request, body);
         }

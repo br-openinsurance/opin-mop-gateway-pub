@@ -26,23 +26,6 @@ server:
     context-path: /v1/anonymize
 
 # ============================================================================
-# External API Configuration
-# ============================================================================
-external:
-  # Base URL do MOP (evita repetição em request/api)
-  host: ${EXTERNAL_HOST}
-  server:
-    request:
-      url: ${external.request.url}
-  api:
-    data-anonymization: ${EXTERNAL_API_DATA_ANONYMIZATION:${external.host}/anonymization-fields?schema=Consent}
-  request:
-    host: ${EXTERNAL_REQUEST_HOST:${external.host}}
-    path: ${EXTERNAL_REQUEST_PATH:/process}
-    url: ${EXTERNAL_REQUEST_URL:${external.request.host}${external.request.path}}
-    method: ${EXTERNAL_REQUEST_METHOD:POST}
-
-# ============================================================================
 # Cache Configuration
 # ============================================================================
 cache:
@@ -55,8 +38,9 @@ cache:
     ttl-seconds: ${CACHE_NORMALIZED_ENDPOINTS_TTL_SECONDS:300}
 
 # ============================================================================
-# Spring Boot Actuator Configuration
+# Spring Boot Actuator
 # ============================================================================
+# Endpoints ficam sob o context-path da app, ex.: .../v1/anonymize/actuator/health
 management:
   endpoints:
     web:
@@ -77,10 +61,16 @@ logging:
     root: ${LOG_LEVEL_ROOT:INFO}
     br.com.opin.mopclient.gateway: ${LOG_LEVEL_GATEWAY:DEBUG}
 
-# Client retry queue + circuit breakers (anonymization-fields + /process)
+# MOP endpoints, client retry queue, payload signing and circuit breakers
 mop:
+  endpoints:
+    process:
+      url: ${EXTERNAL_REQUEST_URL}
+      method: ${MOP_PROCESS_METHOD:POST}
+    anonymization-config:
+      url: ${EXTERNAL_API_DATA_ANONYMIZATION}
   payload-signing:
-    enabled: ${MOP_PAYLOAD_SIGNING_ENABLED}
+    enabled: ${MOP_PAYLOAD_SIGNING_ENABLED:true}
     private-key-pem: ${JWS_PRIVATE_KEY}
     key-id: ${JWS_KID}
     org-id: ${JWS_ORG_ID}
@@ -89,8 +79,8 @@ mop:
       queue: ${MOP_CLIENT_RETRY_QUEUE:mop.client.retry.queue}
       replay:
         enabled: ${MOP_CLIENT_RETRY_REPLAY_ENABLED:true}
-        initial-delay-ms: ${MOP_CLIENT_RETRY_REPLAY_INITIAL_DELAY_MS:15000}
-        interval-ms: ${MOP_CLIENT_RETRY_REPLAY_INTERVAL_MS:10000}
+        initial-delay-ms: ${MOP_CLIENT_RETRY_REPLAY_INITIAL_DELAY_MS:60000}
+        interval-ms: ${MOP_CLIENT_RETRY_REPLAY_INTERVAL_MS:60000}
         max-messages-per-tick: ${MOP_CLIENT_RETRY_REPLAY_MAX_PER_TICK:25}
   server:
     availability:
@@ -98,6 +88,8 @@ mop:
       check-interval-ms: ${MOP_SERVER_AVAILABILITY_CHECK_INTERVAL_MS:30000}
       connect-timeout-ms: ${MOP_SERVER_AVAILABILITY_CONNECT_TIMEOUT_MS:3000}
       read-timeout-ms: ${MOP_SERVER_AVAILABILITY_READ_TIMEOUT_MS:5000}
+  rabbit:
+    require-at-startup: true
 
 resilience4j:
   circuitbreaker:

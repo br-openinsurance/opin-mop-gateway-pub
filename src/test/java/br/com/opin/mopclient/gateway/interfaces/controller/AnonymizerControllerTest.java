@@ -205,8 +205,8 @@ class AnonymizerControllerTest {
         }
 
         @Test
-        @DisplayName("Returns 200 with retry path message when orchestrator enqueues to mop.client.retry.queue")
-        void shouldReturnOkWithRetryMessageWhenClientRetryEnqueuedException() throws Exception {
+        @DisplayName("Returns 202 Accepted with retry-path message when orchestrator enqueues to mop.client.retry.queue")
+        void shouldReturnAcceptedWithRetryMessageWhenClientRetryEnqueuedException() throws Exception {
             RequestHeadersDTO headersDTO = createHeadersDTO(CORRELATION_ID, TIMESTAMP);
             mockValidationSuccess();
             when(jsonParser.parse(anyString())).thenReturn(jsonNode);
@@ -217,7 +217,7 @@ class AnonymizerControllerTest {
                     .thenThrow(new ClientRetryEnqueuedException(headersDTO, ClientRetryUserMessages.SUCCESS_AFTER_ENQUEUE));
 
             ApiResponseDTO retryBody = ApiResponseDTO.builder()
-                    .status("SUCCESS")
+                    .status("ACCEPTED")
                     .message(ClientRetryUserMessages.SUCCESS_AFTER_ENQUEUE)
                     .correlationId(CORRELATION_ID)
                     .timestamp(TIMESTAMP)
@@ -226,18 +226,19 @@ class AnonymizerControllerTest {
                     .path(PATH)
                     .operation(OPERATION)
                     .build();
-            when(responseBuilder.buildSuccessResponse(
+            when(responseBuilder.buildAcceptedResponse(
                     anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString()))
-                    .thenReturn(ResponseEntity.ok(retryBody));
+                    .thenReturn(ResponseEntity.status(HttpStatus.ACCEPTED).body(retryBody));
 
             ResponseEntity<ApiResponseDTO> response = controller.receivedRequest(
                     VALID_JSON, CORRELATION_ID, ORIGIN, PATH, OPERATION,
                     STEP_VALUE, DATA_EVENTO_STEP_VALUE, CLIENT_SS_ID, SERVER_AS_ID, headers);
 
-            assertEquals(HttpStatus.OK, response.getStatusCode());
+            assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
             assertNotNull(response.getBody());
+            assertEquals("ACCEPTED", response.getBody().getStatus());
             assertEquals(ClientRetryUserMessages.SUCCESS_AFTER_ENQUEUE, response.getBody().getMessage());
-            verify(responseBuilder).buildSuccessResponse(
+            verify(responseBuilder).buildAcceptedResponse(
                     eq(CORRELATION_ID),
                     eq(TIMESTAMP),
                     eq(CLIENT_SS_ID),
@@ -251,6 +252,37 @@ class AnonymizerControllerTest {
     @Nested
     @DisplayName("Validation errors (400)")
     class ValidationErrors {
+
+        @Test
+        @DisplayName("Returns 400 when JSON body root is an array (batch not allowed)")
+        void shouldReturnBadRequestWhenBodyRootIsJsonArray() throws Exception {
+            String details =
+                    "Request body must be a single JSON object. JSON arrays and other root types are not allowed—send one event per HTTP request.";
+            JsonNode arrayRoot = OBJECT_MAPPER.readTree("[{\"a\":1},{\"a\":2}]");
+            mockValidationSuccess();
+            when(jsonParser.parse(anyString())).thenReturn(arrayRoot);
+            when(responseBuilder.buildErrorResponse(HttpStatus.BAD_REQUEST, "Invalid JSON body", details))
+                    .thenReturn(ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                            ApiResponseDTO.builder()
+                                    .status("ERROR")
+                                    .error("Invalid JSON body")
+                                    .details(details)
+                                    .timestamp(TIMESTAMP)
+                                    .build()));
+
+            ResponseEntity<ApiResponseDTO> response = controller.receivedRequest(
+                    "[{\"a\":1}]", CORRELATION_ID, ORIGIN, PATH, OPERATION,
+                    STEP_VALUE, DATA_EVENTO_STEP_VALUE, CLIENT_SS_ID, SERVER_AS_ID, headers);
+
+            assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+            ApiResponseDTO body = response.getBody();
+            assertNotNull(body);
+            assertEquals("ERROR", body.getStatus());
+            assertEquals("Invalid JSON body", body.getError());
+            assertEquals(details, body.getDetails());
+            verify(orchestratorService, never()).processRequest(anyString(), anyString(), any());
+            verify(jsonParser, never()).toJsonString(any());
+        }
 
         @Test
         @DisplayName("Returns 400 when origin header is empty")

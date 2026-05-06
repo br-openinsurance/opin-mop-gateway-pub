@@ -48,27 +48,33 @@ public class InMemoryCacheManagerConfig {
 
     @Bean
     public CacheManager cacheManager() {
-        logger.info("Initializing Cache Manager with Caffeine...");
-        
+        logger.debug("Initializing Cache Manager with Caffeine...");
+
         SimpleCacheManager cacheManager = new SimpleCacheManager();
         List<Cache> caches = new ArrayList<>();
 
-        logger.info("  - Creating cache: {} (TTL: {} seconds, Max Size: 1)", OPEN_API_SPEC, openApiSpecTtlSeconds);
+        logger.debug("  - Creating cache: {} (TTL: {} seconds, Max Size: 1)", OPEN_API_SPEC, openApiSpecTtlSeconds);
         caches.add(createCaffeineCache(OPEN_API_SPEC, Caffeine.newBuilder()
                 .maximumSize(1)
                 .expireAfterWrite(openApiSpecTtlSeconds, TimeUnit.SECONDS)
                 .recordStats()
                 .build()));
 
-        logger.info("  - Creating cache: {} (TTL: {} seconds, Max Size: {})", NORMALIZED_ENDPOINTS, normalizedEndpointsTtlSeconds, maxCacheSize);
+        logger.debug(
+                "  - Creating cache: {} (TTL: {} seconds, Max Size: {})",
+                NORMALIZED_ENDPOINTS,
+                normalizedEndpointsTtlSeconds,
+                maxCacheSize);
         caches.add(createCaffeineCache(NORMALIZED_ENDPOINTS, Caffeine.newBuilder()
                 .maximumSize(maxCacheSize)
                 .expireAfterWrite(normalizedEndpointsTtlSeconds, TimeUnit.SECONDS)
                 .recordStats()
                 .build()));
 
-        // Anonymization configuration cache
-        logger.info("  - Creating cache: {} (TTL: {} seconds, Max Size: 100)", ANONYMIZATION_CONFIG, appConfigTtlSeconds);
+        logger.debug(
+                "  - Creating cache: {} (TTL: {} seconds, Max Size: 100)",
+                ANONYMIZATION_CONFIG,
+                appConfigTtlSeconds);
         caches.add(createCaffeineCache(ANONYMIZATION_CONFIG, Caffeine.newBuilder()
                 .maximumSize(100)
                 .expireAfterWrite(appConfigTtlSeconds, TimeUnit.SECONDS)
@@ -76,7 +82,7 @@ public class InMemoryCacheManagerConfig {
                 .build()));
 
         cacheManager.setCaches(caches);
-        logger.info("✓ Cache Manager initialized successfully with {} cache(s)", caches.size());
+        logger.debug("Cache Manager initialized with {} cache(s) (see [CACHE] in startup report)", caches.size());
         return cacheManager;
     }
 

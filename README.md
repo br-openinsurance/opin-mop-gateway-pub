@@ -6,6 +6,14 @@ API HTTP **auto-hospedada** que cada participante do **Open Insurance Brasil** i
 > [!IMPORTANT]
 > Este repositório **substitui** os antigos `mop-client-data-validator-pub` e `opin-mop-client-anonymization-pub`. Não é necessário implantar/configurar aqueles componentes — basta atualizar a imagem deste gateway.
 
+> [!NOTE]
+> **Diferença entre os endpoints do MOP (sandbox)**
+>
+> - **GET `.../anonymization-fields?schema=Consent`**: endpoint de **configuração**. Retorna as regras dinâmicas de campos (**quais devem ser anonimizados** e **quais podem ficar expostos**) para o schema informado (ex.: `Consent`). O gateway chama esse endpoint no **início do processamento** (antes de anonimizar) e também pode usá-lo como **sonda de disponibilidade** do MOP.
+> - **POST `.../process`**: endpoint de **processamento/ingestão**. Recebe o **payload final** que o gateway montou e anonimizado. No fluxo padrão, o corpo enviado ao MOP é um **JWT compacto** (`Content-Type: application/jwt`) quando a assinatura está habilitada.
+>
+> Em resumo: **GET = “quais campos anonimizar”**; **POST = “enviar o evento já anonimizado (e assinado)”**.
+
 ---
 
 ## Sumário
@@ -125,7 +133,7 @@ $env:JWS_ORG_ID = "<seu-orgId-uuid>"
 </details>
 
 > [!WARNING]
-> `MOP_PAYLOAD_SIGNING_ENABLED` **não tem valor padrão** em `application.yml`. Se você não exportar, o Spring falha no boot com `Could not resolve placeholder 'MOP_PAYLOAD_SIGNING_ENABLED'`. Defina sempre — mesmo que seja `false`.
+> No `application.yml` base, `MOP_PAYLOAD_SIGNING_ENABLED` tem default `true`.
 
 ### Passo 3 — Subir a aplicação (~2 min)
 
@@ -234,7 +242,7 @@ Sem RabbitMQ a aplicação **não sobe**. Em runtime, se o broker cair:
 `JWS_PRIVATE_KEY` recebe o PEM completo. Em produção:
 - Monte o PEM como **arquivo via secret** (Kubernetes Secret, AWS Secrets Manager, Vault) e leia para a env var apenas no entrypoint do container.
 - Garanta rotação documentada — coordenando com a publicação do JWKS para evitar janela de `401`.
-- Habilite `MOP_PAYLOAD_SIGNING_ENABLED=true` **explicitamente**. Não confie em "o default é true" — o YAML não tem default.
+- Habilite `MOP_PAYLOAD_SIGNING_ENABLED=true` **explicitamente** (produção) e garanta `JWS_PRIVATE_KEY`/`JWS_KID`/`JWS_ORG_ID` preenchidos.
 
 ### 4. `kid` precisa estar publicado no JWKS antes do primeiro request
 
@@ -364,7 +372,7 @@ Ative com `SPRING_PROFILES_ACTIVE=local` ou `--spring.profiles.active=local`.
 | `EXTERNAL_HOST` | Host base do MOP (ex.: `https://mop-server-entrypoint-sandbox.opinbrasil.com.br`). Usado se você não definir `EXTERNAL_REQUEST_URL` e `EXTERNAL_API_DATA_ANONYMIZATION` explicitamente. |
 | `EXTERNAL_REQUEST_URL` | URL completa do `POST /process` no MOP. Recomendado em prod. |
 | `EXTERNAL_API_DATA_ANONYMIZATION` | URL completa do `GET` de regras de campos (sandbox: `?schema=Consent`). Recomendado em prod. |
-| `MOP_PAYLOAD_SIGNING_ENABLED` | **`true`** em prod. **Sem default no `application.yml` base** — defina sempre. |
+| `MOP_PAYLOAD_SIGNING_ENABLED` | **`true`** em prod (default no `application.yml` base). Em produção, defina explicitamente junto com `JWS_PRIVATE_KEY`/`JWS_KID`/`JWS_ORG_ID`. |
 | `JWS_PRIVATE_KEY` | Chave privada PKCS#8 em PEM. |
 | `JWS_KID` | `kid` publicado no JWKS do participante. |
 | `JWS_ORG_ID` | `orgId` (UUID) do participante. |
@@ -454,7 +462,7 @@ Todos sob `/v1/anonymize/actuator/*`:
 
 | Sintoma | Causa provável | Solução |
 |---|---|---|
-| App falha no boot: `Could not resolve placeholder 'MOP_PAYLOAD_SIGNING_ENABLED'` | Variável não definida (sem default no YAML base). | Exporte `MOP_PAYLOAD_SIGNING_ENABLED=true` (ou `false`). |
+| App falha no boot: `MOP_PAYLOAD_SIGNING_ENABLED=true requires ...` | Assinatura habilitada sem `JWS_PRIVATE_KEY`/`JWS_KID`/`JWS_ORG_ID`. | Defina as três variáveis (produção) ou ajuste `MOP_PAYLOAD_SIGNING_ENABLED=false` (dev). |
 | App falha no boot: `JWS_KID must not be blank` | `JWS_KID` ou `JWS_ORG_ID` vazio. | Defina ambas as variáveis. |
 | App falha no boot: `Connection refused: amqp://localhost:5672` | RabbitMQ ausente. | `docker compose up -d` ou ajuste `RABBITMQ_VALIDATOR_HOST`. |
 | Todas as respostas com log `[MOP retry]` (mesmo retornando 200) | MOP indisponível **ou** circuit `mopProcessEndpoint` aberto. | Cheque `/actuator/health` → seção `circuitBreakers`; valide `EXTERNAL_REQUEST_URL` e conectividade. |

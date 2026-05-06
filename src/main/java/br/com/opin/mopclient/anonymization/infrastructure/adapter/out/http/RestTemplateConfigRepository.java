@@ -30,7 +30,7 @@ public class RestTemplateConfigRepository implements AnonymizationConfigReposito
 
     private final AnonymizationConfigCircuitClient anonymizationConfigCircuitClient;
 
-    @Value("${external.api.data-anonymization}")
+    @Value("${mop.endpoints.anonymization-config.url}")
     private String endpointUrl;
 
     public RestTemplateConfigRepository(AnonymizationConfigCircuitClient anonymizationConfigCircuitClient) {
@@ -40,7 +40,7 @@ public class RestTemplateConfigRepository implements AnonymizationConfigReposito
 
     @PostConstruct
     public void init() {
-        logger.info("External API Client configured | Endpoint URL: {}", endpointUrl);
+        logger.debug("AnonymizationConfigRepository ready | endpoint: {}", endpointUrl);
     }
 
     @Override

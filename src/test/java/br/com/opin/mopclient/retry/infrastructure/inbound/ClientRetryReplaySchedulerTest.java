@@ -35,6 +35,7 @@ class ClientRetryReplaySchedulerTest {
 
     private static final String QUEUE = "mop.client.retry.queue";
     private static final int MAX_PER_TICK = 5;
+    private static final String PROCESS_URL = "http://mop-example/process";
 
     private RabbitTemplate rabbitTemplate;
     private ObjectMapper objectMapper;
@@ -58,6 +59,7 @@ class ClientRetryReplaySchedulerTest {
 
         when(circuitBreakerRegistry.circuitBreaker("mopProcessEndpoint")).thenReturn(circuitBreaker);
         when(availabilityProbe.isServerAvailable()).thenReturn(true);
+        when(availabilityProbe.getAnonymizationConfigProbeUrl()).thenReturn("http://mop/cfg");
         when(circuitBreaker.getState()).thenReturn(CircuitBreaker.State.CLOSED);
 
         when(rabbitTemplate.execute(any())).thenAnswer(invocation -> {
@@ -73,7 +75,8 @@ class ClientRetryReplaySchedulerTest {
                 availabilityProbe,
                 circuitBreakerRegistry,
                 QUEUE,
-                MAX_PER_TICK);
+                MAX_PER_TICK,
+                PROCESS_URL);
     }
 
     @Test

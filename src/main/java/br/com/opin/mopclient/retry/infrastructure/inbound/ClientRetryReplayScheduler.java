@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -23,14 +24,22 @@ import org.springframework.stereotype.Component;
  * <p>Ack semantics: success → ack; unparseable message → nack without requeue (poison-message guard);
  * MOP/business failure → nack with requeue and the current tick stops early to avoid cascading failures.
  * Availability and breaker state are rechecked before every message, not only at tick start.
+ * <p>Com {@code spring.main.lazy-initialization=true} na app, este bean tem de ser eager:
+ * não é injetado por mais ninguém; só métodos agendados — caso contrário o dreno nunca arranca.
  */
 @Component
+@Lazy(false)
 @ConditionalOnProperty(name = "mop.client.retry.replay.enabled", havingValue = "true", matchIfMissing = true)
 public class ClientRetryReplayScheduler {
 
     private static final Logger logger = LoggerFactory.getLogger(ClientRetryReplayScheduler.class);
 
     private static final String PROCESS_ENDPOINT_CIRCUIT_BREAKER = "mopProcessEndpoint";
+
+    /** Log copy when drain is skipped because the periodic GET anonymization-config probe reports MOP down. */
+    private static final String DRAIN_SKIP_UNAVAILABLE_LOG =
+            "Operation could not be executed because the service is currently unavailable. "
+                    + "The last check failed. The process will be retried | %s";
 
     private final RabbitTemplate rabbitTemplate;
     private final ObjectMapper objectMapper;
@@ -39,6 +48,7 @@ public class ClientRetryReplayScheduler {
     private final CircuitBreakerRegistry circuitBreakerRegistry;
     private final String queueName;
     private final int maxMessagesPerTick;
+    private final String processEndpointUrl;
 
     public ClientRetryReplayScheduler(
             RabbitTemplate rabbitTemplate,
@@ -47,7 +57,8 @@ public class ClientRetryReplayScheduler {
             MopServerAvailabilityProbe availabilityProbe,
             CircuitBreakerRegistry circuitBreakerRegistry,
             @Value("${mop.client.retry.queue}") String queueName,
-            @Value("${mop.client.retry.replay.max-messages-per-tick:25}") int maxMessagesPerTick) {
+            @Value("${mop.client.retry.replay.max-messages-per-tick:25}") int maxMessagesPerTick,
+            @Value("${mop.endpoints.process.url}") String processEndpointUrl) {
         this.rabbitTemplate = rabbitTemplate;
         this.objectMapper = objectMapper;
         this.replayService = replayService;
@@ -55,20 +66,24 @@ public class ClientRetryReplayScheduler {
         this.circuitBreakerRegistry = circuitBreakerRegistry;
         this.queueName = queueName;
         this.maxMessagesPerTick = Math.max(1, maxMessagesPerTick);
+        this.processEndpointUrl = processEndpointUrl;
     }
 
     @Scheduled(
-            fixedDelayString = "${mop.client.retry.replay.interval-ms:10000}",
-            initialDelayString = "${mop.client.retry.replay.initial-delay-ms:15000}")
+            fixedDelayString = "${mop.client.retry.replay.interval-ms:60000}",
+            initialDelayString = "${mop.client.retry.replay.initial-delay-ms:60000}")
     public void drainRetryQueueWhenMopAvailable() {
         if (!isEndpointReady()) {
+            logger.info("[MOP retry] Operation skipped | {}", endpointNotReadyReason());
             return;
         }
         for (int i = 0; i < maxMessagesPerTick; i++) {
             if (!isEndpointReady()) {
                 logger.info(
-                        "Stopping retry drain early | reason=endpoint not ready (availability or circuit breaker state) | processed={}/{}",
-                        i, maxMessagesPerTick);
+                        "[MOP retry] Stopping drain early | {} | processed={}/{}",
+                        endpointNotReadyReason(),
+                        i,
+                        maxMessagesPerTick);
                 break;
             }
             Boolean consumed = rabbitTemplate.execute(this::consumeOne);
@@ -86,6 +101,22 @@ public class ClientRetryReplayScheduler {
                 .circuitBreaker(PROCESS_ENDPOINT_CIRCUIT_BREAKER)
                 .getState();
         return state == CircuitBreaker.State.CLOSED || state == CircuitBreaker.State.HALF_OPEN;
+    }
+
+    private String endpointNotReadyReason() {
+        if (!availabilityProbe.isServerAvailable()) {
+            return String.format(
+                    DRAIN_SKIP_UNAVAILABLE_LOG,
+                    availabilityProbe.getAnonymizationConfigProbeUrl());
+        }
+        CircuitBreaker.State state = circuitBreakerRegistry
+                .circuitBreaker(PROCESS_ENDPOINT_CIRCUIT_BREAKER)
+                .getState();
+        return String.format(
+                "circuit %s = %s (need CLOSED or HALF_OPEN) | POST %s",
+                PROCESS_ENDPOINT_CIRCUIT_BREAKER,
+                state,
+                processEndpointUrl);
     }
 
     private Boolean consumeOne(Channel channel) {

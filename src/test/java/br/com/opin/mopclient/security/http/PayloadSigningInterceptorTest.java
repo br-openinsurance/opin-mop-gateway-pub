@@ -68,6 +68,32 @@ class PayloadSigningInterceptorTest {
     }
 
     @Test
+    void shouldPassthroughPostJsonWhenAllowUnsignedPassthroughIsTrue() throws IOException {
+        PayloadSigner signer = body -> {
+            throw new AssertionError("must not sign in passthrough mode");
+        };
+        PayloadSigningInterceptor interceptor =
+                new PayloadSigningInterceptor(signer, /*enabled=*/ false, /*allowUnsignedPassthrough=*/ true);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpRequest request = mock(HttpRequest.class);
+        when(request.getMethod()).thenReturn(HttpMethod.POST);
+        when(request.getHeaders()).thenReturn(headers);
+        when(request.getURI()).thenReturn(java.net.URI.create("https://mop.example/process"));
+
+        byte[] bodyBytes = "{\"x\":1}".getBytes(StandardCharsets.UTF_8);
+        ClientHttpResponse response = mock(ClientHttpResponse.class);
+        ClientHttpRequestExecution execution = (r, b) -> {
+            assertArrayEquals(bodyBytes, b);
+            assertEquals(MediaType.APPLICATION_JSON, r.getHeaders().getContentType());
+            return response;
+        };
+
+        assertEquals(response, interceptor.intercept(request, bodyBytes, execution));
+    }
+
+    @Test
     void shouldPassthroughGetWhenSigningDisabled() throws IOException {
         PayloadSigner signer = body -> {
             throw new AssertionError("must not sign");

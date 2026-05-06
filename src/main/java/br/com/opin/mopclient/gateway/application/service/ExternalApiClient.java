@@ -38,9 +38,8 @@ import java.util.Objects;
  * <p>
  * <strong>Configuration:</strong>
  * <p>
- * The external API URL must be configured via the property:
- * <pre>{@code external.request.url=http://external-api.example.com/api}</pre>
- * (legacy fallback: {@code external.server.request.url})
+ * The MOP {@code /process} URL must be configured via the property:
+ * <pre>{@code mop.endpoints.process.url=https://mop.example.com/process}</pre>
  * <p>
  * <strong>Usage Example:</strong>
  * <pre>{@code
@@ -67,37 +66,36 @@ public class ExternalApiClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(ExternalApiClient.class);
 
     private final ProcessEndpointCircuitClient processEndpointCircuitClient;
-    private final String externalRequestUrl;
+    private final String processUrl;
 
     /**
      * Constructs a new instance of {@code ExternalApiClient}.
      *
      * @param processEndpointCircuitClient client that performs the POST behind a circuit breaker
-     * @param externalRequestUrl the external API base URL (must not be null or blank)
-     * @throws NullPointerException if dependencies or externalRequestUrl is null
-     * @throws IllegalStateException if externalRequestUrl is blank
+     * @param processUrl the MOP {@code /process} URL (must not be null or blank)
+     * @throws NullPointerException if dependencies or processUrl is null
+     * @throws IllegalStateException if processUrl is blank
      */
     public ExternalApiClient(
             ProcessEndpointCircuitClient processEndpointCircuitClient,
-            @Value("${external.request.url:${external.server.request.url:}}") String externalRequestUrl) {
+            @Value("${mop.endpoints.process.url}") String processUrl) {
         this.processEndpointCircuitClient = Objects.requireNonNull(
                 processEndpointCircuitClient, "ProcessEndpointCircuitClient cannot be null");
-        String url = Objects.requireNonNull(externalRequestUrl,
-                "external.request.url (or legacy external.server.request.url) must be configured");
+        String url = Objects.requireNonNull(processUrl,
+                "mop.endpoints.process.url must be configured");
         if (!StringUtils.hasText(url)) {
-            throw new IllegalStateException("external.request.url (or legacy external.server.request.url) must be configured and cannot be blank");
+            throw new IllegalStateException("mop.endpoints.process.url must be configured and cannot be blank");
         }
-        this.externalRequestUrl = url;
+        this.processUrl = url;
     }
 
     /**
-     * Logs service initialization with the configured external API URL.
+     * Logs service initialization with the configured MOP {@code /process} URL.
      * This method is automatically called after dependency injection.
      */
     @PostConstruct
     private void logInitialization() {
-        LOGGER.info("External API Client initialized successfully");
-        LOGGER.info("  - External API URL: {}", externalRequestUrl);
+        LOGGER.debug("ExternalApiClient ready | MOP /process URL: {}", processUrl);
     }
 
     /**
@@ -111,7 +109,7 @@ public class ExternalApiClient {
      */
     public void sendJsonPayload(final String jsonPayload) {
         validatePayload(jsonPayload);
-        processEndpointCircuitClient.postJson(externalRequestUrl, jsonPayload);
+        processEndpointCircuitClient.postJson(processUrl, jsonPayload);
     }
 
     /**

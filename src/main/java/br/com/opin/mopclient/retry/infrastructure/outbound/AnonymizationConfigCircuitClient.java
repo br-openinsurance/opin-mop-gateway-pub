@@ -8,7 +8,7 @@ import org.springframework.web.client.RestTemplate;
 import java.util.Objects;
 
 /**
- * HTTP GET to {@code external.api.data-anonymization} protected by a circuit breaker.
+ * HTTP GET to {@code mop.endpoints.anonymization-config.url} protected by a circuit breaker.
  */
 @Component
 public class AnonymizationConfigCircuitClient {

@@ -2,7 +2,7 @@
 
 Referência completa das variáveis e propriedades Spring Boot do **MOP Client**, conforme `src/main/resources/application.yml` e `src/main/resources/application-local.yml`.
 
-> **Convenção:** o Spring Boot aceita nomes em **MAIÚSCULAS** com `_` no lugar de `.` (relaxed binding). Ex.: `external.request.url` ⇔ `EXTERNAL_REQUEST_URL`.
+> **Convenção:** o Spring Boot aceita nomes em **MAIÚSCULAS** com `_` no lugar de `.` (relaxed binding). Ex.: `mop.endpoints.process.url` ⇔ `MOP_ENDPOINTS_PROCESS_URL` (também aceitamos o alias mais curto `MOP_PROCESS_URL` como placeholder no YAML).
 
 > **Como ler esta tabela:**
 > - **Padrão (base)** = valor em `application.yml` (profile `default`).
@@ -47,52 +47,50 @@ Referência completa das variáveis e propriedades Spring Boot do **MOP Client**
 
 ## APIs externas (MOP)
 
-### POST — envio do payload processado
+Todos os endpoints do MOP usados pelo gateway ficam sob o prefixo `mop.endpoints.*`. Cada endpoint exige a **URL completa**.
+
+### POST — envio do payload processado (`/process`)
 
 | Propriedade | Variável | Padrão (base) | Descrição |
 |---|---|---|---|
-| `external.request.url` | `EXTERNAL_REQUEST_URL` | derivado de `external.request.host` + `external.request.path` | URL completa usada no envio ao MOP. **Vence as demais quando definida.** |
-| `external.host` | `EXTERNAL_HOST` | **sem default** ⚠️ | Host base usado para compor `request.host` e `api.data-anonymization`. **Defina sempre** — a aplicação falha no boot se ausente. |
-| `external.request.host` | `EXTERNAL_REQUEST_HOST` | `${external.host}` | Host complementar. |
-| `external.request.path` | `EXTERNAL_REQUEST_PATH` | `/process` | Caminho. |
-| `external.request.method` | `EXTERNAL_REQUEST_METHOD` | `POST` | Método HTTP. |
-| `external.server.request.url` | — | derivado de `external.request.url` | **Legado.** Mantido por compatibilidade; será removido. |
-
-#### Precedência efetiva da URL
-
-```
-1º) EXTERNAL_REQUEST_URL                       ← se definida, vence tudo
-2º) EXTERNAL_REQUEST_HOST + EXTERNAL_REQUEST_PATH
-3º) EXTERNAL_HOST          + /process
-4º) external.server.request.url                ← LEGADO
-```
+| `mop.endpoints.process.url` | `MOP_PROCESS_URL` | **sem default** ⚠️ | URL completa do `POST /process` no MOP. **Obrigatória** — a aplicação falha no boot se ausente. |
+| `mop.endpoints.process.method` | `MOP_PROCESS_METHOD` | `POST` | Método HTTP. |
 
 ### GET — regras de campos (configuração dinâmica de anonimização)
 
-| Propriedade | Variável | Padrão |
-|---|---|---|
-| `external.api.data-anonymization` | `EXTERNAL_API_DATA_ANONYMIZATION` | `${external.host}/anonymization-fields?schema=Consent` |
-
-> [!IMPORTANT]
-> Em qualquer ambiente que não seja desenvolvimento local, defina `EXTERNAL_API_DATA_ANONYMIZATION` **explicitamente**. O default é apenas conveniência local.
+| Propriedade | Variável | Padrão | Descrição |
+|---|---|---|---|
+| `mop.endpoints.anonymization-config.url` | `MOP_ANONYMIZATION_CONFIG_URL` | **sem default** ⚠️ | URL completa do `GET` de regras de campos. **Obrigatória** — defina explicitamente em todo ambiente (sandbox: `https://.../anonymization-fields?schema=Consent`). |
 
 ---
 
-## Assinatura JWS (obrigatório)
+## Assinatura JWS
 
-Configura a assinatura do payload final enviado ao MOP.
+Configura a assinatura do payload final enviado ao MOP. **Obrigatória em produção**, opcional em desenvolvimento local.
 
 | Propriedade | Variável | Padrão | Descrição |
 |---|---|---|---|
-| `mop.payload-signing.enabled` | `MOP_PAYLOAD_SIGNING_ENABLED` | **sem default** ⚠️ | Liga/desliga a assinatura JWS. Em produção: `true`. **A ausência da variável faz a aplicação falhar no boot** com `Could not resolve placeholder`. |
-| `mop.payload-signing.private-key-pem` | `JWS_PRIVATE_KEY` | sem default | Chave privada PKCS#8 em PEM. Pode ser multilinha ou com `\n` literais. |
-| `mop.payload-signing.key-id` | `JWS_KID` | sem default | `kid` no header JWT — deve casar com chave publicada no JWKS do participante. **Não pode ficar em branco.** |
-| `mop.payload-signing.org-id` | `JWS_ORG_ID` | sem default | `orgId` (UUID) nas claims do JWT e em `trace.OrgId`. **Não pode ficar em branco.** |
+| `mop.payload-signing.enabled` | `MOP_PAYLOAD_SIGNING_ENABLED` | `true` | Liga/desliga a assinatura JWS. Quando `true`, exige `JWS_PRIVATE_KEY`, `JWS_KID` e `JWS_ORG_ID` (validados no startup). Quando `false`, o payload é enviado **sem assinatura** (ver regras abaixo). |
+| `mop.payload-signing.private-key-pem` | `JWS_PRIVATE_KEY` | **sem default** ⚠️ | Chave privada PKCS#8 em PEM. No `application.yml` base, é referenciada sem default (`${JWS_PRIVATE_KEY}`), então deve estar definida quando o profile base é carregado e, em especial, quando `MOP_PAYLOAD_SIGNING_ENABLED=true`. |
+| `mop.payload-signing.key-id` | `JWS_KID` | **sem default** ⚠️ | `kid` no header JWT — deve casar com chave publicada no JWKS do participante. No `application.yml` base, é referenciado sem default (`${JWS_KID}`), então deve estar definido quando `MOP_PAYLOAD_SIGNING_ENABLED=true`. |
+| `mop.payload-signing.org-id` | `JWS_ORG_ID` | **sem default** ⚠️ | `orgId` (UUID) nas claims do JWT e em `trace.OrgId`. No `application.yml` base, é referenciado sem default (`${JWS_ORG_ID}`) e é validado no startup. |
 
 **Algoritmo:** `PS256` (RSA-PSS / SHA-256).
 
+### Modos efetivos
+
+| `JWS_PRIVATE_KEY` | `MOP_PAYLOAD_SIGNING_ENABLED` | Comportamento |
+|---|---|---|
+| definido | `true` (default) | ✅ **Assinado** (recomendado) |
+| definido | `false` | ⚠️ **Sem assinatura** — payload sai **unsigned** mesmo com chave configurada (útil para ambientes/dev específicos; não recomendado em produção). |
+| vazio | `true` (default) | ❌ **Erro no boot** (`enabled=true` exige chave + `kid` + `orgId`) |
+| vazio | `false` | ❌ **Erro no boot** (no base YAML, as variáveis `JWS_*` são placeholders sem default) |
+
 > [!CAUTION]
-> Em produção, **não** passe `JWS_PRIVATE_KEY` como string nua de env var. Monte como secret via Kubernetes/Vault/AWS Secrets Manager e leia para a env apenas no entrypoint do container.
+> Em produção, **não** passe `JWS_PRIVATE_KEY` como string nua de env var. Monte como secret via Kubernetes Secret, Vault ou AWS Secrets Manager e leia para a env apenas no entrypoint do container.
+
+> [!WARNING]
+> O modo **unsigned passthrough** é uma rede de segurança para desenvolvimento. Em produção, configure as três variáveis (`JWS_PRIVATE_KEY`, `JWS_KID`, `JWS_ORG_ID`) e monitore o log de boot — a presença do WARN `[JWS] No private key configured` é um indicador de configuração faltando.
 
 ---
 
@@ -121,10 +119,11 @@ Prefixo: `mop.client.retry` e `mop.server.availability`.
 
 | Propriedade | Variável | Padrão (base) | Padrão (local) | Descrição |
 |---|---|---|---|---|
+| `mop.rabbit.require-at-startup` | `MOP_RABBIT_REQUIRE_AT_STARTUP` | `true` (fixo no base) | `true` (configurável) | No `application.yml` base o valor está fixo em `true`; no profile `local` pode ser configurado por env var. Se `true`, o arranque falha se o broker AMQP não estiver acessível (`ApplicationRunner`). |
 | `mop.client.retry.queue` | `MOP_CLIENT_RETRY_QUEUE` | `mop.client.retry.queue` | (igual) | Nome da fila AMQP. |
 | `mop.client.retry.replay.enabled` | `MOP_CLIENT_RETRY_REPLAY_ENABLED` | `true` | (igual) | Liga o replay agendado. |
-| `mop.client.retry.replay.initial-delay-ms` | `MOP_CLIENT_RETRY_REPLAY_INITIAL_DELAY_MS` | `15000` | (igual) | Atraso da primeira drenagem após o boot. |
-| `mop.client.retry.replay.interval-ms` | `MOP_CLIENT_RETRY_REPLAY_INTERVAL_MS` | **`10000`** (10 s) | **`1800000`** (30 min) | ⚠️ **Divergência intencional** entre profiles — em `local` o ciclo é longo para evitar spam de log. Em prod, dimensione conforme SLA. |
+| `mop.client.retry.replay.initial-delay-ms` | `MOP_CLIENT_RETRY_REPLAY_INITIAL_DELAY_MS` | `60000` (1 min) | (igual) | Atraso da primeira drenagem após o boot. |
+| `mop.client.retry.replay.interval-ms` | `MOP_CLIENT_RETRY_REPLAY_INTERVAL_MS` | `60000` (1 min) | (igual) | Intervalo entre ciclos de dreno (`fixedDelay`). |
 | `mop.client.retry.replay.max-messages-per-tick` | `MOP_CLIENT_RETRY_REPLAY_MAX_PER_TICK` | `25` | (igual) | Lote por ciclo. |
 | `mop.server.availability.enabled` | `MOP_SERVER_AVAILABILITY_CHECK_ENABLED` | `true` | (igual) | Sondas HTTP de disponibilidade do MOP. |
 | `mop.server.availability.check-interval-ms` | `MOP_SERVER_AVAILABILITY_CHECK_INTERVAL_MS` | `30000` | (igual) | Intervalo entre sondas. |
@@ -196,8 +195,8 @@ Com `context-path=/v1/anonymize`, todos os endpoints ficam sob `/v1/anonymize/ac
 export SPRING_PROFILES_ACTIVE=local
 
 # MOP — sandbox OPIN
-export EXTERNAL_REQUEST_URL=https://mop-server-entrypoint-sandbox.opinbrasil.com.br/process
-export EXTERNAL_API_DATA_ANONYMIZATION=https://mop-server-entrypoint-sandbox.opinbrasil.com.br/anonymization-fields?schema=Consent
+export MOP_PROCESS_URL=https://mop-server-entrypoint-sandbox.opinbrasil.com.br/process
+export MOP_ANONYMIZATION_CONFIG_URL=https://mop-server-entrypoint-sandbox.opinbrasil.com.br/anonymization-fields?schema=Consent
 
 # RabbitMQ local
 export RABBITMQ_VALIDATOR_HOST=localhost
