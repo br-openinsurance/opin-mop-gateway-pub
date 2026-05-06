@@ -3,7 +3,7 @@
 API HTTP **auto-hospedada** que cada participante do **Open Insurance Brasil** instala em seu ambiente para enviar eventos de trace ao **MOP Server**. Em uma única aplicação, executa: validação → anonimização → assinatura JWS → POST ao MOP, com **circuit breaker** e **fila de retry** quando o MOP está indisponível.
 
 
-> [!IMPORTANT]
+> [!IMPORTANTE]
 > Este repositório **substitui** os antigos `mop-client-data-validator-pub` e `opin-mop-client-anonymization-pub`. Não é necessário implantar/configurar aqueles componentes — basta atualizar a imagem deste gateway.
 
 > [!NOTE]
