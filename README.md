@@ -9,7 +9,7 @@ API HTTP **auto-hospedada** que cada participante do **Open Insurance Brasil** i
 > [!NOTE]
 > **Endpoints do MOP Server (por ambiente)**
 >
-> Configure `EXTERNAL_REQUEST_URL` e `EXTERNAL_API_DATA_ANONYMIZATION` com a URL **completa** do ambiente em que o gateway irá operar. Credenciais JWS (`JWS_KID`, `JWS_ORG_ID`, chave privada) devem estar cadastradas no **mesmo** ambiente (JWKS).
+> Configure `EXTERNAL_REQUEST_URL` e `EXTERNAL_API_DATA_ANONYMIZATION` com a URL **completa** do ambiente em que o gateway irá operar. Credenciais JWS (`JWS_KID`, `JWS_ORG_ID`, chave privada) devem estar cadastradas no **mesmo** ambiente.
 >
 > | Ambiente | Host base (MOP Server) | `POST /process` (`EXTERNAL_REQUEST_URL`) | `GET` regras (`EXTERNAL_API_DATA_ANONYMIZATION`) |
 > |----------|------------------------|------------------------------------------|--------------------------------------------------|
