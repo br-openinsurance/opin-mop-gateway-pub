@@ -43,12 +43,13 @@ class AnonymizerControllerTest {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String CORRELATION_ID = "test-correlation-id";
     private static final String TIMESTAMP = "2024-01-15T14:30:25.123Z";
-    /** Header "origin" accepts only "client" or "server". */
+    /** Origin header: only {@code client} or {@code server}. */
     private static final String ORIGIN = "client";
     private static final String PATH = "/path";
     private static final String OPERATION = "POST";
     private static final String STEP_VALUE = "consent-created";
     private static final String DATA_EVENTO_STEP_VALUE = "2026-02-23T18:44:29.650942812Z";
+    private static final String TRACE_ORIGIN_VALUE = "CLIENT";
     private static final String CLIENT_SS_ID = "RECEIVER A";
     private static final String SERVER_AS_ID = "TRANSMITTER B";
     private static final String VALID_JSON = "{\"key\":\"value\",\"number\":123}";
@@ -83,12 +84,12 @@ class AnonymizerControllerTest {
     }
 
     private void mockValidationSuccess() {
-        when(headerValidator.validate(anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString()))
+        when(headerValidator.validate(anyString(), anyString(), anyString(), anyString(), any(), any(), anyString(), anyString()))
                 .thenReturn(HeaderValidator.ValidationResult.success());
     }
 
     private void mockBuildAndOrchestrator(RequestHeadersDTO headersDTO) {
-        when(headersBuilder.build(anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), any(), anyString(), anyString()))
+        when(headersBuilder.build(anyString(), anyString(), anyString(), anyString(), any(), any(), any(), any(), anyString(), anyString()))
                 .thenReturn(headersDTO);
         when(orchestratorService.processRequest(anyString(), anyString(), any())).thenReturn("{}");
     }
@@ -101,7 +102,7 @@ class AnonymizerControllerTest {
                 .operation(OPERATION)
                 .step(STEP_VALUE)
                 .dataEventoStep(DATA_EVENTO_STEP_VALUE)
-                .traceOrigin("CLIENT")
+                .traceOrigin(TRACE_ORIGIN_VALUE)
                 .mopReportid(correlationId)
                 .timestamp(timestamp)
                 .clientSSId(CLIENT_SS_ID)
@@ -140,7 +141,7 @@ class AnonymizerControllerTest {
 
             ResponseEntity<ApiResponseDTO> response = controller.receivedRequest(
                     VALID_JSON, CORRELATION_ID, ORIGIN, PATH, OPERATION,
-                    STEP_VALUE, DATA_EVENTO_STEP_VALUE, CLIENT_SS_ID, SERVER_AS_ID, headers);
+                    STEP_VALUE, DATA_EVENTO_STEP_VALUE, TRACE_ORIGIN_VALUE, CLIENT_SS_ID, SERVER_AS_ID, headers);
 
             assertNotNull(response);
             assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -155,7 +156,7 @@ class AnonymizerControllerTest {
             assertNull(body.getError());
             verify(orchestratorService).processRequest(anyString(), anyString(), any());
             verify(jsonParser).parse(VALID_JSON);
-            verify(headersBuilder).build(anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), any(), anyString(), anyString());
+            verify(headersBuilder).build(anyString(), anyString(), anyString(), anyString(), any(), any(), any(), any(), anyString(), anyString());
         }
 
         @Test
@@ -172,12 +173,52 @@ class AnonymizerControllerTest {
 
             ResponseEntity<ApiResponseDTO> response = controller.receivedRequest(
                     "", CORRELATION_ID, ORIGIN, PATH, OPERATION,
-                    STEP_VALUE, DATA_EVENTO_STEP_VALUE, CLIENT_SS_ID, SERVER_AS_ID, headers);
+                    STEP_VALUE, DATA_EVENTO_STEP_VALUE, TRACE_ORIGIN_VALUE, CLIENT_SS_ID, SERVER_AS_ID, headers);
 
             assertEquals(HttpStatus.OK, response.getStatusCode());
             ApiResponseDTO body = response.getBody();
             assertNotNull(body);
             assertEquals("SUCCESS", body.getStatus());
+            verify(orchestratorService).processRequest(anyString(), anyString(), any());
+        }
+
+        @Test
+        @DisplayName("Processes successfully when step and dataEventoStep are absent (null)")
+        void shouldProcessRequestSuccessfullyWhenStepHeadersAreNull() throws Exception {
+            RequestHeadersDTO headersDTO = RequestHeadersDTO.builder()
+                    .correlationId(CORRELATION_ID)
+                    .origin(ORIGIN)
+                    .path(PATH)
+                    .operation(OPERATION)
+                    .step(null)
+                    .dataEventoStep(null)
+                    .traceOrigin(TRACE_ORIGIN_VALUE)
+                    .mopReportid(CORRELATION_ID)
+                    .timestamp(TIMESTAMP)
+                    .clientSSId(CLIENT_SS_ID)
+                    .serverASId(SERVER_AS_ID)
+                    .headers(headers)
+                    .build();
+            ArgumentCaptor<String> stepCaptor = ArgumentCaptor.forClass(String.class);
+            ArgumentCaptor<String> dataEventoCaptor = ArgumentCaptor.forClass(String.class);
+            mockValidationSuccess();
+            when(jsonParser.parse(anyString())).thenReturn(jsonNode);
+            when(jsonParser.toJsonString(any(JsonNode.class))).thenReturn(VALID_JSON);
+            when(headersBuilder.build(
+                    anyString(), anyString(), anyString(), anyString(),
+                    stepCaptor.capture(), dataEventoCaptor.capture(), any(), any(), anyString(), anyString()))
+                    .thenReturn(headersDTO);
+            when(orchestratorService.processRequest(anyString(), anyString(), any())).thenReturn("{}");
+            when(responseBuilder.buildSuccessResponse(anyString(), anyString(), anyString(), anyString(), anyString(), anyString()))
+                    .thenReturn(ResponseEntity.ok(createSuccessResponse(CORRELATION_ID, TIMESTAMP)));
+
+            ResponseEntity<ApiResponseDTO> response = controller.receivedRequest(
+                    VALID_JSON, CORRELATION_ID, ORIGIN, PATH, OPERATION,
+                    null, null, null, CLIENT_SS_ID, SERVER_AS_ID, headers);
+
+            assertEquals(HttpStatus.OK, response.getStatusCode());
+            assertNull(stepCaptor.getValue());
+            assertNull(dataEventoCaptor.getValue());
             verify(orchestratorService).processRequest(anyString(), anyString(), any());
         }
 
@@ -190,7 +231,7 @@ class AnonymizerControllerTest {
             mockValidationSuccess();
             when(jsonParser.parse(anyString())).thenReturn(jsonNode);
             when(jsonParser.toJsonString(any(JsonNode.class))).thenReturn(VALID_JSON);
-            when(headersBuilder.build(anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), any(), anyString(), anyString()))
+            when(headersBuilder.build(anyString(), anyString(), anyString(), anyString(), any(), any(), any(), any(), anyString(), anyString()))
                     .thenReturn(headersDTO);
             when(orchestratorService.processRequest(anyString(), anyString(), captor.capture())).thenReturn("{}");
             when(responseBuilder.buildSuccessResponse(anyString(), anyString(), anyString(), anyString(), anyString(), anyString()))
@@ -198,7 +239,7 @@ class AnonymizerControllerTest {
 
             controller.receivedRequest(
                     VALID_JSON, correlationIdValue, ORIGIN, PATH, OPERATION,
-                    STEP_VALUE, DATA_EVENTO_STEP_VALUE, CLIENT_SS_ID, SERVER_AS_ID, headers);
+                    STEP_VALUE, DATA_EVENTO_STEP_VALUE, TRACE_ORIGIN_VALUE, CLIENT_SS_ID, SERVER_AS_ID, headers);
 
             assertNotNull(captor.getValue().getCorrelationId());
             assertEquals(correlationIdValue, captor.getValue().getCorrelationId());
@@ -211,7 +252,7 @@ class AnonymizerControllerTest {
             mockValidationSuccess();
             when(jsonParser.parse(anyString())).thenReturn(jsonNode);
             when(jsonParser.toJsonString(any(JsonNode.class))).thenReturn(VALID_JSON);
-            when(headersBuilder.build(anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), any(), anyString(), anyString()))
+            when(headersBuilder.build(anyString(), anyString(), anyString(), anyString(), any(), any(), any(), any(), anyString(), anyString()))
                     .thenReturn(headersDTO);
             when(orchestratorService.processRequest(anyString(), anyString(), any()))
                     .thenThrow(new ClientRetryEnqueuedException(headersDTO, ClientRetryUserMessages.SUCCESS_AFTER_ENQUEUE));
@@ -232,7 +273,7 @@ class AnonymizerControllerTest {
 
             ResponseEntity<ApiResponseDTO> response = controller.receivedRequest(
                     VALID_JSON, CORRELATION_ID, ORIGIN, PATH, OPERATION,
-                    STEP_VALUE, DATA_EVENTO_STEP_VALUE, CLIENT_SS_ID, SERVER_AS_ID, headers);
+                    STEP_VALUE, DATA_EVENTO_STEP_VALUE, TRACE_ORIGIN_VALUE, CLIENT_SS_ID, SERVER_AS_ID, headers);
 
             assertEquals(HttpStatus.ACCEPTED, response.getStatusCode());
             assertNotNull(response.getBody());
@@ -272,7 +313,7 @@ class AnonymizerControllerTest {
 
             ResponseEntity<ApiResponseDTO> response = controller.receivedRequest(
                     "[{\"a\":1}]", CORRELATION_ID, ORIGIN, PATH, OPERATION,
-                    STEP_VALUE, DATA_EVENTO_STEP_VALUE, CLIENT_SS_ID, SERVER_AS_ID, headers);
+                    STEP_VALUE, DATA_EVENTO_STEP_VALUE, TRACE_ORIGIN_VALUE, CLIENT_SS_ID, SERVER_AS_ID, headers);
 
             assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
             ApiResponseDTO body = response.getBody();
@@ -287,7 +328,7 @@ class AnonymizerControllerTest {
         @Test
         @DisplayName("Returns 400 when origin header is empty")
         void shouldReturnBadRequestWhenOriginHeaderIsEmpty() {
-            when(headerValidator.validate(anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString()))
+            when(headerValidator.validate(anyString(), anyString(), anyString(), anyString(), any(), any(), anyString(), anyString()))
                     .thenReturn(HeaderValidator.ValidationResult.error("Header 'origin' must not be empty"));
             when(responseBuilder.buildErrorResponse(HttpStatus.BAD_REQUEST, "Invalid header", "Header 'origin' must not be empty"))
                     .thenReturn(ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
@@ -295,7 +336,7 @@ class AnonymizerControllerTest {
 
             ResponseEntity<ApiResponseDTO> response = controller.receivedRequest(
                     VALID_JSON, CORRELATION_ID, "", PATH, OPERATION,
-                    STEP_VALUE, DATA_EVENTO_STEP_VALUE, CLIENT_SS_ID, SERVER_AS_ID, headers);
+                    STEP_VALUE, DATA_EVENTO_STEP_VALUE, TRACE_ORIGIN_VALUE, CLIENT_SS_ID, SERVER_AS_ID, headers);
 
             assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
             ApiResponseDTO body = response.getBody();
@@ -309,7 +350,7 @@ class AnonymizerControllerTest {
         @DisplayName("Returns 400 when origin is invalid (only client or server allowed)")
         void shouldReturnBadRequestWhenOriginIsInvalid() {
             String details = "Header 'origin' must be either 'client' or 'server'";
-            when(headerValidator.validate(anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString()))
+            when(headerValidator.validate(anyString(), anyString(), anyString(), anyString(), any(), any(), anyString(), anyString()))
                     .thenReturn(HeaderValidator.ValidationResult.error(details));
             when(responseBuilder.buildErrorResponse(HttpStatus.BAD_REQUEST, "Invalid header", details))
                     .thenReturn(ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
@@ -317,7 +358,7 @@ class AnonymizerControllerTest {
 
             ResponseEntity<ApiResponseDTO> response = controller.receivedRequest(
                     VALID_JSON, CORRELATION_ID, "INVALID_ORIGIN", PATH, OPERATION,
-                    STEP_VALUE, DATA_EVENTO_STEP_VALUE, CLIENT_SS_ID, SERVER_AS_ID, headers);
+                    STEP_VALUE, DATA_EVENTO_STEP_VALUE, TRACE_ORIGIN_VALUE, CLIENT_SS_ID, SERVER_AS_ID, headers);
 
             assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
             ApiResponseDTO body = response.getBody();
@@ -332,7 +373,7 @@ class AnonymizerControllerTest {
         @DisplayName("Returns 400 when operation is invalid")
         void shouldReturnBadRequestWhenOperationIsInvalid() {
             String errorMessage = "Header 'operation' must be one of the following values: GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS, TRACE. Received: 'INVALID_METHOD'";
-            when(headerValidator.validate(anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString()))
+            when(headerValidator.validate(anyString(), anyString(), anyString(), anyString(), any(), any(), anyString(), anyString()))
                     .thenReturn(HeaderValidator.ValidationResult.error(errorMessage));
             when(responseBuilder.buildErrorResponse(HttpStatus.BAD_REQUEST, "Invalid header", errorMessage))
                     .thenReturn(ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
@@ -340,7 +381,7 @@ class AnonymizerControllerTest {
 
             ResponseEntity<ApiResponseDTO> response = controller.receivedRequest(
                     VALID_JSON, CORRELATION_ID, ORIGIN, PATH, "INVALID_METHOD",
-                    STEP_VALUE, DATA_EVENTO_STEP_VALUE, CLIENT_SS_ID, SERVER_AS_ID, headers);
+                    STEP_VALUE, DATA_EVENTO_STEP_VALUE, TRACE_ORIGIN_VALUE, CLIENT_SS_ID, SERVER_AS_ID, headers);
 
             assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
             ApiResponseDTO body = response.getBody();
@@ -370,7 +411,7 @@ class AnonymizerControllerTest {
 
             ResponseEntity<ApiResponseDTO> response = controller.receivedRequest(
                     VALID_JSON, CORRELATION_ID, ORIGIN, PATH, OPERATION,
-                    STEP_VALUE, DATA_EVENTO_STEP_VALUE, CLIENT_SS_ID, SERVER_AS_ID, headers);
+                    STEP_VALUE, DATA_EVENTO_STEP_VALUE, TRACE_ORIGIN_VALUE, CLIENT_SS_ID, SERVER_AS_ID, headers);
 
             assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
             ApiResponseDTO body = response.getBody();

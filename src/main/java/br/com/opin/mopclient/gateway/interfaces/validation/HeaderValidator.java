@@ -26,8 +26,8 @@ public class HeaderValidator {
      * @param origin         Origin header value (must be "client" or "server")
      * @param path           Path header value
      * @param operation      Operation header value (must be a valid HTTP method)
-     * @param step           Step of the flow in the trace (e.g. consent-created)
-     * @param dataEventoStep Timestamp of the step event (ISO-8601)
+     * @param step           Step of the flow in the trace (optional; may be null or blank)
+     * @param dataEventoStep Timestamp of the step event (optional; may be null or blank)
      * @param clientSSId     Client SS identifier header value (required)
      * @param serverASId     Server AS identifier header value (required)
      * @return ValidationResult with error message if validation fails
@@ -63,12 +63,6 @@ public class HeaderValidator {
             return ValidationResult.error(
                     String.format("Header 'operation' must be one of the following values: %s. Received: '%s'",
                             HttpMethod.getValidValues(), operation));
-        }
-        if (!StringUtils.hasText(step)) {
-            return ValidationResult.error("Header 'step' must not be empty");
-        }
-        if (!StringUtils.hasText(dataEventoStep)) {
-            return ValidationResult.error("Header 'dataEventoStep' must not be empty");
         }
         if (!StringUtils.hasText(clientSSId)) {
             return ValidationResult.error("Header 'clientSSId' must not be empty");

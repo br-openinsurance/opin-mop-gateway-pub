@@ -7,26 +7,34 @@ API HTTP **auto-hospedada** que cada participante do **Open Insurance Brasil** i
 > Este repositório **substitui** os antigos `mop-client-data-validator-pub` e `opin-mop-client-anonymization-pub`. Não é necessário implantar/configurar aqueles componentes — basta atualizar a imagem deste gateway.
 
 > [!NOTE]
-> **Diferença entre os endpoints do MOP (sandbox)**
+> **Endpoints do MOP Server (por ambiente)**
+>
+> Configure `EXTERNAL_REQUEST_URL` e `EXTERNAL_API_DATA_ANONYMIZATION` com a URL **completa** do ambiente em que o gateway irá operar. Credenciais JWS (`JWS_KID`, `JWS_ORG_ID`, chave privada) devem estar cadastradas no **mesmo** ambiente (JWKS).
+>
+> | Ambiente | Host base (MOP Server) | `POST /process` (`EXTERNAL_REQUEST_URL`) | `GET` regras (`EXTERNAL_API_DATA_ANONYMIZATION`) |
+> |----------|------------------------|------------------------------------------|--------------------------------------------------|
+> | **Sandbox** | `https://mop-server-entrypoint-sandbox.opinbrasil.com.br/` | `.../process` | `.../anonymization-fields?schema=Consent` |
+> | **Produção** | **`https://mop-server-entrypoint.opinbrasil.com.br/`** | `https://mop-server-entrypoint.opinbrasil.com.br/process` | `https://mop-server-entrypoint.opinbrasil.com.br/anonymization-fields?schema=Consent` |
 >
 > - **GET `.../anonymization-fields?schema=Consent`**: endpoint de **configuração**. Retorna as regras dinâmicas de campos (**quais devem ser anonimizados** e **quais podem ficar expostos**) para o schema informado (ex.: `Consent`). O gateway chama esse endpoint no **início do processamento** (antes de anonimizar) e também pode usá-lo como **sonda de disponibilidade** do MOP.
 > - **POST `.../process`**: endpoint de **processamento/ingestão**. Recebe o **payload final** que o gateway montou e anonimizado. No fluxo padrão, o corpo enviado ao MOP é um **JWT compacto** (`Content-Type: application/jwt`) quando a assinatura está habilitada.
 >
-> Em resumo: **GET = “quais campos anonimizar”**; **POST = “enviar o evento já anonimizado (e assinado)”**.
+> Em resumo: **GET = “quais campos anonimizar”**; **POST = “enviar o evento já anonimizado (e assinado)”**. Detalhes de variáveis: [`docs/VARIAVEIS_DE_AMBIENTE.md`](docs/VARIAVEIS_DE_AMBIENTE.md).
 
 ---
 
 ## Sumário
 
 1. [Como funciona em 30 segundos](#como-funciona-em-30-segundos)
-2. [Quickstart — rodando em até 10 minutos](#quickstart--rodando-em-at\u00e9-10-minutos)
-3. ⚠️ [Antes de ir para produção](#antes-de-ir-para-produção) — **leitura obrigatória**
-4. [Contrato da API](#contrato-da-api)
-5. [Configuração](#configuração)
-6. [Segurança e assinatura JWS](#segurança-e-assinatura-jws)
-7. [Observabilidade](#observabilidade)
-8. [Troubleshooting](#troubleshooting)
-9. [Referências](#referências)
+2. [Início rápido — rodando em até 10 minutos](#início-rápido--rodando-em-at\u00e9-10-minutos)
+3. [Instalação em Kubernetes (Helm)](#instalação-em-kubernetes-helm)
+4. ⚠️ [Antes de ir para produção](#antes-de-ir-para-produção) — **leitura obrigatória**
+5. [Contrato da API](#contrato-da-api)
+6. [Configuração](#configuração)
+7. [Segurança e assinatura JWS](#segurança-e-assinatura-jws)
+8. [Observabilidade](#observabilidade)
+9. [Solução de problemas](#solução-de-problemas)
+10. [Referências](#referências)
 
 
 ---
@@ -51,7 +59,16 @@ flowchart LR
 
 ---
 
-## Quickstart — rodando em até 10 minutos
+## Instalação em Kubernetes (Helm)
+
+Em produção, o **MOP Client** pode ser implantado com o **Helm Chart** publicado no GHCR (`ghcr.io/br-openinsurance/mop-client-chart/mop-client`). O guia oficial (pré-requisitos, `values-client.yaml`, install/upgrade e verificação) está no repositório de publicação:
+
+- **[Instalação via Helm — `INSTALA_MOP_CLIENT.md`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/feat/mop-client-install/docs/INSTALA_MOP_CLIENT.md)** (branch `feat/mop-client-install`)
+- Resumo e links neste repositório: [`docs/INSTALACAO.md`](docs/INSTALACAO.md)
+
+---
+
+## Início rápido — rodando em até 10 minutos
 
 > Este caminho leva você de "nunca vi o projeto" até um `200 OK` válido contra o **sandbox OPIN**. Pré-requisito: você já obteve as credenciais JWS do participante (chave privada PEM + `kid` publicado no JWKS + `orgId`). Se ainda não tem, obtenha-as antes — o gateway **não sobe sem elas**.
 
@@ -271,8 +288,8 @@ Seu cliente HTTP **precisa** lidar com ambos os formatos.
 
 ### 7. Checklist mínimo de produção
 
-- [ ] `EXTERNAL_REQUEST_URL` aponta para o ambiente correto (não-sandbox).
-- [ ] `EXTERNAL_API_DATA_ANONYMIZATION` aponta para o mesmo host com `?schema=Consent`.
+- [ ] `EXTERNAL_REQUEST_URL` aponta para **produção**: `https://mop-server-entrypoint.opinbrasil.com.br/process` (não usar host sandbox).
+- [ ] `EXTERNAL_API_DATA_ANONYMIZATION` aponta para **produção**: `https://mop-server-entrypoint.opinbrasil.com.br/anonymization-fields?schema=Consent`.
 - [ ] `MOP_PAYLOAD_SIGNING_ENABLED=true` **e** `JWS_PRIVATE_KEY`/`JWS_KID`/`JWS_ORG_ID` definidos.
 - [ ] `kid` publicado no JWKS e propagado.
 - [ ] RabbitMQ com persistência, em cluster, monitorado (profundidade de fila, conexões).
@@ -297,12 +314,10 @@ Seu cliente HTTP **precisa** lidar com ambos os formatos.
 | `origin` | Origem da chamada. | Exatamente `client` ou `server` (case-insensitive). | `client` |
 | `path` | Rota lógica do recurso OPIN. | Não vazio. | `/open-insurance/consents/v2/consents` |
 | `operation` | Verbo HTTP da operação original. | `GET`, `POST`, `PUT`, `PATCH`, `DELETE` (validado por `HttpMethod`). | `POST` |
-| `step` | Etapa do trace. | Não vazio. | `consent-created` |
-| `dataEventoStep` | Timestamp ISO-8601 do passo. | Não vazio. | `2026-04-27T11:00:00Z` |
 | `clientSSId` | Identificador da receptora (SS). | Não vazio. | `RECEPTORA-A` |
 | `serverASId` | Identificador da transmissora (AS). | Não vazio. | `TRANSMISSORA-B` |
 
-**Headers opcionais:** `traceOrigin` (origem do evento de trace) · `X-Mop-Reportid` (gerado se ausente).
+**Headers opcionais:** `step` (etapa do trace; se ausente, o gateway deriva valor interno no `MessageDTO`) · `dataEventoStep` (instante ISO-8601 do passo; se ausente, usa instante atual no trace) · `traceOrigin` (origem do evento de trace; se informado, enviado ao MOP em `trace.traceOrigin` do `MessageDTO`) · `X-Mop-Reportid` (gerado se ausente).
 
 ### Resposta — `200 OK`
 
@@ -369,9 +384,9 @@ Ative com `SPRING_PROFILES_ACTIVE=local` ou `--spring.profiles.active=local`.
 | Variável | Descrição |
 |---|---|
 | `SPRING_PROFILES_ACTIVE` | Perfil Spring (`local` em dev, vazio/`default` em prod). |
-| `EXTERNAL_HOST` | Host base do MOP (ex.: `https://mop-server-entrypoint-sandbox.opinbrasil.com.br`). Usado se você não definir `EXTERNAL_REQUEST_URL` e `EXTERNAL_API_DATA_ANONYMIZATION` explicitamente. |
-| `EXTERNAL_REQUEST_URL` | URL completa do `POST /process` no MOP. Recomendado em prod. |
-| `EXTERNAL_API_DATA_ANONYMIZATION` | URL completa do `GET` de regras de campos (sandbox: `?schema=Consent`). Recomendado em prod. |
+| `EXTERNAL_HOST` | Host base do MOP. Preferir URLs completas abaixo. |
+| `EXTERNAL_REQUEST_URL` | URL completa do `POST /process`. Produção: `https://mop-server-entrypoint.opinbrasil.com.br/process` · Sandbox: `https://mop-server-entrypoint-sandbox.opinbrasil.com.br/process` |
+| `EXTERNAL_API_DATA_ANONYMIZATION` | URL completa do `GET` de regras. Produção/sandbox: mesmo host do ambiente + `/anonymization-fields?schema=Consent` |
 | `MOP_PAYLOAD_SIGNING_ENABLED` | **`true`** em prod (default no `application.yml` base). Em produção, defina explicitamente junto com `JWS_PRIVATE_KEY`/`JWS_KID`/`JWS_ORG_ID`. |
 | `JWS_PRIVATE_KEY` | Chave privada PKCS#8 em PEM. |
 | `JWS_KID` | `kid` publicado no JWKS do participante. |
@@ -432,7 +447,7 @@ Quando `MOP_PAYLOAD_SIGNING_ENABLED=true`, o gateway assina o **payload final en
 
 ## Observabilidade
 
-### Endpoints Actuator
+### Endpoints do Actuator
 
 Todos sob `/v1/anonymize/actuator/*`:
 
@@ -458,7 +473,7 @@ Todos sob `/v1/anonymize/actuator/*`:
 
 ---
 
-## Troubleshooting
+## Solução de problemas
 
 | Sintoma | Causa provável | Solução |
 |---|---|---|
@@ -478,6 +493,7 @@ Todos sob `/v1/anonymize/actuator/*`:
 
 ### Documentação interna
 
+- [`docs/INSTALACAO.md`](docs/INSTALACAO.md) — instalação em Kubernetes via **Helm** (link para o guia oficial no `opin-mop-gateway-pub`).
 - [`docs/VARIAVEIS_DE_AMBIENTE.md`](docs/VARIAVEIS_DE_AMBIENTE.md) — todas as variáveis e propriedades, com binding.
 - [`docs/REPROCESSAMENTO.md`](docs/REPROCESSAMENTO.md) — fila de retry, caches, retentativas, DLQ.
 - [`wiki.md`](wiki.md) — arquitetura interna.

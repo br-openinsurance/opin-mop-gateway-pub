@@ -22,7 +22,7 @@ Referência completa das variáveis e propriedades Spring Boot do **MOP Client**
 7. [Cache](#cache)
 8. [Actuator](#actuator)
 9. [Logging](#logging)
-10. [Referência rápida — sandbox](#referência-rápida--sandbox)
+10. [Referência rápida — endpoints MOP (sandbox e produção)](#referência-rápida--endpoints-mop-sandbox-e-produção)
 
 ---
 
@@ -60,7 +60,7 @@ Todos os endpoints do MOP usados pelo gateway ficam sob o prefixo `mop.endpoints
 
 | Propriedade | Variável | Padrão | Descrição |
 |---|---|---|---|
-| `mop.endpoints.anonymization-config.url` | `MOP_ANONYMIZATION_CONFIG_URL` | **sem default** ⚠️ | URL completa do `GET` de regras de campos. **Obrigatória** — defina explicitamente em todo ambiente (sandbox: `https://.../anonymization-fields?schema=Consent`). |
+| `mop.endpoints.anonymization-config.url` | `MOP_ANONYMIZATION_CONFIG_URL` | **sem default** ⚠️ | URL completa do `GET` de regras de campos. **Obrigatória** — defina explicitamente em todo ambiente. Ver [sandbox e produção](#referência-rápida--endpoints-mop-sandbox-e-produção). |
 
 ---
 
@@ -130,7 +130,7 @@ Prefixo: `mop.client.retry` e `mop.server.availability`.
 | `mop.server.availability.connect-timeout-ms` | `MOP_SERVER_AVAILABILITY_CONNECT_TIMEOUT_MS` | `3000` | (igual) | Timeout de conexão. |
 | `mop.server.availability.read-timeout-ms` | `MOP_SERVER_AVAILABILITY_READ_TIMEOUT_MS` | `5000` | (igual) | Timeout de leitura. |
 
-### Circuit breakers (Resilience4j)
+### Disjuntores de circuito (Resilience4j)
 
 Declarados em `application.yml` (seção `resilience4j.circuitbreaker`):
 
@@ -178,7 +178,7 @@ Com `context-path=/v1/anonymize`, todos os endpoints ficam sob `/v1/anonymize/ac
 
 ---
 
-## Logging
+## Logs
 
 | Propriedade | Variável | Padrão |
 |---|---|---|
@@ -189,14 +189,31 @@ Com `context-path=/v1/anonymize`, todos os endpoints ficam sob `/v1/anonymize/ac
 
 ---
 
-## Referência rápida — sandbox
+## Referência rápida — endpoints MOP (sandbox e produção)
+
+**Host base produção (oficial):** `https://mop-server-entrypoint.opinbrasil.com.br/`  
+**Host base sandbox:** `https://mop-server-entrypoint-sandbox.opinbrasil.com.br/`
+
+| Ambiente | Variável | URL |
+|----------|----------|-----|
+| **Sandbox** | `EXTERNAL_REQUEST_URL` / `MOP_PROCESS_URL` | `https://mop-server-entrypoint-sandbox.opinbrasil.com.br/process` |
+| **Sandbox** | `EXTERNAL_API_DATA_ANONYMIZATION` / `MOP_ANONYMIZATION_CONFIG_URL` | `https://mop-server-entrypoint-sandbox.opinbrasil.com.br/anonymization-fields?schema=Consent` |
+| **Produção** | `EXTERNAL_REQUEST_URL` / `MOP_PROCESS_URL` | `https://mop-server-entrypoint.opinbrasil.com.br/process` |
+| **Produção** | `EXTERNAL_API_DATA_ANONYMIZATION` / `MOP_ANONYMIZATION_CONFIG_URL` | `https://mop-server-entrypoint.opinbrasil.com.br/anonymization-fields?schema=Consent` |
+
+> Em produção, use credenciais JWS e JWKS do participante **cadastrados no ambiente de produção** — não reutilize `kid`/chave do sandbox.
+
+### Exemplo — sandbox (desenvolvimento / homologação contra sandbox OPIN)
 
 ```bash
 export SPRING_PROFILES_ACTIVE=local
 
 # MOP — sandbox OPIN
-export MOP_PROCESS_URL=https://mop-server-entrypoint-sandbox.opinbrasil.com.br/process
-export MOP_ANONYMIZATION_CONFIG_URL=https://mop-server-entrypoint-sandbox.opinbrasil.com.br/anonymization-fields?schema=Consent
+export EXTERNAL_REQUEST_URL=https://mop-server-entrypoint-sandbox.opinbrasil.com.br/process
+export EXTERNAL_API_DATA_ANONYMIZATION=https://mop-server-entrypoint-sandbox.opinbrasil.com.br/anonymization-fields?schema=Consent
+# aliases aceitos pelo Spring (relaxed binding):
+# export MOP_PROCESS_URL=...
+# export MOP_ANONYMIZATION_CONFIG_URL=...
 
 # RabbitMQ local
 export RABBITMQ_VALIDATOR_HOST=localhost
@@ -212,6 +229,18 @@ export JWS_ORG_ID=<seu-orgId-uuid>
 
 # Retry (opcional — usa defaults sãos)
 export MOP_CLIENT_RETRY_QUEUE=mop.client.retry.queue
+```
+
+### Exemplo — produção
+
+```bash
+# MOP — produção OPIN
+export EXTERNAL_REQUEST_URL=https://mop-server-entrypoint.opinbrasil.com.br/process
+export EXTERNAL_API_DATA_ANONYMIZATION=https://mop-server-entrypoint.opinbrasil.com.br/anonymization-fields?schema=Consent
+
+export MOP_PAYLOAD_SIGNING_ENABLED=true
+# JWS_PRIVATE_KEY, JWS_KID, JWS_ORG_ID — via Secret (produção)
+# RABBITMQ_* — broker institucional
 ```
 
 Windows PowerShell: substitua `export VAR=valor` por `$env:VAR = "valor"`.

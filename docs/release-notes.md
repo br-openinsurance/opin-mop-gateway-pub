@@ -2,7 +2,7 @@
 
 Notas de versão do **MOP Client**, no estilo do ecossistema MOP (New features, Enhancements, Bug fixes).
 
-*Última atualização do documento: 29 de abril de 2026.*
+**Última atualização do documento: 19 de maio de 2026.**
 
 ```mermaid
 flowchart LR
@@ -21,9 +21,50 @@ flowchart LR
 
 ---
 
-## Versions
+## Versões da release note
 
-- [1.0.0](#v1-0-0)
+- [1.0.2 (2026-05-19)](#v1-0-2)
+- [1.0.1 (2026-05-07)](#v1-0-1)
+- [1.0.0 (2026-04-29)](#v1-0-0)
+
+---
+
+<a id="v1-0-2"></a>
+
+## 1.0.2
+
+### New features
+
+- **Header opcional `traceOrigin`**: novo header HTTP para indicar a origem do evento de trace (ex.: `CLIENT`, `SERVER`). Quando informado, o valor é enviado ao servidor MOP no rastreio do evento e mantido nas tentativas de reenvio quando o MOP estiver indisponível.
+
+### Enhancements
+
+- **Headers opcionais de trace**: `step`, `dataEventoStep`, `traceOrigin` e `X-Mop-Reportid` permanecem **não obrigatórios** — a requisição segue normalmente se forem omitidos; o gateway preenche valores padrão quando necessário (etapa do fluxo, data do passo, identificador de relatório MOP).
+- **Documentação do contrato da API**: especificação OpenAPI, README e guia de cenários de QA atualizados com a lista de headers **obrigatórios** e **opcionais**, incluindo exemplos de requisição mínima e completa.
+
+### Bug fixes
+
+- Não reportados nesta versão.
+
+---
+
+<a id="v1-0-1"></a>
+
+## 1.0.1
+
+### New features
+
+- **Bloqueio de múltiplos body**: uma única request deve conter **um único payload**; requisições com múltiplos body **não são aceitas**.
+
+### Enhancements
+
+- A funcionalidade de **múltiplos body** **não está mais disponível**.
+
+### Bug fixes
+
+- fix(chamado 19650) (2026-05-07): avoid PayloadSigner init when signing disabled
+  - Data da correção: 2026-05-07
+  - When `MOP_PAYLOAD_SIGNING_ENABLED=false` and JWS variables are missing or blank (*variáveis ausentes/em branco*), prevent Spring startup failures (*falha na inicialização do Spring*) by skipping `JwtPayloadSigner` instantiation (PEM/Base64 decode) and enforcing signing prerequisites (*pré-requisitos de assinatura*) only when signing is enabled.
 
 ---
 
@@ -55,10 +96,6 @@ As secções seguintes detalham, por categoria, as capacidades incluídas neste 
 - Fila **RabbitMQ** dedicada ao retry do cliente (`mop.client.retry.queue` e propriedades `mop.client.retry.*`).
 - **Replay agendado** que drena a fila quando o broker e o MOP voltam ao normal (`replay.enabled`, intervalos e lotes configuráveis por profile).
 
-#### Release notes
-
-- Documentação de versão em **`docs/release-notes.md`** e página estática **`release-notes.html`** (servida em `/v1/anonymize/release-notes.html`).
-
 ### Enhancements
 
 #### Melhorias no YAML e unificação de configuração
@@ -71,7 +108,7 @@ As secções seguintes detalham, por categoria, as capacidades incluídas neste 
 
 - Especificação **`mop-gateway-api-specification.yml`** atualizada com respostas **`200`** (entrega síncrona) e **`202`** (aceite para entrega assíncrona), incluindo o schema **`AcceptedResponse`**.
 - **README** descreve o contrato 200 vs 202 e as variáveis obrigatórias / opcionais em linha com o projeto.
-
+ 
 ### Bug fixes
 
 - Não reportados.

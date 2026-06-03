@@ -220,37 +220,23 @@ class HeaderValidatorTest {
     }
 
     @Test
-    @DisplayName("Returns error when step is empty")
-    void shouldReturnErrorWhenStepIsEmpty() {
-        HeaderValidator.ValidationResult result = headerValidator.validate(
-                VALID_CORRELATION_ID,
-                VALID_ORIGIN,
-                "/path",
-                "POST",
-                "",
-                DATA_EVENTO_STEP,
-                CLIENT_SS_ID,
-                SERVER_AS_ID
-        );
-        assertFalse(result.isValid());
-        assertEquals("Header 'step' must not be empty", result.getErrorMessage());
-    }
-
-    @Test
-    @DisplayName("Returns error when dataEventoStep is empty")
-    void shouldReturnErrorWhenDataEventoStepIsEmpty() {
-        HeaderValidator.ValidationResult result = headerValidator.validate(
-                VALID_CORRELATION_ID,
-                VALID_ORIGIN,
-                "/path",
-                "POST",
-                STEP,
-                "",
-                CLIENT_SS_ID,
-                SERVER_AS_ID
-        );
-        assertFalse(result.isValid());
-        assertEquals("Header 'dataEventoStep' must not be empty", result.getErrorMessage());
+    @DisplayName("Returns success when step and dataEventoStep are null or blank (optional headers)")
+    void shouldReturnSuccessWhenStepHeadersAreOptional() {
+        assertTrue(headerValidator.validate(
+                VALID_CORRELATION_ID, VALID_ORIGIN, "/path", "POST",
+                null, null, CLIENT_SS_ID, SERVER_AS_ID).isValid());
+        assertTrue(headerValidator.validate(
+                VALID_CORRELATION_ID, VALID_ORIGIN, "/path", "POST",
+                "", "", CLIENT_SS_ID, SERVER_AS_ID).isValid());
+        assertTrue(headerValidator.validate(
+                VALID_CORRELATION_ID, VALID_ORIGIN, "/path", "POST",
+                "   ", "  ", CLIENT_SS_ID, SERVER_AS_ID).isValid());
+        assertTrue(headerValidator.validate(
+                VALID_CORRELATION_ID, VALID_ORIGIN, "/path", "POST",
+                null, DATA_EVENTO_STEP, CLIENT_SS_ID, SERVER_AS_ID).isValid());
+        assertTrue(headerValidator.validate(
+                VALID_CORRELATION_ID, VALID_ORIGIN, "/path", "POST",
+                STEP, null, CLIENT_SS_ID, SERVER_AS_ID).isValid());
     }
 
     @Test

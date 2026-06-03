@@ -6,10 +6,10 @@ spring:
     active: ${SPRING_PROFILES_ACTIVE:default}
 
   rabbitmq:
-    host: ${RABBITMQ_VALIDATOR_HOST}
-    port: ${RABBITMQ_VALIDATOR_PORT}
-    username: ${RABBITMQ_USERNAME}
-    password: ${RABBITMQ_PASSWORD}
+    host: rabbitmq.broker-client.svc.cluster.local
+    port: 5672
+    username: user
+    password: bitnami
 
   # Cache configuration
   cache:
@@ -76,7 +76,7 @@ mop:
     org-id: ${JWS_ORG_ID}
   client:
     retry:
-      queue: ${MOP_CLIENT_RETRY_QUEUE:mop.client.retry.queue}
+      queue: mop.client.retry.queue
       replay:
         enabled: ${MOP_CLIENT_RETRY_REPLAY_ENABLED:true}
         initial-delay-ms: ${MOP_CLIENT_RETRY_REPLAY_INITIAL_DELAY_MS:60000}

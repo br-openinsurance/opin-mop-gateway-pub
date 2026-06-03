@@ -74,8 +74,8 @@ public class AnonymizerController {
      * Body is optional: null/empty or invalid JSON are treated as empty object ({}).
      * If the body parses to a JSON array or any non-object root, the request is rejected with HTTP 400
      * (one business event per request — no batch arrays).
-     * Required headers: X-Correlation-Id (correlationId), origin (client/server), path, operation, step, dataEventoStep, clientSSId, serverASId.
-     * Optional: traceOrigin (repassado no mapa de headers quando informado). Opcional: X-Mop-Reportid (gerado se ausente).
+     * Required headers: X-Correlation-Id (correlationId), origin (client/server), path, operation, clientSSId, serverASId.
+     * Optional: step, dataEventoStep, traceOrigin (repassados quando informados). Opcional: X-Mop-Reportid (gerado se ausente).
      * Response does not include trace object; trace is only present in the final JSON (MessageDTO) sent internally.
      *
      * @param requestBody    JSON payload (can be null or empty)
@@ -83,8 +83,9 @@ public class AnonymizerController {
      * @param origin         Origin header - only "client" or "server" (required)
      * @param path           Path header (required)
      * @param operation      Operation header (required)
-     * @param step           Step of the flow in the trace, e.g. consent-created (required)
-     * @param dataEventoStep Timestamp of the step event, ISO-8601 (required)
+     * @param step           Step of the flow in the trace, e.g. consent-created (optional)
+     * @param dataEventoStep Timestamp of the step event, ISO-8601 (optional)
+     * @param traceOrigin      Trace event origin, e.g. CLIENT (optional)
      * @param clientSSId     Client SS identifier - receiver (required)
      * @param serverASId     Server AS identifier - transmitter (required)
      * @param headers        All request headers
@@ -97,8 +98,9 @@ public class AnonymizerController {
             @RequestHeader(value = ORIGIN, required = true) String origin,
             @RequestHeader(value = PATH, required = true) String path,
             @RequestHeader(value = OPERATION, required = true) String operation,
-            @RequestHeader(value = STEP, required = true) String step,
-            @RequestHeader(value = DATA_EVENTO_STEP, required = true) String dataEventoStep,
+            @RequestHeader(value = STEP, required = false) String step,
+            @RequestHeader(value = DATA_EVENTO_STEP, required = false) String dataEventoStep,
+            @RequestHeader(value = TRACE_ORIGIN, required = false) String traceOrigin,
             @RequestHeader(value = CLIENT_SS_ID, required = true) String clientSSId,
             @RequestHeader(value = SERVER_AS_ID, required = true) String serverASId,
             @RequestHeader Map<String, String> headers) {
@@ -106,7 +108,7 @@ public class AnonymizerController {
         LOGGER.debug("Received POST request. Payload length: {}",
                 requestBody != null ? requestBody.length() : 0);
 
-        // Validate headers (correlationId required; origin must be "client" or "server")
+        // Validate headers
         HeaderValidator.ValidationResult validationResult = headerValidator.validate(
                 correlationId, origin, path, operation, step, dataEventoStep, clientSSId, serverASId);
         if (!validationResult.isValid()) {
@@ -129,10 +131,9 @@ public class AnonymizerController {
             }
             String jsonPayload = jsonParser.toJsonString(jsonNode);
 
-            // Build headers DTO (correlationId is independent, from user header)
             RequestHeadersDTO headersDTO = headersBuilder.build(
                     correlationId, origin, path, operation,
-                    step, dataEventoStep,
+                    step, dataEventoStep, traceOrigin,
                     headers, clientSSId, serverASId);
 
             // Process request through unified flow: validation -> anonymization -> external API

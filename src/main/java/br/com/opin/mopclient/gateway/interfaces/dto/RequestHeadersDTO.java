@@ -26,11 +26,13 @@ import java.util.Map;
  * <p>
  * <strong>Required HTTP headers (controller):</strong>
  * <ul>
- *   <li>{@code X-Correlation-Id}, {@code origin}, {@code path}, {@code operation}, {@code step}, {@code dataEventoStep}, {@code clientSSId}, {@code serverASId}</li>
+ *   <li>{@code X-Correlation-Id}, {@code origin}, {@code path}, {@code operation}, {@code clientSSId}, {@code serverASId}</li>
  * </ul>
  * <p>
  * <strong>Optional Headers:</strong>
  * <ul>
+ *   <li>{@code step}, {@code dataEventoStep}: reflected in the internal message trace when provided</li>
+ *   <li>{@code traceOrigin}: optional trace context when provided</li>
  *   <li>{@code mopReportid}: MOP report identifier for distributed tracing (optional)</li>
  *   <li>{@code timestamp}: Timestamp of the request (optional, can be auto-generated)</li>
  *   <li>{@code headers}: Map of additional custom headers (optional)</li>
@@ -160,7 +162,7 @@ public class RequestHeadersDTO {
     /**
      * Origin of the event in the trace (e.g. CLIENT, SERVER).
      * <p>
-     * Optional. When provided via header {@code traceOrigin}, it is reflected in the message trace.
+     * Optional. When provided via header {@code traceOrigin}, it is serialized in {@code TraceDTO} of the {@code MessageDTO} sent to the MOP server.
      */
     @JsonProperty("traceOrigin")
     private String traceOrigin;

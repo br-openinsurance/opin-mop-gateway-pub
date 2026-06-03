@@ -29,10 +29,8 @@ public final class HttpHeaderConstants {
 
     public static final String TIMESTAMP = "timestamp";
 
-    /** Header name for step (trace flow step, e.g. consent-created). */
     public static final String STEP = "step";
 
-    /** Header name for dataEventoStep (step event timestamp in trace, ISO-8601). */
     public static final String DATA_EVENTO_STEP = "dataEventoStep";
 
     /** Header name for traceOrigin (trace event origin, e.g. CLIENT). */

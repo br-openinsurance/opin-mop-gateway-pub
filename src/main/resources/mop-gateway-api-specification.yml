@@ -11,7 +11,7 @@ info:
     - Implementação: `AnonymizerController`
 
     **Fluxo interno (síncrono)**
-    1. Validação de headers obrigatórios (`HeaderValidator`).
+    1. Validação de headers (`HeaderValidator`): obrigatórios e opcionais conforme contrato.
     2. Parse do corpo JSON opcional (vazio / inválido → `{}`).
     3. Validação OpenAPI do payload (`OpenApiValidationService`).
     4. Busca de configuração de anonimização no MOP e anonimização de campos.
@@ -43,10 +43,10 @@ paths:
       description: |
         Contrato espelha `AnonymizerController.receivedRequest`.
 
-        **Headers obrigatórios** (todos repassados ao fluxo; `X-Correlation-Id` é o ID de correlação informado pelo cliente):
-        `X-Correlation-Id`, `origin`, `path`, `operation`, `step`, `dataEventoStep`, `clientSSId`, `serverASId`.
+        **Headers obrigatórios:**
+        `X-Correlation-Id`, `origin`, `path`, `operation`, `clientSSId`, `serverASId`.
 
-        **Headers opcionais:** `traceOrigin`, `X-Mop-Reportid` (se ausente, o gateway gera um identificador interno).
+        **Headers opcionais:** `step`, `dataEventoStep`, `traceOrigin`, `X-Mop-Reportid` (se ausente, o gateway gera um identificador interno).
 
         **Corpo:** JSON opcional. O objeto de rastreio completo (`MessageDTO`) **não** é devolvido na resposta HTTP; só campos planos de sucesso/erro abaixo.
 
@@ -258,29 +258,27 @@ components:
       name: "step"
       in: "header"
       description: |
-        Nome do passo no fluxo (ex.: `consent-created`). Obrigatório; usado no `MessageDTO`/rastreio interno.
-      required: true
+        Nome do passo no fluxo (ex.: `consent-created`). Opcional; quando ausente, o gateway preenche o trace com valor derivado internamente.
+      required: false
       schema:
         type: string
-        minLength: 1
         example: "consent-created"
 
     dataEventoStepHeader:
       name: "dataEventoStep"
       in: "header"
       description: |
-        Instantâneo do evento do passo (texto ISO-8601). Obrigatório; validação atual exige não vazio (formato livre em string).
-      required: true
+        Instantâneo do evento do passo (texto ISO-8601). Opcional; quando ausente, o gateway usa instante atual no trace.
+      required: false
       schema:
         type: string
-        minLength: 1
         example: "2026-04-23T14:10:09.650942812Z"
 
     traceOriginHeader:
       name: "traceOrigin"
       in: "header"
       description: |
-        Opcional. Lido de `RequestHeadersDTO` / mapa de headers para contexto; **não** compõe o `TraceDTO` serializado no `MessageDTO` na implementação atual.
+        Opcional. Quando informado, repassado ao MOP no objeto `trace` do `MessageDTO` (`TraceDTO.traceOrigin`).
       required: false
       schema:
         type: string

@@ -45,6 +45,12 @@ public class TraceDTO {
     @JsonProperty("origin")
     private String origin;
 
+    /**
+     * Origin of the trace event (e.g. CLIENT, SERVER). Optional; from header {@code traceOrigin}.
+     */
+    @JsonProperty("traceOrigin")
+    private String traceOrigin;
+
     @JsonProperty("OrgId")
     private String orgId;
 }

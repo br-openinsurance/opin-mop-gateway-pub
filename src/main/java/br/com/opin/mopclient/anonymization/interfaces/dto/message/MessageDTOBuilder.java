@@ -52,6 +52,9 @@ public final class MessageDTOBuilder {
         String traceDataEventoStep = (headersDTO.getDataEventoStep() != null && !headersDTO.getDataEventoStep().isBlank())
                 ? headersDTO.getDataEventoStep()
                 : Instant.now().toString();
+        String traceOrigin = headersDTO.getTraceOrigin() != null && !headersDTO.getTraceOrigin().isBlank()
+                ? headersDTO.getTraceOrigin()
+                : "";
 
         MetadataDTO metadata = MetadataDTO.builder()
                 .version("1.0")
@@ -74,6 +77,7 @@ public final class MessageDTOBuilder {
                 .step(traceStep)
                 .dataEventoStep(traceDataEventoStep)
                 .origin(origin != null ? origin : "")
+                .traceOrigin(traceOrigin)
                 .orgId(orgId != null ? orgId : "")
                 .build();
 
