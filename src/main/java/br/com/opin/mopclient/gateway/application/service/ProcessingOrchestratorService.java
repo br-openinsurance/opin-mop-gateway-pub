@@ -9,6 +9,7 @@ import br.com.opin.mopclient.anonymization.infrastructure.mapper.MessagePayloadW
 import br.com.opin.mopclient.anonymization.shared.exception.infrastructure.ConfigUnavailableException;
 import br.com.opin.mopclient.anonymization.shared.util.MopReportidManager;
 import br.com.opin.mopclient.anonymization.shared.util.JsonConverter;
+import br.com.opin.mopclient.gateway.interfaces.dto.ServerResponseDTO;
 import br.com.opin.mopclient.gateway.interfaces.dto.RequestHeadersDTO;
 import br.com.opin.mopclient.gateway.shared.exception.ErrorResponseException;
 import br.com.opin.mopclient.retry.ClientRetryUserMessages;
@@ -70,7 +71,7 @@ public class ProcessingOrchestratorService {
         this.signingProperties = Objects.requireNonNull(signingProperties, "SigningProperties cannot be null");
     }
 
-    public String processRequest(String originalRequestBody, String normalizedPayload, RequestHeadersDTO headersDTO) {
+    public ProcessingResult processRequest(String originalRequestBody, String normalizedPayload, RequestHeadersDTO headersDTO) {
         return processRequest(originalRequestBody, normalizedPayload, headersDTO, false);
     }
 
@@ -79,7 +80,7 @@ public class ProcessingOrchestratorService {
      * @param normalizedPayload JSON after gateway parse/normalize (used for validation and anonymization)
      * @param suppressRetryEnqueue when {@code true} (replay from the retry queue), MOP failures are not re-enqueued
      */
-    public String processRequest(
+    public ProcessingResult processRequest(
             String originalRequestBody,
             String normalizedPayload,
             RequestHeadersDTO headersDTO,
@@ -141,8 +142,9 @@ public class ProcessingOrchestratorService {
                     "[STEP 6.1] Outbound: calling MOP process endpoint | wrapped payload length: {} chars | Correlation ID: {}",
                     wrappedJson.length(),
                     correlationId);
+            ServerResponseDTO serverResponse;
             try {
-                externalApiClient.sendJsonPayload(wrappedJson);
+                serverResponse = externalApiClient.sendJsonPayload(wrappedJson);
             } catch (CallNotPermittedException e) {
                 logger.warn(
                         "MOP unavailable (circuit breaker open on /process) | correlationId={} | summary={}",
@@ -185,7 +187,7 @@ public class ProcessingOrchestratorService {
             }
             logger.info("[STEP 6.5] Outbound: MOP process call completed successfully | Correlation ID: {}", correlationId);
 
-            return wrappedJson;
+            return new ProcessingResult(wrappedJson, validations, serverResponse);
 
         } finally {
             MopReportidManager.clearMopReportid();
@@ -194,7 +196,12 @@ public class ProcessingOrchestratorService {
 
     private ValidationResponseDTO performValidation(String payload, RequestHeadersDTO headersDTO) {
         HttpHeaders httpHeaders = convertHeadersToHttpHeaders(headersDTO.getHeaders());
-        return validationService.validate(payload, httpHeaders, headersDTO.getPath());
+        return validationService.validate(
+                payload,
+                httpHeaders,
+                headersDTO.getPath(),
+                headersDTO.getOperation(),
+                headersDTO.getOrigin());
     }
 
     private List<Validation> convertValidations(ValidationResponseDTO validatorResponse) {

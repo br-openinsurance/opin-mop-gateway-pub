@@ -5,6 +5,12 @@ public final class HttpHeaderConstants {
     /** Header name for operation: GET, POST, PUT, DELETE */
     public static final String OPERATION = "operation";
 
+    /** Header name for httpType: Request or Response. */
+    public static final String HTTP_TYPE = "httpType";
+
+    /** Header name for HTTP status code (required when httpType is Response). */
+    public static final String STATUS_CODE = "statusCode";
+
     /** Header name for origin. */
     public static final String ORIGIN = "origin";
 
@@ -28,10 +34,6 @@ public final class HttpHeaderConstants {
     public static final String CORRELATION_ID = "X-Correlation-Id";
 
     public static final String TIMESTAMP = "timestamp";
-
-    public static final String STEP = "step";
-
-    public static final String DATA_EVENTO_STEP = "dataEventoStep";
 
     /** Header name for traceOrigin (trace event origin, e.g. CLIENT). */
     public static final String TRACE_ORIGIN = "traceOrigin";

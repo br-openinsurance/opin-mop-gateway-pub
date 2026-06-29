@@ -36,9 +36,27 @@ mvn spring-boot:run
 
 ---
 
-## 3. Intervalos de retry e disponibilidade
+## 3. Intervalos de retry, DLQ e disponibilidade
 
-Propriedades `mop.client.retry.replay.*` e `mop.server.availability.*` controlam o **replay** da fila e as **sondas** ao MOP. Lista completa: [VARIAVEIS_DE_AMBIENTE.md](VARIAVEIS_DE_AMBIENTE.md).
+Propriedades `mop.client.retry.replay.*`, `mop.client.retry.dlq.*` e `mop.server.availability.*` controlam o **replay** da fila, o encaminhamento para **Dead-Letter Queue (DLQ)** e as **sondas** ao MOP. Lista completa: [VARIAVEIS_DE_AMBIENTE.md](VARIAVEIS_DE_AMBIENTE.md).
+
+### 3.1 Limite de tentativas e DLQ
+
+Cada mensagem na fila de retry mantém um contador `attemptCount`. Quando o `ClientRetryReplayScheduler` tenta reenviar ao MOP e a operação falha:
+
+1. O contador é incrementado e os metadados `lastFailureAt` / `lastFailureDetail` são preenchidos.
+2. Se `attemptCount < mop.client.retry.dlq.max-attempts` (padrão **5**), a mensagem é **republicada** na fila de retry.
+3. Se o limite for atingido, o evento vai para a fila DLQ (`mop.client.retry.dlq.queue`, padrão `mop.client.retry.dlq`) com `dlqReason=MAX_RETRY_ATTEMPTS_EXCEEDED` e `movedToDlqAt`.
+
+Mensagens **inválidas** (JSON corrompido) são enviadas à DLQ com `dlqReason=UNPARSEABLE_MESSAGE` e `rawQueuePayload` para rastreabilidade. Logs usam o prefixo `[MOP retry DLQ]` e incluem `correlationId`.
+
+### 3.2 Reprocessamento a partir da DLQ
+
+O gateway **não** consome nem reenvia automaticamente mensagens da DLQ. Após análise e correção, o **cliente/operador** é responsável por:
+
+- consumir a fila `mop.client.retry.dlq` (RabbitMQ Management, script ou integração própria);
+- inspecionar o JSON (`correlationId`, `dlqReason`, `lastFailureDetail`, payloads);
+- reenviar ao fluxo principal (nova chamada HTTP ao gateway ou republicação manual na fila de retry), conforme a política do integrador.
 
 ---
 
@@ -53,6 +71,8 @@ Além da fila de retry, o YAML ainda declara *listener*, nomes de filas antigas 
 | Pergunta | Resposta |
 |----------|----------|
 | Existe fila interna? | Sim — **retry** (`MOP_CLIENT_RETRY_QUEUE`) quando o MOP não está acessível no momento. |
+| O que acontece após muitas falhas de replay? | Mensagem vai para a **DLQ** (`MOP_CLIENT_RETRY_DLQ_QUEUE`) após `MOP_CLIENT_RETRY_DLQ_MAX_ATTEMPTS` tentativas. |
+| Como reprocessar da DLQ? | Responsabilidade do **cliente** — consumir a DLQ, corrigir e reenviar (HTTP ou fila de retry). |
 | O cliente HTTP sempre vê erro quando há fila? | Não — pode receber **200** com mensagem de sucesso; ver logs `[MOP retry]`. |
 | O que ajusta “frequência de atualização” de regras/config? | Principalmente **TTL dos caches** (`CACHE_*_TTL_SECONDS`). |
 

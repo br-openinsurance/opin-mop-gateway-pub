@@ -46,19 +46,17 @@ public final class MessageDTOBuilder {
         Map<String, String> headers = headersDTO.getHeaders() != null ? headersDTO.getHeaders() : Map.of();
         String method = extractMethod(headers);
 
-        String traceStep = (headersDTO.getStep() != null && !headersDTO.getStep().isBlank())
-                ? headersDTO.getStep()
-                : (step != null ? step : "request-received");
-        String traceDataEventoStep = (headersDTO.getDataEventoStep() != null && !headersDTO.getDataEventoStep().isBlank())
-                ? headersDTO.getDataEventoStep()
-                : Instant.now().toString();
+        String traceStep = step != null && !step.isBlank() ? step : "request-received";
+        String traceDataEventoStep = Instant.now().toString();
         String traceOrigin = headersDTO.getTraceOrigin() != null && !headersDTO.getTraceOrigin().isBlank()
                 ? headersDTO.getTraceOrigin()
                 : "";
+        String httpType = headersDTO.getHttpType() != null ? headersDTO.getHttpType() : "";
+        String statusCode = headersDTO.getStatusCode() != null ? headersDTO.getStatusCode() : "";
 
         MetadataDTO metadata = MetadataDTO.builder()
                 .version("1.0")
-                .environment("dev")
+                .environment("sandbox")
                 .module("MOP")
                 .initiatedBy("mop-client-gateway")
                 .purpose("Data anonymization and routing")
@@ -72,6 +70,8 @@ public final class MessageDTOBuilder {
                 .traceId(generateTraceId())
                 .path(path != null ? path : "")
                 .operation(operation != null ? operation : "")
+                .httpType(httpType)
+                .statusCode(statusCode)
                 .clientSSId(clientSSId != null ? clientSSId : "")
                 .serverASId(serverASId != null ? serverASId : "")
                 .step(traceStep)

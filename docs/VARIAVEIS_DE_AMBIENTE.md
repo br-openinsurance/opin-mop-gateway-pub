@@ -125,6 +125,8 @@ Prefixo: `mop.client.retry` e `mop.server.availability`.
 | `mop.client.retry.replay.initial-delay-ms` | `MOP_CLIENT_RETRY_REPLAY_INITIAL_DELAY_MS` | `60000` (1 min) | (igual) | Atraso da primeira drenagem após o boot. |
 | `mop.client.retry.replay.interval-ms` | `MOP_CLIENT_RETRY_REPLAY_INTERVAL_MS` | `60000` (1 min) | (igual) | Intervalo entre ciclos de dreno (`fixedDelay`). |
 | `mop.client.retry.replay.max-messages-per-tick` | `MOP_CLIENT_RETRY_REPLAY_MAX_PER_TICK` | `25` | (igual) | Lote por ciclo. |
+| `mop.client.retry.dlq.queue` | `MOP_CLIENT_RETRY_DLQ_QUEUE` | `mop.client.retry.dlq` | (igual) | Fila Dead-Letter para eventos que excederam tentativas ou são inválidos. |
+| `mop.client.retry.dlq.max-attempts` | `MOP_CLIENT_RETRY_DLQ_MAX_ATTEMPTS` | `5` | (igual) | Máximo de falhas de replay antes de mover para a DLQ. |
 | `mop.server.availability.enabled` | `MOP_SERVER_AVAILABILITY_CHECK_ENABLED` | `true` | (igual) | Sondas HTTP de disponibilidade do MOP. |
 | `mop.server.availability.check-interval-ms` | `MOP_SERVER_AVAILABILITY_CHECK_INTERVAL_MS` | `30000` | (igual) | Intervalo entre sondas. |
 | `mop.server.availability.connect-timeout-ms` | `MOP_SERVER_AVAILABILITY_CONNECT_TIMEOUT_MS` | `3000` | (igual) | Timeout de conexão. |

@@ -30,12 +30,8 @@ public class InMemoryCacheManagerConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(InMemoryCacheManagerConfig.class);
 
-    public static final String OPEN_API_SPEC = "openApiSpec";
     public static final String NORMALIZED_ENDPOINTS = "normalizedEndpoints";
     public static final String ANONYMIZATION_CONFIG = "anonymizationConfig";
-
-    @Value("${cache.open-api-spec.ttl-seconds:3600}")
-    private long openApiSpecTtlSeconds;
 
     @Value("${cache.app-config.ttl-seconds:1800}")
     private long appConfigTtlSeconds;
@@ -52,13 +48,6 @@ public class InMemoryCacheManagerConfig {
 
         SimpleCacheManager cacheManager = new SimpleCacheManager();
         List<Cache> caches = new ArrayList<>();
-
-        logger.debug("  - Creating cache: {} (TTL: {} seconds, Max Size: 1)", OPEN_API_SPEC, openApiSpecTtlSeconds);
-        caches.add(createCaffeineCache(OPEN_API_SPEC, Caffeine.newBuilder()
-                .maximumSize(1)
-                .expireAfterWrite(openApiSpecTtlSeconds, TimeUnit.SECONDS)
-                .recordStats()
-                .build()));
 
         logger.debug(
                 "  - Creating cache: {} (TTL: {} seconds, Max Size: {})",

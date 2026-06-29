@@ -26,13 +26,14 @@ import java.util.Map;
  * <p>
  * <strong>Required HTTP headers (controller):</strong>
  * <ul>
- *   <li>{@code X-Correlation-Id}, {@code origin}, {@code path}, {@code operation}, {@code clientSSId}, {@code serverASId}</li>
+ *   <li>{@code X-Correlation-Id}, {@code origin}, {@code path}, {@code operation}, {@code httpType}</li>
+ *   <li>{@code statusCode}: obrigatório quando {@code httpType} é {@code Response}; opcional quando {@code Request}</li>
  * </ul>
  * <p>
  * <strong>Optional Headers:</strong>
  * <ul>
- *   <li>{@code step}, {@code dataEventoStep}: reflected in the internal message trace when provided</li>
- *   <li>{@code traceOrigin}: optional trace context when provided</li>
+ *   <li>{@code clientSSId}, {@code serverASId}: identificadores das partes quando informados</li>
+ *   <li>{@code traceOrigin}: origem do evento de trace quando informada</li>
  *   <li>{@code mopReportid}: MOP report identifier for distributed tracing (optional)</li>
  *   <li>{@code timestamp}: Timestamp of the request (optional, can be auto-generated)</li>
  *   <li>{@code headers}: Map of additional custom headers (optional)</li>
@@ -112,6 +113,18 @@ public class RequestHeadersDTO {
     private String operation;
 
     /**
+     * HTTP message type: {@code Request} or {@code Response} (required).
+     */
+    @JsonProperty("httpType")
+    private String httpType;
+
+    /**
+     * HTTP status code. Required when {@code httpType} is {@code Response}; optional when {@code Request}.
+     */
+    @JsonProperty("statusCode")
+    private String statusCode;
+
+    /**
      * Correlation ID (required). Provided by the client in the X-Correlation-Id header.
      * Independent field used for tracing.
      */
@@ -142,22 +155,6 @@ public class RequestHeadersDTO {
      * extensibility and passing through custom metadata.
      */
     private Map<String, String> headers;
-
-    /**
-     * Step of the flow in the trace (e.g. consent-created, consent-read).
-     * <p>
-     * Optional. When provided via header {@code step}, it is reflected in the message trace.
-     */
-    @JsonProperty("step")
-    private String step;
-
-    /**
-     * Timestamp of the step event in the trace (ISO-8601).
-     * <p>
-     * Optional. When provided via header {@code dataEventoStep}, it is reflected in the message trace.
-     */
-    @JsonProperty("dataEventoStep")
-    private String dataEventoStep;
 
     /**
      * Origin of the event in the trace (e.g. CLIENT, SERVER).

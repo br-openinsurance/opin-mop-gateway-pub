@@ -2,6 +2,7 @@ package br.com.opin.mopclient.gateway.application.service;
 
 import br.com.opin.mopclient.gateway.shared.exception.ErrorResponseException;
 import br.com.opin.mopclient.retry.infrastructure.outbound.ProcessEndpointCircuitClient;
+import br.com.opin.mopclient.gateway.interfaces.dto.ServerResponseDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -56,12 +57,15 @@ class ExternalApiClientTest {
     }
 
     @Test
-    @DisplayName("Sends JSON payload successfully")
+    @DisplayName("Sends JSON payload successfully and returns MOP server response")
     void shouldSendJsonPayloadSuccessfully() {
-        doNothing().when(processEndpointCircuitClient).postJson(eq(TEST_URL), eq(VALID_JSON_PAYLOAD));
+        ServerResponseDTO mopResponse = ServerResponseDTO.builder().status(200).body("ok").build();
+        when(processEndpointCircuitClient.postJson(eq(TEST_URL), eq(VALID_JSON_PAYLOAD))).thenReturn(mopResponse);
 
-        assertDoesNotThrow(() -> externalApiClient.sendJsonPayload(VALID_JSON_PAYLOAD));
+        ServerResponseDTO result = externalApiClient.sendJsonPayload(VALID_JSON_PAYLOAD);
 
+        assertEquals(200, result.getStatus());
+        assertEquals("ok", result.getBody());
         verify(processEndpointCircuitClient, times(1)).postJson(eq(TEST_URL), eq(VALID_JSON_PAYLOAD));
     }
 

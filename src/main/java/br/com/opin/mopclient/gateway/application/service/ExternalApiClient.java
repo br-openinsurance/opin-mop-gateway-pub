@@ -1,5 +1,6 @@
 package br.com.opin.mopclient.gateway.application.service;
 
+import br.com.opin.mopclient.gateway.interfaces.dto.ServerResponseDTO;
 import br.com.opin.mopclient.retry.infrastructure.outbound.ProcessEndpointCircuitClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -107,9 +108,9 @@ public class ExternalApiClient {
      * @throws IllegalArgumentException if the jsonPayload is null or blank.
      * @throws br.com.opin.mopclient.gateway.shared.exception.ErrorResponseException if an error occurs while sending the request.
      */
-    public void sendJsonPayload(final String jsonPayload) {
+    public ServerResponseDTO sendJsonPayload(final String jsonPayload) {
         validatePayload(jsonPayload);
-        processEndpointCircuitClient.postJson(processUrl, jsonPayload);
+        return processEndpointCircuitClient.postJson(processUrl, jsonPayload);
     }
 
     /**

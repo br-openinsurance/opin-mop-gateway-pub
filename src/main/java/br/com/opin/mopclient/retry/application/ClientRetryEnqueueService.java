@@ -55,6 +55,7 @@ public class ClientRetryEnqueueService {
                 .requestPayload(normalizedRequestPayload)
                 .headers(snapshotHeaders(headers))
                 .wrappedPayloadForProcess(wrappedPayloadForProcess)
+                .attemptCount(0)
                 .build();
 
         try {
@@ -99,12 +100,12 @@ public class ClientRetryEnqueueService {
                 .origin(h.getOrigin())
                 .path(h.getPath())
                 .operation(h.getOperation())
+                .httpType(h.getHttpType())
+                .statusCode(h.getStatusCode())
                 .correlationId(h.getCorrelationId())
                 .mopReportid(h.getMopReportid())
                 .timestamp(h.getTimestamp())
                 .headers(headersCopy)
-                .step(h.getStep())
-                .dataEventoStep(h.getDataEventoStep())
                 .traceOrigin(h.getTraceOrigin())
                 .build();
     }

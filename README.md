@@ -1,4 +1,4 @@
-# MOP Client
+# MOP Client 
 
 API HTTP **auto-hospedada** que cada participante do **Open Insurance Brasil** instala em seu ambiente para enviar eventos de trace ao **MOP Server**. Em uma única aplicação, executa: validação → anonimização → assinatura JWS → POST ao MOP, com **circuit breaker** e **fila de retry** quando o MOP está indisponível.
 
@@ -58,35 +58,6 @@ flowchart LR
 > A resposta `HTTP 200 SUCCESS` cobre **os dois cenários** (entregue ou enfileirado) com o **mesmo body**. Para saber qual aconteceu, olhe os **logs** e a **profundidade da fila**. Trate como at-least-once e leia [Antes de ir para produção](#antes-de-ir-para-produção).
 
 ---
-# Instalação do MOP Client (Kubernetes / Helm)
-
-Para implantar o **MOP Client** em ambiente **Kubernetes**, a forma recomendada é o **Helm Chart** publicado no **GitHub Container Registry (GHCR)**. O chart provisiona os recursos necessários (Deployment, Service, Ingress conforme `values`, secrets de pull, etc.) sem exigir montagem manual do manifesto da aplicação.
-
-## Guia oficial
-
-O passo a passo completo — pré-requisitos (Kubernetes 1.24+, Helm 3.8+ com OCI), criação do `values-client.yaml`, `helm install`, `helm upgrade`, verificação pós-instalação e desinstalação — está no repositório de publicação:
-
-**[Instalação via Helm Chart — `INSTALA_MOP_CLIENT.md`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/feat/mop-client-install/docs/INSTALA_MOP_CLIENT.md)**
-
-> Utilize o branch **`feat/mop-client-install`** (ou o branch/tag indicado pela equipe MOP) até que o guia seja incorporado à linha principal do repositório.
-
-## Resumo
-
-| Item | Detalhe |
-|------|---------|
-| Chart | `oci://ghcr.io/br-openinsurance/mop-client-chart/mop-client` |
-| Registry | `ghcr.io` (credencial `read:packages` no GitHub) |
-| Configuração | Arquivo local `values-client.yaml` (não versionar segredos) |
-| Exemplo de instalação | `helm install mop-client oci://ghcr.io/br-openinsurance/mop-client-chart/mop-client --version <versão> -f values-client.yaml` |
-
-Após o deploy, configure variáveis de ambiente e endpoints MOP conforme [`VARIAVEIS_DE_AMBIENTE.md`](VARIAVEIS_DE_AMBIENTE.md) e valide o health em `{context-path}/actuator/health` (padrão `/v1/anonymize/actuator/health`).
-
-## Outros modos de implantação
-
-- **Desenvolvimento local:** Maven + Docker Compose (RabbitMQ) — ver [README.md](../README.md#início-rápido--rodando-em-até-10-minutos).
-- **Container customizado:** imagem Docker do projeto; variáveis e context-path descritos em [`VARIAVEIS_DE_AMBIENTE.md`](VARIAVEIS_DE_AMBIENTE.md).
-
-Para dúvidas sobre versão do chart, valores Helm ou suporte à instalação, contate a equipe responsável pelo MOP Client (referência no guia oficial acima).
 
 ## Instalação em Kubernetes (Helm)
 
@@ -206,8 +177,7 @@ curl -i -X POST http://localhost:8080/v1/anonymize/data \
   -H "origin: client" \
   -H "path: /open-insurance/consents/v2/consents" \
   -H "operation: POST" \
-  -H "step: consent-created" \
-  -H "dataEventoStep: 2026-04-27T11:00:00Z" \
+  -H "httpType: Request" \
   -H "clientSSId: RECEPTORA-A" \
   -H "serverASId: TRANSMISSORA-B" \
   -H "Content-Type: application/json" \
@@ -221,27 +191,42 @@ HTTP/1.1 200
 Content-Type: application/json
 
 {
-  "status": "SUCCESS",
   "message": "Request processed successfully. Your data has been received and forwarded to the server.",
-  "correlationId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
   "timestamp": "2026-04-27T11:00:01.234Z",
-  "clientSSId": "RECEPTORA-A",
-  "serverASId": "TRANSMISSORA-B",
-  "path": "/open-insurance/consents/v2/consents",
-  "operation": "POST"
+  "context": {
+    "correlationId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    "clientSSId": "RECEPTORA-A",
+    "serverASId": "TRANSMISSORA-B"
+  },
+  "request": {
+    "path": "/open-insurance/consents/v2/consents",
+    "operation": "POST"
+  },
+  "response": {
+    "status": 201,
+    "body": {
+      "message": "Request dispatched for processing.",
+      "status": "success"
+    }
+  },
+  "validations": {
+    "status": "SUCCESS",
+    "total": 0,
+    "pending": []
+  }
 }
 ```
 
 ### Passo 5 — Validar entrega real ao MOP (~2 min)
 
-Como o body de `200` é o **mesmo** quando a mensagem foi entregue e quando ela apenas foi enfileirada, **sempre** valide pelos logs:
+Como o **202** indica enfileiramento e o **200** com `response` indica entrega síncrona, **sempre** valide pelos logs quando houver dúvida:
 
 ```bash
 # Log de entrega confirmada:
 # "Payload successfully processed. clientSSId=... correlationId=..."
 
 # Log de enfileiramento (MOP indisponível):
-# "[MOP retry] Client received HTTP 200; body sent to retry queue | correlationId=... | mopReportId=... | dateTime=..."
+# HTTP 202 — "[MOP retry] ... body sent to retry queue | correlationId=..."
 ```
 
 E pela profundidade da fila no RabbitMQ:
@@ -261,12 +246,12 @@ Esta seção lista os **riscos operacionais reais** do gateway. Não pule.
 
 ### 1. ⚠️ HTTP 200 não garante entrega ao MOP
 
-O gateway retorna `200 status=SUCCESS` em **dois cenários distintos** com o **mesmo body**:
+O gateway retorna corpos distintos para entrega síncrona (**200**) e enfileiramento (**202**). Não confie apenas no código HTTP sem verificar logs e o campo `response`.
 
-| Cenário | Status HTTP | Campo `status` | Campo `message` | Como detectar |
-|---|---|---|---|---|
-| Entregue ao MOP | 200 | `SUCCESS` | `"Request processed successfully..."` | Log: `Payload successfully processed` |
-| **Apenas enfileirado para retry** | 200 | `SUCCESS` | `"Request processed successfully..."` *(mesmo texto)* | Log: `[MOP retry] Client received HTTP 200; body sent to retry queue` |
+| Cenário | Status HTTP | Como detectar |
+|---|---|---|
+| Entregue ao MOP | 200 | Log: `Payload successfully processed` · body com `response` do MOP |
+| **Apenas enfileirado para retry** | 202 | Log: `[MOP retry]` · body com mensagem de fila · sem `response` |
 
 **Implicações para produção:**
 
@@ -301,7 +286,7 @@ O servidor MOP responde **`401`** se o `kid` do JWT não casar com nenhuma chave
 
 ### 5. Headers HTTP fora de convenção
 
-Os headers `origin`, `path`, `operation`, `step`, `dataEventoStep`, `clientSSId`, `serverASId` **não usam o prefixo `X-`** e nem kebab-case. Riscos:
+Os headers `origin`, `path`, `operation`, `clientSSId`, `serverASId` **não usam o prefixo `X-`** e nem kebab-case. Riscos:
 
 - `origin` colide com o header padrão CORS — proxies/CDN podem **sobrescrevê-lo**. Audite o caminho da requisição (Cloudflare, AWS ALB, NGINX) e garanta que esses headers passem intactos.
 - Logs centralizados (Datadog, ELK) tratam `path`/`operation` como termos genéricos — adicione tags próprias para não conflitar.
@@ -340,36 +325,105 @@ Seu cliente HTTP **precisa** lidar com ambos os formatos.
 | Header | Descrição | Restrições | Exemplo |
 |---|---|---|---|
 | `X-Correlation-Id` | ID da intenção lógica (idempotência at-least-once). | Não vazio, ≥ 1 char. **Recomendado: UUID v4.** | `f47ac10b-58cc-4372-a567-0e02b2c3d479` |
-| `origin` | Origem da chamada. | Exatamente `client` ou `server` (case-insensitive). | `client` |
-| `path` | Rota lógica do recurso OPIN. | Não vazio. | `/open-insurance/consents/v2/consents` |
-| `operation` | Verbo HTTP da operação original. | `GET`, `POST`, `PUT`, `PATCH`, `DELETE` (validado por `HttpMethod`). | `POST` |
-| `clientSSId` | Identificador da receptora (SS). | Não vazio. | `RECEPTORA-A` |
-| `serverASId` | Identificador da transmissora (AS). | Não vazio. | `TRANSMISSORA-B` |
+| `origin` | Origem da chamada no fluxo MOP. | `client` ou `server` (case-insensitive). `client` valida body como **request** OpenAPI; `server` como **response**. | `client` |
+| `path` | Path **concreto** da transação Open Insurance (`basePath + operationPath` com IDs reais). | Não vazio. **Não** use `{consentId}` literal. Ver [`docs/PATH_MOP_HEADER.md`](docs/PATH_MOP_HEADER.md). | `/open-insurance/consents/v2/consents/urn:seguradora:abc` |
+| `operation` | Verbo HTTP da operação original. | `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, `OPTIONS`, `TRACE`. | `POST` |
+| `httpType` | Tipo da mensagem HTTP no fluxo MOP. | `Request` ou `Response` (case-insensitive). | `Request` |
+| `statusCode` | Código HTTP da mensagem original. | **Condicional:** opcional quando `httpType=Request`; **obrigatório** quando `httpType=Response` (100–599). | `200` |
 
-**Headers opcionais:** `step` (etapa do trace; se ausente, o gateway deriva valor interno no `MessageDTO`) · `dataEventoStep` (instante ISO-8601 do passo; se ausente, usa instante atual no trace) · `traceOrigin` (origem do evento de trace; se informado, enviado ao MOP em `trace.traceOrigin` do `MessageDTO`) · `X-Mop-Reportid` (gerado se ausente).
+### Headers opcionais
+
+| Header | Descrição | Comportamento | Exemplo |
+|---|---|---|---|
+| `clientSSId` | Identificador da receptora (SS). | Ecoado em `context.clientSSId`; se ausente, usa `origin` na resposta. | `RECEPTORA-A` |
+| `serverASId` | Identificador da transmissora (AS). | Ecoado em `context.serverASId`; string vazia se ausente. | `TRANSMISSORA-B` |
+| `traceOrigin` | Origem do evento de trace. | Repassado ao MOP em `trace.traceOrigin` do `MessageDTO`. | `CLIENT` |
+| `X-Mop-Reportid` | ID de rastreio MOP interno. | Gerado pelo gateway se omitido. | `mop-report-7f3c9a2b` |
+
+**Regras de `httpType` e `statusCode`**
+
+| `httpType` | `statusCode` | Comportamento |
+|---|---|---|
+| `Request` | omitido | Aceito. |
+| `Request` | informado | Deve ser um código HTTP válido (100–599). |
+| `Response` | omitido | **HTTP 400** — `Header 'statusCode' is required when 'httpType' is 'Response'`. |
+| `Response` | informado | Obrigatório; deve ser 100–599. |
+
+Exemplo com `httpType=Response`:
+
+```bash
+curl -i -X POST http://localhost:8080/v1/anonymize/data \
+  -H "X-Correlation-Id: $(uuidgen)" \
+  -H "origin: server" \
+  -H "path: /open-insurance/consents/v2/consents" \
+  -H "operation: GET" \
+  -H "httpType: Response" \
+  -H "statusCode: 200" \
+  -H "clientSSId: RECEPTORA-A" \
+  -H "serverASId: TRANSMISSORA-B" \
+  -H "Content-Type: application/json" \
+  -d '{"data":{"id":"123"}}'
+```
 
 ### Resposta — `200 OK`
 
 ```json
 {
-  "status": "SUCCESS",
   "message": "Request processed successfully. Your data has been received and forwarded to the server.",
-  "correlationId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
   "timestamp": "2026-04-27T11:00:01.234Z",
-  "clientSSId": "RECEPTORA-A",
-  "serverASId": "TRANSMISSORA-B",
-  "path": "/open-insurance/consents/v2/consents",
-  "operation": "POST"
+  "context": {
+    "correlationId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    "clientSSId": "RECEPTORA-A",
+    "serverASId": "TRANSMISSORA-B"
+  },
+  "request": {
+    "path": "/open-insurance/consents/v2/consents",
+    "operation": "POST"
+  },
+  "response": {
+    "status": 201,
+    "body": {
+      "message": "Request dispatched for processing.",
+      "status": "success"
+    }
+  },
+  "validations": {
+    "status": "SUCCESS",
+    "total": 0,
+    "pending": []
+  }
 }
 ```
 
-> Cobre **dois cenários distintos** (entregue / enfileirado) — ver [Antes de ir para produção §1](#1-️-http-200-não-garante-entrega-ao-mop).
+> Resposta **200** com `response` = entrega síncrona ao MOP. Resposta **202** = enfileirado para retry (sem `response`). Ver [Antes de ir para produção §1](#1-️-http-200-não-garante-entrega-ao-mop).
+
+### Resposta — `202 Accepted` (MOP indisponível — enfileirado)
+
+```json
+{
+  "message": "Request accepted and queued for later delivery to the server (MOP unavailable).",
+  "timestamp": "2026-04-27T11:00:01.234Z",
+  "context": {
+    "correlationId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    "clientSSId": "RECEPTORA-A",
+    "serverASId": "TRANSMISSORA-B"
+  },
+  "request": {
+    "path": "/open-insurance/consents/v2/consents",
+    "operation": "POST"
+  },
+  "validations": {
+    "status": "SUCCESS",
+    "total": 0,
+    "pending": []
+  }
+}
+```
 
 ### Resposta — `400 Bad Request` (validação do controller)
 
 ```json
 {
-  "status": "ERROR",
   "error": "Invalid header",
   "details": "Header 'origin' must be either 'client' or 'server'",
   "timestamp": "2026-04-27T11:00:01.234Z"
@@ -525,8 +579,11 @@ Todos sob `/v1/anonymize/actuator/*`:
 - [`docs/INSTALACAO.md`](docs/INSTALACAO.md) — instalação em Kubernetes via **Helm** (link para o guia oficial no `opin-mop-gateway-pub`).
 - [`docs/VARIAVEIS_DE_AMBIENTE.md`](docs/VARIAVEIS_DE_AMBIENTE.md) — todas as variáveis e propriedades, com binding.
 - [`docs/REPROCESSAMENTO.md`](docs/REPROCESSAMENTO.md) — fila de retry, caches, retentativas, DLQ.
+- [`docs/PATH_MOP_HEADER.md`](docs/PATH_MOP_HEADER.md) — fórmula do header `path` e specs em `swagger/current/`.
+- [`docs/vulnerabilities/`](docs/vulnerabilities/) — relatórios de varredura de vulnerabilidades (Trivy, Tenable).
 - [`wiki.md`](wiki.md) — arquitetura interna.
-- [`src/main/resources/mop-gateway-api-specification.yml`](src/main/resources/mop-gateway-api-specification.yml) · [`swagger.yaml`](src/main/resources/swagger/swagger.yaml).
+- [`src/main/resources/mop-gateway-api-specification.yml`](src/main/resources/mop-gateway-api-specification.yml) — contrato HTTP do gateway.
+- [`src/main/resources/swagger/current/`](src/main/resources/swagger/current/) — specs Open Insurance usadas na validação.
 
 ### Repositórios descontinuados
 
@@ -542,5 +599,34 @@ Todos sob `/v1/anonymize/actuator/*`:
 - [RabbitMQ](https://www.rabbitmq.com/documentation.html)
 - [Open Insurance Brasil](https://www.gov.br/susep/pt-br/assuntos/open-insurance)
 - [RFC 7807 — Problem Details for HTTP APIs](https://datatracker.ietf.org/doc/html/rfc7807)
+
+---
+
+## Varreduras de vulnerabilidade
+
+Relatórios e evidências em [`docs/vulnerabilities/`](docs/vulnerabilities/). Screenshots em [`docs/images/`](docs/images/).
+
+### Escopo de tratamento (severidade)
+
+Somente vulnerabilidades classificadas como **Critical**, **High** ou **Medium** entram no escopo de **remediação obrigatória** (acompanhamento, priorização e correção). Níveis **Low**, **Info** e demais podem constar nos relatórios, mas **não exigem** ticket de remediação nem bloqueio de release.
+
+| Severidade | Tratada |
+|------------|:-------:|
+| Critical | Sim |
+| High | Sim |
+| Medium | Sim |
+| Low | Não |
+| Info / outros | Não |
+
+Detalhes: [`docs/vulnerabilities/README.md`](docs/vulnerabilities/README.md#escopo-de-remediação-severidade).
+
+> **Último export Tenable (2026-06-26):** achados reportados são **Low** (ex.: Spring `spring-webmvc` 6.2.11) — fora do escopo de remediação acima.
+
+| Ferramenta | Data da execução | Artefatos | Resumo |
+|------------|------------------|-----------|--------|
+| **Trivy** (imagem container) | **2026-04-27** | [`docs/images/trivy-scan-2026-04-27.png`](docs/images/trivy-scan-2026-04-27.png) | Alpine 3.23.5 e `mop-client-gateway.jar`: 0 vulnerabilidades |
+| **Trivy** (export texto) | — | [`docs/vulnerabilities/trivy.txt`](docs/vulnerabilities/trivy.txt) | Mesmo escopo (container + JAR); 0 findings no relatório exportado |
+| **Tenable** (SCA) | **2026-06-26** 11:01 | [`Vulnerabilities_All_2026-06-26-11_01.csv`](docs/vulnerabilities/Vulnerabilities_All_2026-06-26-11_01.csv) · [`Software_Filtered_2026-06-26-11_01.csv`](docs/vulnerabilities/Software_Filtered_2026-06-26-11_01.csv) | Achados em dependências (ex.: Spring `spring-webmvc` 6.2.11); ver CSV para severidade e fix version |
+| **Tenable** (screenshot) | **2026-04-27** | [`docs/images/tenable-scan-2026-04-27.png`](docs/images/tenable-scan-2026-04-27.png) | Evidência visual da varredura |
 
 ---

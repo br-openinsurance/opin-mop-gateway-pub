@@ -1,5 +1,6 @@
 package br.com.opin.mopclient.retry.infrastructure.inbound;
 
+import br.com.opin.mopclient.retry.application.ClientRetryFailureHandler;
 import br.com.opin.mopclient.retry.application.ClientRetryReplayService;
 import br.com.opin.mopclient.retry.application.MopServerAvailabilityProbe;
 import br.com.opin.mopclient.retry.domain.ClientRetryMessage;
@@ -40,6 +41,7 @@ class ClientRetryReplaySchedulerTest {
     private RabbitTemplate rabbitTemplate;
     private ObjectMapper objectMapper;
     private ClientRetryReplayService replayService;
+    private ClientRetryFailureHandler failureHandler;
     private MopServerAvailabilityProbe availabilityProbe;
     private CircuitBreakerRegistry circuitBreakerRegistry;
     private CircuitBreaker circuitBreaker;
@@ -52,6 +54,7 @@ class ClientRetryReplaySchedulerTest {
         rabbitTemplate = mock(RabbitTemplate.class);
         objectMapper = mock(ObjectMapper.class);
         replayService = mock(ClientRetryReplayService.class);
+        failureHandler = mock(ClientRetryFailureHandler.class);
         availabilityProbe = mock(MopServerAvailabilityProbe.class);
         circuitBreakerRegistry = mock(CircuitBreakerRegistry.class);
         circuitBreaker = mock(CircuitBreaker.class);
@@ -72,6 +75,7 @@ class ClientRetryReplaySchedulerTest {
                 rabbitTemplate,
                 objectMapper,
                 replayService,
+                failureHandler,
                 availabilityProbe,
                 circuitBreakerRegistry,
                 QUEUE,
@@ -115,7 +119,7 @@ class ClientRetryReplaySchedulerTest {
     }
 
     @Test
-    void shouldDiscardWhenMessageIsUnparseable() throws Exception {
+    void shouldMoveUnparseableMessageToDlqAndAck() throws Exception {
         enqueueRabbitMessages(2L);
         when(objectMapper.readValue(any(byte[].class), eq(ClientRetryMessage.class)))
                 .thenThrow(new JsonProcessingException("corrupt json") {});
@@ -123,12 +127,13 @@ class ClientRetryReplaySchedulerTest {
         scheduler.drainRetryQueueWhenMopAvailable();
 
         verify(replayService, never()).replay(any());
-        verify(channel, never()).basicAck(anyLong(), anyBoolean());
-        verify(channel, times(1)).basicNack(2L, false, false);
+        verify(failureHandler).moveUnparseableToDlq(any(byte[].class), eq("corrupt json"));
+        verify(channel, times(1)).basicAck(2L, false);
+        verify(channel, never()).basicNack(anyLong(), anyBoolean(), anyBoolean());
     }
 
     @Test
-    void shouldRequeueAndStopTickOnReplayFailure() throws Exception {
+    void shouldDelegateFailureToHandlerAckAndStopTick() throws Exception {
         enqueueRabbitMessages(10L, 11L, 12L);
         ClientRetryMessage parsed = new ClientRetryMessage();
         when(objectMapper.readValue(any(byte[].class), eq(ClientRetryMessage.class))).thenReturn(parsed);
@@ -137,8 +142,9 @@ class ClientRetryReplaySchedulerTest {
         scheduler.drainRetryQueueWhenMopAvailable();
 
         verify(replayService, times(1)).replay(parsed);
-        verify(channel, times(1)).basicNack(10L, false, true);
-        verify(channel, never()).basicAck(anyLong(), anyBoolean());
+        verify(failureHandler).handleReplayFailure(parsed, "MOP 401");
+        verify(channel, times(1)).basicAck(10L, false);
+        verify(channel, never()).basicNack(anyLong(), anyBoolean(), anyBoolean());
         verify(channel, times(1)).basicGet(QUEUE, false);
     }
 

@@ -32,4 +32,12 @@ public class ClientRetryMessage {
     private RequestHeadersDTO headers;
     /** Present when failure happened after the message was fully built for /process. */
     private String wrappedPayloadForProcess;
+    /** Number of failed replay attempts (0 when first enqueued). */
+    private Integer attemptCount;
+    private String lastFailureAt;
+    private String lastFailureDetail;
+    private String movedToDlqAt;
+    private ClientRetryDlqReason dlqReason;
+    /** Raw queue body when the message could not be parsed (DLQ traceability). */
+    private String rawQueuePayload;
 }

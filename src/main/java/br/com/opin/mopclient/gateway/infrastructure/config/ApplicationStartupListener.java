@@ -3,6 +3,7 @@ package br.com.opin.mopclient.gateway.infrastructure.config;
 import br.com.opin.mopclient.gateway.application.service.ExternalApiClient;
 import br.com.opin.mopclient.gateway.application.service.ProcessingOrchestratorService;
 import br.com.opin.mopclient.retry.application.MopServerAvailabilityProbe;
+import br.com.opin.mopclient.validator.application.service.OpenApiCurrentSpecRegistry;
 import br.com.opin.mopclient.validator.infrastructure.config.InMemoryCacheManagerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,6 +51,9 @@ public class ApplicationStartupListener implements ApplicationListener<Applicati
     @Autowired(required = false)
     private MopServerAvailabilityProbe mopServerAvailabilityProbe;
 
+    @Autowired(required = false)
+    private OpenApiCurrentSpecRegistry openApiCurrentSpecRegistry;
+
     @Value("${spring.application.name:mop-client-gateway}")
     private String applicationName;
 
@@ -58,9 +62,6 @@ public class ApplicationStartupListener implements ApplicationListener<Applicati
 
     @Value("${server.servlet.context-path:}")
     private String contextPath;
-
-    @Value("${cache.open-api-spec.ttl-seconds:3600}")
-    private long openApiSpecTtlSeconds;
 
     @Value("${cache.app-config.ttl-seconds:1800}")
     private long appConfigTtlSeconds;
@@ -136,12 +137,20 @@ public class ApplicationStartupListener implements ApplicationListener<Applicati
                 nullToDash(rabbitHost),
                 nullToDash(rabbitPortStr));
 
+        logger.info("[OPENAPI]");
+        if (openApiCurrentSpecRegistry != null) {
+            logger.info(
+                    "- swagger/current | indexed = {} | discovered = {} | loaded = {} | parsed routes = {}",
+                    openApiCurrentSpecRegistry.indexedRouteCount(),
+                    openApiCurrentSpecRegistry.discoveredSpecFileCount(),
+                    openApiCurrentSpecRegistry.loadedSpecFileCount(),
+                    openApiCurrentSpecRegistry.routeCount());
+        } else {
+            warnings.add("OpenApiCurrentSpecRegistry bean missing — modular OpenAPI validation unavailable");
+            logger.info("- swagger/current | (registry bean missing)");
+        }
+
         logger.info("[CACHE]");
-        logger.info(
-                "- {} | ttl = {}s | maxSize = {}",
-                InMemoryCacheManagerConfig.OPEN_API_SPEC,
-                openApiSpecTtlSeconds,
-                1);
         logger.info(
                 "- {} | ttl = {}s | maxSize = {}",
                 InMemoryCacheManagerConfig.NORMALIZED_ENDPOINTS,

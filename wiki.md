@@ -68,7 +68,12 @@ Documentação dedicada: [docs/REPROCESSAMENTO.md](docs/REPROCESSAMENTO.md).
 ## API HTTP
 
 - URL típica: `http(s)://{host}:{port}{server.servlet.context-path}/data` (padrão `…/v1/anonymize/data`).
-- Headers obrigatórios: `X-Correlation-Id`, `origin` (`client`/`server`), `path`, `operation`, `clientSSId`, `serverASId`. Opcionais: `step`, `dataEventoStep`, `traceOrigin`, `X-Mop-Reportid`.
+- Headers obrigatórios: `X-Correlation-Id`, `origin` (`client`/`server`), `path`, `operation`, `httpType`.
+- Header condicional: `statusCode` — opcional com `httpType=Request`; **obrigatório** com `httpType=Response` (100–599).
+- Opcionais: `traceOrigin`, `clientSSId`, `serverASId`, `X-Mop-Reportid`.
+- **`path`:** enviar o path **concreto** da transação (com URN/ID reais); não usar `{consentId}`. Ver [`docs/PATH_MOP_HEADER.md`](docs/PATH_MOP_HEADER.md).
+- **`origin`:** `client` valida body como request OpenAPI; `server` como response OpenAPI.
+- Resposta HTTP: `context`, `request`, `validations` (`status`, `total`, `pending`); `response` quando entrega síncrona ao MOP.
 
 Contrato resumido: [README.md](README.md).
 

@@ -2,6 +2,7 @@ package br.com.opin.mopclient.gateway.interfaces.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,13 +18,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonPropertyOrder({
+        "message", "timestamp", "context", "request", "response", "validations",
+        "error", "details", "mopReportid"
+})
 public class ApiResponseDTO {
-    
-    /**
-     * Response status (e.g., "SUCCESS", "ERROR").
-     */
-    @JsonProperty("status")
-    private String status;
     
     /**
      * Human-readable message describing the result.
@@ -44,13 +43,6 @@ public class ApiResponseDTO {
     private String details;
     
     /**
-     * Correlation ID for request tracking (informed by user in header X-Correlation-Id).
-     * Response does not include trace object; trace exists only in the final JSON (MessageDTO).
-     */
-    @JsonProperty("correlationId")
-    private String correlationId;
-
-    /**
      * MOP report ID for request tracking (internal).
      */
     @JsonProperty("mopReportid")
@@ -61,29 +53,29 @@ public class ApiResponseDTO {
      */
     @JsonProperty("timestamp")
     private String timestamp;
+
+    /**
+     * Request tracking context echoed from inbound headers.
+     */
+    @JsonProperty("context")
+    private ResponseContextDTO context;
     
     /**
-     * Client SS (insurer / source system) identifier.
+     * Inbound request metadata echoed from headers.
      */
-    @JsonProperty("clientSSId")
-    private String clientSSId;
-    
+    @JsonProperty("request")
+    private RequestSummaryDTO request;
+
     /**
-     * Server AS (insurer / destination system) identifier.
+     * OpenAPI validation findings grouped by execution status.
      */
-    @JsonProperty("serverASId")
-    private String serverASId;
-    
+    @JsonProperty("validations")
+    private ValidationsSummaryDTO validations;
+
     /**
-     * Path of the request.
+     * HTTP response from the MOP server when delivery is synchronous (HTTP 200).
      */
-    @JsonProperty("path")
-    private String path;
-    
-    /**
-     * Operation type (e.g., POST, GET).
-     */
-    @JsonProperty("operation")
-    private String operation;
-    
+    @JsonProperty("response")
+    private ServerResponseDTO response;
+
 }

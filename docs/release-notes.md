@@ -2,7 +2,7 @@
 
 Notas de versão do **MOP Client**, no estilo do ecossistema MOP (New features, Enhancements, Bug fixes).
 
-**Última atualização do documento: 19 de maio de 2026.**
+**Última atualização do documento: 02 de junho de 2026.**
 
 ```mermaid
 flowchart LR
@@ -10,6 +10,7 @@ flowchart LR
     G -->|MOP no ar| M[(MOP Server)]
     G -.->|MOP fora| Q[(Fila de retry)]
     Q -.->|replay| M
+    Q -.->|limite de tentativas| D[(DLQ)]
 ```
 
 ### Em produção
@@ -18,17 +19,61 @@ flowchart LR
 - **MOP indisponível ou instável:** a API responde **`202`** e o pedido fica **retido para nova tentativa**; quando o ambiente normaliza, o reenvio ocorre **sem** a aplicação participante ter de repetir a chamada manualmente.
 - **Infraestrutura:** o **broker de mensagens** usado pela fila de retry tem de estar **sempre disponível** à altura do volume esperado; sem ele, não há garantia de enfileiramento nem de reprocessamento.
 - **Operação:** convém **acompanhar** saúde da aplicação, profundidade da fila e indisponibilidades do MOP (por exemplo via *health checks* e métricas), e tratar o modelo como **pelo-menos-uma-vez** — o identificador de correlação deve ser **único por intenção de negócio** para o lado receptor poder deduplicar, se necessário.
+- **DLQ:** após esgotar as tentativas de replay (`mop.client.retry.dlq.max-attempts`), o evento vai para a fila **`mop.client.retry.dlq`**; o **reprocessamento a partir da DLQ é responsabilidade do participante**.
+
+---
 
 ---
 
 ## Versões da release note
-
+- [1.0.4 (2026-06-02)](#v1-0-4)
+- [1.0.3 (2026-06-02)](#v1-0-3)
 - [1.0.2 (2026-05-19)](#v1-0-2)
 - [1.0.1 (2026-05-07)](#v1-0-1)
 - [1.0.0 (2026-04-29)](#v1-0-0)
 
 ---
+---
 
+<a id="v1-0-4"></a>
+
+## 1.0.4
+
+### New features
+
+- **Validações reportadas às participantes (MOP Client)**: o gateway passa a devolver, na resposta HTTP de sucesso (`200`), o campo **`validations[]`** com o resultado das checagens OpenAPI (e demais validações do fluxo), permitindo que a aplicação participante **analise advertências e inconsistências** sem depender apenas de logs internos.
+- **Fila de DLQ (Dead-Letter Queue)**: quando um evento na fila de retry (`mop.client.retry.queue`) **excede o número máximo de tentativas** configurado (`mop.client.retry.dlq.max-attempts`, padrão **5**), o MOP Client **encaminha automaticamente** o payload para a fila **`mop.client.retry.dlq`**, com metadados de rastreio (`correlationId`, `dlqReason`, `lastFailureDetail`, contador de tentativas). O **consumo e reenvio** a partir da DLQ ficam sob responsabilidade do **participante**.
+
+### Enhancements
+
+- **`clientSSId` opcional**: o header `clientSSId` deixa de ser obrigatório no contrato do gateway. Esse identificador **só se aplica às fases 2 e 3** do Open Insurance; integrações que não operam nessas fases podem omitir o header. Quando ausente, a resposta HTTP utiliza `origin` como fallback e o trace interno segue o processamento normalmente.
+- **Documentação**: EGE de entrada HTTP, cenários de QA e `docs/REPROCESSAMENTO.md` atualizados com DLQ e contrato de headers.
+
+### Bug fixes
+
+- Não reportados nesta versão.
+
+---
+<a id="v1-0-3"></a>
+
+## 1.0.3
+
+### New features
+
+- **Nova versão disponibilizada para deploy**: esta release marca a disponibilização de uma nova versão do MOP Client para implantação nos ambientes dos participantes.
+- **Versão promovida para produção**: a versão foi incluída no ambiente de produção, ficando disponível para utilização operacional conforme o cronograma de implantação de cada participante.
+- **URL de produção:** https://mop-server-entrypoint.opinbrasil.com.br/
+
+### Enhancements
+
+- **Atualização de versão**: consolidação das melhorias e correções entregues nas versões anteriores, mantendo alinhamento entre os ambientes homologados e o ambiente produtivo.
+- **Comunicação de disponibilidade**: documentação atualizada para refletir a nova versão disponibilizada e sua respectiva entrada em produção.
+
+### Bug fixes
+
+- Não reportados nesta versão.
+
+---
 <a id="v1-0-2"></a>
 
 ## 1.0.2
@@ -39,7 +84,7 @@ flowchart LR
 
 ### Enhancements
 
-- **Headers opcionais de trace**: `step`, `dataEventoStep`, `traceOrigin` e `X-Mop-Reportid` permanecem **não obrigatórios** — a requisição segue normalmente se forem omitidos; o gateway preenche valores padrão quando necessário (etapa do fluxo, data do passo, identificador de relatório MOP).
+- **Headers opcionais de trace**: `traceOrigin` e `X-Mop-Reportid` permanecem **não obrigatórios** — a requisição segue normalmente se forem omitidos; o gateway preenche valores padrão quando necessário (etapa do fluxo e data do passo derivados internamente no `MessageDTO`, identificador de relatório MOP).
 - **Documentação do contrato da API**: especificação OpenAPI, README e guia de cenários de QA atualizados com a lista de headers **obrigatórios** e **opcionais**, incluindo exemplos de requisição mínima e completa.
 
 ### Bug fixes

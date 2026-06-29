@@ -2,10 +2,7 @@ package br.com.opin.mopclient.gateway.interfaces.controller;
 
 import static br.com.opin.mopclient.gateway.interfaces.constants.HttpHeaderConstants.*;
 
-import br.com.opin.mopclient.gateway.application.service.JsonPayloadParser;
-import br.com.opin.mopclient.gateway.application.service.ProcessingOrchestratorService;
-import br.com.opin.mopclient.gateway.application.service.RequestHeadersBuilder;
-import br.com.opin.mopclient.gateway.application.service.ResponseBuilder;
+import br.com.opin.mopclient.gateway.application.service.*;
 import br.com.opin.mopclient.gateway.interfaces.dto.ApiResponseDTO;
 import br.com.opin.mopclient.gateway.interfaces.dto.RequestHeadersDTO;
 import br.com.opin.mopclient.gateway.interfaces.validation.HeaderValidator;
@@ -74,8 +71,8 @@ public class AnonymizerController {
      * Body is optional: null/empty or invalid JSON are treated as empty object ({}).
      * If the body parses to a JSON array or any non-object root, the request is rejected with HTTP 400
      * (one business event per request — no batch arrays).
-     * Required headers: X-Correlation-Id (correlationId), origin (client/server), path, operation, clientSSId, serverASId.
-     * Optional: step, dataEventoStep, traceOrigin (repassados quando informados). Opcional: X-Mop-Reportid (gerado se ausente).
+     * Required headers: X-Correlation-Id (correlationId), origin (client/server), path, operation, httpType.
+     * Optional: statusCode (obrigatório quando httpType=Response), traceOrigin, clientSSId, serverASId. Opcional: X-Mop-Reportid (gerado se ausente).
      * Response does not include trace object; trace is only present in the final JSON (MessageDTO) sent internally.
      *
      * @param requestBody    JSON payload (can be null or empty)
@@ -83,11 +80,11 @@ public class AnonymizerController {
      * @param origin         Origin header - only "client" or "server" (required)
      * @param path           Path header (required)
      * @param operation      Operation header (required)
-     * @param step           Step of the flow in the trace, e.g. consent-created (optional)
-     * @param dataEventoStep Timestamp of the step event, ISO-8601 (optional)
+     * @param httpType         HTTP message type - Request or Response (required)
+     * @param statusCode       HTTP status code (required when httpType is Response; optional when Request)
      * @param traceOrigin      Trace event origin, e.g. CLIENT (optional)
-     * @param clientSSId     Client SS identifier - receiver (required)
-     * @param serverASId     Server AS identifier - transmitter (required)
+     * @param clientSSId     Client SS identifier - receiver (optional)
+     * @param serverASId     Server AS identifier - transmitter (optional)
      * @param headers        All request headers
      * @return ResponseEntity with delivered (200), accepted-for-retry (202) or error (400/500)
      */
@@ -98,11 +95,11 @@ public class AnonymizerController {
             @RequestHeader(value = ORIGIN, required = true) String origin,
             @RequestHeader(value = PATH, required = true) String path,
             @RequestHeader(value = OPERATION, required = true) String operation,
-            @RequestHeader(value = STEP, required = false) String step,
-            @RequestHeader(value = DATA_EVENTO_STEP, required = false) String dataEventoStep,
+            @RequestHeader(value = HTTP_TYPE, required = true) String httpType,
+            @RequestHeader(value = STATUS_CODE, required = false) String statusCode,
             @RequestHeader(value = TRACE_ORIGIN, required = false) String traceOrigin,
-            @RequestHeader(value = CLIENT_SS_ID, required = true) String clientSSId,
-            @RequestHeader(value = SERVER_AS_ID, required = true) String serverASId,
+            @RequestHeader(value = CLIENT_SS_ID, required = false) String clientSSId,
+            @RequestHeader(value = SERVER_AS_ID, required = false) String serverASId,
             @RequestHeader Map<String, String> headers) {
 
         LOGGER.debug("Received POST request. Payload length: {}",
@@ -110,7 +107,8 @@ public class AnonymizerController {
 
         // Validate headers
         HeaderValidator.ValidationResult validationResult = headerValidator.validate(
-                correlationId, origin, path, operation, step, dataEventoStep, clientSSId, serverASId);
+                correlationId, origin, path, operation, httpType, statusCode,
+                clientSSId, serverASId);
         if (!validationResult.isValid()) {
             LOGGER.warn("Header validation failed: {}", validationResult.getErrorMessage());
             return responseBuilder.buildErrorResponse(
@@ -132,12 +130,12 @@ public class AnonymizerController {
             String jsonPayload = jsonParser.toJsonString(jsonNode);
 
             RequestHeadersDTO headersDTO = headersBuilder.build(
-                    correlationId, origin, path, operation,
-                    step, dataEventoStep, traceOrigin,
+                    correlationId, origin, path, operation, httpType, statusCode,
+                    traceOrigin,
                     headers, clientSSId, serverASId);
 
             // Process request through unified flow: validation -> anonymization -> external API
-            orchestratorService.processRequest(requestBody, jsonPayload, headersDTO);
+            ProcessingResult processingResult = orchestratorService.processRequest(requestBody, jsonPayload, headersDTO);
 
             String responseClientSSId = headersDTO.getClientSSId() != null && !headersDTO.getClientSSId().isBlank()
                     ? headersDTO.getClientSSId() : headersDTO.getOrigin();
@@ -147,14 +145,16 @@ public class AnonymizerController {
             LOGGER.info("Payload successfully processed. clientSSId: {}, serverASId: {}, correlationId: {}",
                     responseClientSSId, responseServerASId, headersDTO.getCorrelationId());
 
-            // Build and return success response (no trace object in response; only flat fields including correlationId)
+            // Build and return success response (context echoes request headers; no trace object in response)
             return responseBuilder.buildSuccessResponse(
                     headersDTO.getCorrelationId(),
                     headersDTO.getTimestamp(),
                     responseClientSSId,
                     responseServerASId,
-                    path,
-                    operation);
+                    headersDTO.getPath(),
+                    headersDTO.getOperation(),
+                    processingResult.validations(),
+                    processingResult.serverResponse());
 
         } catch (JsonProcessingException e) {
             LOGGER.error("Failed to process JSON: {}", e.getMessage(), e);

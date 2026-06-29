@@ -1,4 +1,4 @@
-# Cenários de teste — MOP Client Gateway (QA)
+# Cenários de teste — MOP Client Gateway (QA) 
 
 Documento para validação das **principais funcionalidades** do gateway. Cada item traz **cenário**, **passos** e **resultado esperado**.
 
@@ -28,11 +28,13 @@ Todos os headers abaixo são enviados na requisição `POST /v1/anonymize/data`.
 | Header | Obrigatório | Descrição | Regras de validação | Exemplo |
 |--------|:-----------:|-----------|---------------------|---------|
 | `X-Correlation-Id` | **Sim** | ID da intenção lógica / correlação (fornecido pelo cliente). | Não nulo; não vazio após trim; ≥ 1 caractere. Recomendado UUID v4. | `f47ac10b-58cc-4372-a567-0e02b2c3d479` |
-| `origin` | **Sim** | Origem da chamada no fluxo MOP. | Apenas `client` ou `server` (case-insensitive). | `client` |
-| `path` | **Sim** | Rota lógica do recurso Open Insurance. | Não vazio. | `/open-insurance/consents/v2/consents` |
+| `origin` | **Sim** | Origem da chamada no fluxo MOP. | `client` (valida request) ou `server` (valida response), case-insensitive. | `client` |
+| `path` | **Sim** | Rota **concreta** do recurso Open Insurance (`path_MOP` completo). | Não vazio; **não** usar `{consentId}` literal. Ver `PATH_MOP_HEADER.md`. | `/open-insurance/consents/v2/consents/urn:seguradora:abc` |
 | `operation` | **Sim** | Verbo HTTP da operação de negócio original. | Um de: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, `OPTIONS`, `TRACE` (case-insensitive). | `POST` |
-| `clientSSId` | **Sim** | Identificador da parte **receptora** (SS). | Não vazio. | `RECEPTORA-A` |
-| `serverASId` | **Sim** | Identificador da parte **transmissora** (AS). | Não vazio. | `TRANSMISSORA-B` |
+| `httpType` | **Sim** | Tipo da mensagem HTTP no fluxo MOP. | Apenas `Request` ou `Response` (case-insensitive). | `Request` |
+| `statusCode` | **Condicional** | Código HTTP da mensagem original. | **Opcional** quando `httpType=Request`. **Obrigatório** quando `httpType=Response` (100–599). | `200` |
+| `clientSSId` | **Não** | Identificador da parte **receptora** (SS). | Opcional; ecoado em `context.clientSSId`. | `RECEPTORA-A` |
+| `serverASId` | **Não** | Identificador da parte **transmissora** (AS). | Opcional; ecoado em `context.serverASId`. | `TRANSMISSORA-B` |
 
 **Se faltar qualquer header obrigatório:** HTTP **400** (formato array de strings do Spring, ex.: `Missing required header: ...`).
 
@@ -42,12 +44,12 @@ Todos os headers abaixo são enviados na requisição `POST /v1/anonymize/data`.
 
 ### Headers opcionais
 
-| Header | Obrigatório | Descrição | Comportamento quando omitido | Exemplo |
-|--------|:-----------:|-----------|------------------------------|---------|
-| `step` | **Não** | Nome do passo no fluxo de trace. | Gateway usa valor interno no `MessageDTO` (ex.: `request-received`). | `consent-created` |
-| `dataEventoStep` | **Não** | Instantâneo ISO-8601 do evento do passo. | Gateway usa timestamp atual no trace. | `2026-04-27T11:00:00Z` |
+| Header | Obrigatório | Descrição | Comportamento / regra | Exemplo |
+|--------|:-----------:|-----------|----------------------|---------|
 | `traceOrigin` | **Não** | Origem do evento de trace (ex.: `CLIENT`, `SERVER`). | Campo `trace.traceOrigin` vazio no `MessageDTO` enviado ao MOP; fluxo segue normalmente. Repassado na fila de retry se informado. | `CLIENT` |
 | `X-Mop-Reportid` | **Não** | ID de rastreio MOP (legado/interno). | Gateway **gera** um identificador (`TraceabilityService`). | `mop-report-7f3c9a2b` |
+
+> **`httpType` e `statusCode`:** `httpType` é sempre obrigatório. `statusCode` só é obrigatório quando `httpType=Response`; com `httpType=Request`, pode ser omitido ou informado (se informado, deve ser 100–599).
 
 > **Nota `traceOrigin`:** quando informado, é serializado em `trace.traceOrigin` do `MessageDTO` enviado ao MOP. **Não** aparece na resposta HTTP do gateway (`POST /data`).
 
@@ -61,8 +63,7 @@ X-Correlation-Id: f47ac10b-58cc-4372-a567-0e02b2c3d479
 origin: client
 path: /open-insurance/consents/v2/consents
 operation: POST
-clientSSId: RECEPTORA-A
-serverASId: TRANSMISSORA-B
+httpType: Request
 Content-Type: application/json
 
 {"data":{"id":"qa-001"}}
@@ -76,15 +77,31 @@ X-Correlation-Id: f47ac10b-58cc-4372-a567-0e02b2c3d479
 origin: client
 path: /open-insurance/consents/v2/consents
 operation: POST
+httpType: Request
 clientSSId: RECEPTORA-A
 serverASId: TRANSMISSORA-B
-step: consent-created
-dataEventoStep: 2026-04-27T11:00:00Z
 traceOrigin: CLIENT
 X-Mop-Reportid: mop-report-7f3c9a2b
 Content-Type: application/json
 
 {"data":{"id":"qa-001"}}
+```
+
+### Exemplo com `httpType=Response` (`statusCode` obrigatório)
+
+```http
+POST /v1/anonymize/data HTTP/1.1
+X-Correlation-Id: f47ac10b-58cc-4372-a567-0e02b2c3d479
+origin: server
+path: /open-insurance/consents/v2/consents
+operation: GET
+httpType: Response
+statusCode: 200
+clientSSId: RECEPTORA-A
+serverASId: TRANSMISSORA-B
+Content-Type: application/json
+
+{"data":{"id":"qa-002"}}
 ```
 
 ### Corpo da requisição (body)
@@ -140,7 +157,7 @@ Content-Type: application/json
 ### Cenário 2.1 — Requisição válida mínima (P0)
 
 **Passos**
-1. Enviar `POST /v1/anonymize/data` usando apenas os **6 headers obrigatórios** (ver tabela acima) e body JSON objeto — ver *Exemplo mínimo* na referência de headers.
+1. Enviar `POST /v1/anonymize/data` usando apenas os **7 headers obrigatórios** (ver tabela acima) e body JSON objeto — ver *Exemplo mínimo* na referência de headers.
 
 **Resultado esperado**
 - HTTP **200** (MOP disponível) ou **202** (MOP indisponível).
@@ -186,7 +203,7 @@ Content-Type: application/json
 ## Funcionalidade 3 — Validação de headers obrigatórios
 
 Testa apenas os headers marcados como **obrigatórios** na [Referência — Headers HTTP](#referência--headers-http-post-data).  
-Headers **opcionais** (`step`, `dataEventoStep`, `traceOrigin`, `X-Mop-Reportid`) não devem ser enviados nestes cenários, salvo indicação contrária.
+Headers **opcionais** (`traceOrigin`, `X-Mop-Reportid`) não devem ser enviados nestes cenários, salvo indicação contrária.
 
 ### Cenário 3.1 — Header obrigatório ausente (P0)
 
@@ -206,7 +223,7 @@ Headers **opcionais** (`step`, `dataEventoStep`, `traceOrigin`, `X-Mop-Reportid`
 
 **Resultado esperado**
 - HTTP **400**.
-- JSON estruturado: `status=ERROR`, `error=Invalid header`, `details` menciona `correlationId`.
+- JSON estruturado: `error=Invalid header`, `details` menciona `correlationId` (sem campo `status` na raiz).
 
 ---
 
@@ -255,24 +272,75 @@ Headers **opcionais** (`step`, `dataEventoStep`, `traceOrigin`, `X-Mop-Reportid`
 
 ---
 
+### Cenário 3.7 — `httpType` ausente ou vazio (P0)
+
+**Passos**
+1. Omitir o header `httpType` **ou** enviar `httpType:` vazio.
+
+**Resultado esperado**
+- HTTP **400** (Spring: header ausente **ou** `HeaderValidator`: `Header 'httpType' must be one of the following values: Request, Response. Received: ''`).
+
+---
+
+### Cenário 3.8 — `httpType` inválido (P0)
+
+**Passos**
+1. Enviar `httpType: INVALID` (ou qualquer valor diferente de `Request` / `Response`).
+
+**Resultado esperado**
+- HTTP **400**.
+- `details`: `Header 'httpType' must be one of the following values: Request, Response. Received: 'INVALID'`.
+
+---
+
+### Cenário 3.9 — `httpType=Response` sem `statusCode` (P0)
+
+**Passos**
+1. Enviar `httpType: Response` sem o header `statusCode`.
+
+**Resultado esperado**
+- HTTP **400**.
+- `details`: `Header 'statusCode' is required when 'httpType' is 'Response'`.
+
+---
+
+### Cenário 3.10 — `httpType=Request` com `statusCode` opcional (P1)
+
+**Passos**
+1. Enviar `httpType: Request` **sem** `statusCode`.
+2. Repetir com `httpType: Request` e `statusCode: 200`.
+
+**Resultado esperado**
+- Ambos aceitos (HTTP **200** ou **202**).
+
+---
+
+### Cenário 3.11 — `statusCode` inválido (P0)
+
+**Passos**
+1. Enviar `httpType: Response` e `statusCode: abc`.
+2. Enviar `httpType: Request` e `statusCode: 999` (fora do intervalo 100–599).
+
+**Resultado esperado**
+- HTTP **400** em ambos.
+- `details` menciona código HTTP válido (100–599).
+
+---
+
 ## Funcionalidade 4 — Headers opcionais de trace
 
 Testa apenas os headers marcados como **opcionais** na [Referência — Headers HTTP](#referência--headers-http-post-data).  
-Em todos os cenários, manter os **6 headers obrigatórios** preenchidos.
+Em todos os cenários, manter os **7 headers obrigatórios** preenchidos (incluindo `httpType`).
 
 | Header testado nesta seção | Obrigatório? |
 |----------------------------|:------------:|
-| `step` | Não |
-| `dataEventoStep` | Não |
 | `traceOrigin` | Não |
 | `X-Mop-Reportid` | Não |
 
-### Cenário 4.1 — Trace completo informado (P1)
+### Cenário 4.1 — Trace opcional informado (P1)
 
 **Passos**
 1. Incluir na requisição válida:
-   - `step: consent-created`
-   - `dataEventoStep: 2026-04-27T11:00:00Z`
    - `traceOrigin: CLIENT`
 
 **Resultado esperado**
@@ -284,11 +352,11 @@ Em todos os cenários, manter os **6 headers obrigatórios** preenchidos.
 ### Cenário 4.2 — Trace opcional ausente (P0)
 
 **Passos**
-1. Enviar requisição válida **sem** `step`, `dataEventoStep` e `traceOrigin`.
+1. Enviar requisição válida **sem** `traceOrigin`.
 
 **Resultado esperado**
 - HTTP **200** ou **202**.
-- Fluxo concluído; gateway preenche defaults internos no `MessageDTO` (`step` derivado, timestamp do passo = agora).
+- Fluxo concluído; gateway preenche defaults internos no `MessageDTO` (`step` derivado de path/operation, timestamp do passo = agora).
 
 ---
 
@@ -339,7 +407,6 @@ Em todos os cenários, manter os **6 headers obrigatórios** preenchidos.
 
 **Resultado esperado**
 - Payload enfileirado contém `traceOrigin: CLIENT` no snapshot de headers.
-- Campos `step` e `dataEventoStep` também preservados, se enviados.
 
 ---
 
@@ -350,8 +417,8 @@ Em todos os cenários, manter os **6 headers obrigatórios** preenchidos.
 2. Analisar body da resposta.
 
 **Resultado esperado**
-- Body contém apenas: `status`, `message`, `correlationId`, `timestamp`, `clientSSId`, `serverASId`, `path`, `operation`.
-- **Não** contém `traceOrigin`, `step`, `MessageDTO` nem objeto `trace` completo.
+- Body contém: `message`, `timestamp`, `context` (`correlationId`, `clientSSId`, `serverASId`), `request` (`path`, `operation`), `validations` (`status`, `total`, `pending`) e, em entrega síncrona ao MOP, `response` (`status` + `body` do `/process`).
+- **Não** contém `traceOrigin`, `MessageDTO` nem objeto `trace` completo.
 
 ---
 
@@ -381,10 +448,12 @@ Fluxo interno: validação → anonimização (GET fields + apply) → montagem 
 **Resultado esperado**
 - HTTP **200**.
 - Body:
-  - `status`: `"SUCCESS"`
   - `message`: `"Request processed successfully. Your data has been received and forwarded to the server."`
-  - `correlationId` igual ao header enviado
-  - `clientSSId`, `serverASId`, `path`, `operation` ecoados dos headers
+  - `context.correlationId` igual ao header `X-Correlation-Id` enviado
+  - `context.clientSSId`, `context.serverASId` ecoados dos headers (quando informados)
+  - `request.path`, `request.operation` ecoados dos headers
+  - `validations.status`: `"SUCCESS"`, `validations.total`: `0`, `validations.pending`: `[]`
+  - `response` presente quando o MOP respondeu na entrega síncrona
   - `timestamp` em ISO-8601
 - Log: `Payload successfully processed. clientSSId=... correlationId=...`
 
@@ -425,9 +494,11 @@ Fluxo interno: validação → anonimização (GET fields + apply) → montagem 
 **Resultado esperado**
 - HTTP **202**.
 - Body:
-  - `status`: `"ACCEPTED"`
   - `message`: `"Request accepted and queued for later delivery to the server (MOP unavailable)."`
-  - Metadados (`correlationId`, `clientSSId`, etc.) presentes
+  - `context` com `correlationId`, `clientSSId`, `serverASId`
+  - `request` com `path` e `operation`
+  - `validations` com `status: SUCCESS`, `total: 0`, `pending: []`
+  - **Sem** campo `response`
 - Log: `[MOP retry] Client received HTTP 202; body sent to retry queue | correlationId=...`
 - Contador da fila `mop.client.retry.queue` **aumenta**.
 

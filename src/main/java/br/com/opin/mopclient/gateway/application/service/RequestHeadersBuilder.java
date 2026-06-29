@@ -2,6 +2,7 @@ package br.com.opin.mopclient.gateway.application.service;
 
 import br.com.opin.mopclient.gateway.interfaces.constants.HttpHeaderConstants;
 import br.com.opin.mopclient.gateway.interfaces.dto.RequestHeadersDTO;
+import br.com.opin.mopclient.validator.application.service.MopPathResolver;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -17,9 +18,11 @@ import java.util.Objects;
 public class RequestHeadersBuilder {
 
     private final TraceabilityService traceabilityService;
+    private final MopPathResolver mopPathResolver;
 
-    public RequestHeadersBuilder(TraceabilityService traceabilityService) {
+    public RequestHeadersBuilder(TraceabilityService traceabilityService, MopPathResolver mopPathResolver) {
         this.traceabilityService = Objects.requireNonNull(traceabilityService, "TraceabilityService cannot be null");
+        this.mopPathResolver = Objects.requireNonNull(mopPathResolver, "MopPathResolver cannot be null");
     }
 
     private static final String TRANSMITTER = "TRANSMITTER";
@@ -34,8 +37,8 @@ public class RequestHeadersBuilder {
      * @param origin         Origin header value ("client" or "server")
      * @param path           Path header value
      * @param operation      Operation header value
-     * @param step           Step of the flow in the trace (optional)
-     * @param dataEventoStep Timestamp of the step event, ISO-8601 (optional)
+     * @param httpType         HTTP message type (required)
+     * @param statusCode       HTTP status code (optional unless httpType is Response)
      * @param traceOrigin    Trace event origin, e.g. CLIENT (optional)
      * @param headers        Map of all request headers
      * @param clientSSId     Client SS identifier
@@ -43,8 +46,8 @@ public class RequestHeadersBuilder {
      * @return Built RequestHeadersDTO
      */
     public RequestHeadersDTO build(String correlationId, String origin, String path,
-                                    String operation,
-                                    String step, String dataEventoStep, String traceOrigin,
+                                    String operation, String httpType, String statusCode,
+                                    String traceOrigin,
                                     Map<String, String> headers,
                                     String clientSSId, String serverASId) {
         String correlationIdTrimmed = correlationId != null ? correlationId.trim() : null;
@@ -60,19 +63,28 @@ public class RequestHeadersBuilder {
         String resolvedTraceOrigin = (traceOrigin != null && !traceOrigin.isBlank())
                 ? traceOrigin
                 : getHeaderIgnoreCase(headers, HttpHeaderConstants.TRACE_ORIGIN);
+        String resolvedPath = path != null && !path.isBlank()
+                ? mopPathResolver.resolveFromTransmitterUrl(path).mopPath()
+                : path;
+        String resolvedHttpType = (httpType != null && !httpType.isBlank())
+                ? httpType.trim()
+                : getHeaderIgnoreCase(headers, HttpHeaderConstants.HTTP_TYPE);
+        String resolvedStatusCode = (statusCode != null && !statusCode.isBlank())
+                ? statusCode.trim()
+                : getHeaderIgnoreCase(headers, HttpHeaderConstants.STATUS_CODE);
 
         return RequestHeadersDTO.builder()
                 .correlationId(correlationIdTrimmed)
                 .origin(origin)
-                .path(path)
+                .path(resolvedPath)
                 .operation(operation)
+                .httpType(resolvedHttpType)
+                .statusCode(resolvedStatusCode)
                 .mopReportid(mopReportid)
                 .timestamp(timestamp)
                 .clientSSId(resolvedClientSSId)
                 .serverASId(resolvedServerASId)
                 .headers(headers)
-                .step(step)
-                .dataEventoStep(dataEventoStep)
                 .traceOrigin(resolvedTraceOrigin)
                 .build();
     }

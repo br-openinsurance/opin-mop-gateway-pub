@@ -1,6 +1,7 @@
 package br.com.opin.mopclient.gateway.interfaces.validation;
 
 import br.com.opin.mopclient.gateway.interfaces.enums.HttpMethod;
+import br.com.opin.mopclient.gateway.interfaces.enums.HttpType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -17,6 +18,8 @@ public class HeaderValidator {
     private static final String SERVER = "server";
 
     private static final int CORRELATION_ID_MIN_LENGTH = 1;
+    private static final int STATUS_CODE_MIN = 100;
+    private static final int STATUS_CODE_MAX = 599;
 
     /**
      * Validates required headers for anonymization requests.
@@ -26,15 +29,15 @@ public class HeaderValidator {
      * @param origin         Origin header value (must be "client" or "server")
      * @param path           Path header value
      * @param operation      Operation header value (must be a valid HTTP method)
-     * @param step           Step of the flow in the trace (optional; may be null or blank)
-     * @param dataEventoStep Timestamp of the step event (optional; may be null or blank)
-     * @param clientSSId     Client SS identifier header value (required)
-     * @param serverASId     Server AS identifier header value (required)
+     * @param httpType         HTTP message type (required: Request or Response)
+     * @param statusCode       HTTP status code (required when httpType is Response; optional when Request)
+     * @param clientSSId     Client SS identifier header value (optional; may be null or blank)
+     * @param serverASId     Server AS identifier header value (optional; may be null or blank)
      * @return ValidationResult with error message if validation fails
      */
     public ValidationResult validate(String correlationId, String origin, String path,
                                      String operation,
-                                     String step, String dataEventoStep,
+                                     String httpType, String statusCode,
                                      String clientSSId, String serverASId) {
         if (correlationId == null) {
             return ValidationResult.error("Header 'X-Correlation-Id' (correlationId) is required and must not be null");
@@ -64,13 +67,42 @@ public class HeaderValidator {
                     String.format("Header 'operation' must be one of the following values: %s. Received: '%s'",
                             HttpMethod.getValidValues(), operation));
         }
-        if (!StringUtils.hasText(clientSSId)) {
-            return ValidationResult.error("Header 'clientSSId' must not be empty");
+        if (!HttpType.isValid(httpType)) {
+            String received = (httpType == null || httpType.isBlank()) ? "" : httpType.trim();
+            return ValidationResult.error(
+                    String.format("Header 'httpType' must be one of the following values: %s. Received: '%s'",
+                            HttpType.getValidValues(), received));
         }
-        if (!StringUtils.hasText(serverASId)) {
-            return ValidationResult.error("Header 'serverASId' must not be empty");
+        if (HttpType.isResponse(httpType)) {
+            if (!StringUtils.hasText(statusCode)) {
+                return ValidationResult.error(
+                        "Header 'statusCode' is required when 'httpType' is 'Response'");
+            }
+            if (!isValidStatusCode(statusCode)) {
+                return ValidationResult.error(
+                        String.format(
+                                "Header 'statusCode' must be a valid HTTP status code (%d-%d). Received: '%s'",
+                                STATUS_CODE_MIN, STATUS_CODE_MAX, statusCode));
+            }
+        } else if (StringUtils.hasText(statusCode) && !isValidStatusCode(statusCode)) {
+            return ValidationResult.error(
+                    String.format(
+                            "Header 'statusCode' must be a valid HTTP status code (%d-%d). Received: '%s'",
+                            STATUS_CODE_MIN, STATUS_CODE_MAX, statusCode));
         }
         return ValidationResult.success();
+    }
+
+    private static boolean isValidStatusCode(String statusCode) {
+        if (!StringUtils.hasText(statusCode)) {
+            return false;
+        }
+        try {
+            int code = Integer.parseInt(statusCode.trim());
+            return code >= STATUS_CODE_MIN && code <= STATUS_CODE_MAX;
+        } catch (NumberFormatException ex) {
+            return false;
+        }
     }
 
     /**
@@ -102,4 +134,3 @@ public class HeaderValidator {
         }
     }
 }
-

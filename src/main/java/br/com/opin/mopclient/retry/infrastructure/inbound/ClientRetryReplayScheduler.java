@@ -1,5 +1,6 @@
 package br.com.opin.mopclient.retry.infrastructure.inbound;
 
+import br.com.opin.mopclient.retry.application.ClientRetryFailureHandler;
 import br.com.opin.mopclient.retry.application.ClientRetryReplayService;
 import br.com.opin.mopclient.retry.application.MopServerAvailabilityProbe;
 import br.com.opin.mopclient.retry.domain.ClientRetryMessage;
@@ -21,8 +22,9 @@ import org.springframework.stereotype.Component;
 /**
  * Drains the retry queue while MOP is reachable and the {@code mopProcessEndpoint} circuit breaker is not open.
  *
- * <p>Ack semantics: success → ack; unparseable message → nack without requeue (poison-message guard);
- * MOP/business failure → nack with requeue and the current tick stops early to avoid cascading failures.
+ * <p>Ack semantics: success → ack; unparseable message → DLQ via {@link ClientRetryFailureHandler} then ack;
+ * MOP/business failure → re-publish to retry (incrementing attempts) or DLQ when max attempts reached, then ack;
+ * the current tick stops early after a replay failure to avoid cascading failures.
  * Availability and breaker state are rechecked before every message, not only at tick start.
  * <p>Com {@code spring.main.lazy-initialization=true} na app, este bean tem de ser eager:
  * não é injetado por mais ninguém; só métodos agendados — caso contrário o dreno nunca arranca.
@@ -44,6 +46,7 @@ public class ClientRetryReplayScheduler {
     private final RabbitTemplate rabbitTemplate;
     private final ObjectMapper objectMapper;
     private final ClientRetryReplayService replayService;
+    private final ClientRetryFailureHandler failureHandler;
     private final MopServerAvailabilityProbe availabilityProbe;
     private final CircuitBreakerRegistry circuitBreakerRegistry;
     private final String queueName;
@@ -54,6 +57,7 @@ public class ClientRetryReplayScheduler {
             RabbitTemplate rabbitTemplate,
             ObjectMapper objectMapper,
             ClientRetryReplayService replayService,
+            ClientRetryFailureHandler failureHandler,
             MopServerAvailabilityProbe availabilityProbe,
             CircuitBreakerRegistry circuitBreakerRegistry,
             @Value("${mop.client.retry.queue}") String queueName,
@@ -62,6 +66,7 @@ public class ClientRetryReplayScheduler {
         this.rabbitTemplate = rabbitTemplate;
         this.objectMapper = objectMapper;
         this.replayService = replayService;
+        this.failureHandler = failureHandler;
         this.availabilityProbe = availabilityProbe;
         this.circuitBreakerRegistry = circuitBreakerRegistry;
         this.queueName = queueName;
@@ -134,19 +139,27 @@ public class ClientRetryReplayScheduler {
                 return true;
             } catch (IllegalArgumentException | JsonProcessingException parseEx) {
                 logger.error(
-                        "Discarding invalid retry message (parse/validation) | deliveryTag={} | {}",
+                        "Invalid retry message, moving to DLQ | deliveryTag={} | {}",
                         tag,
                         parseEx.getMessage());
-                channel.basicNack(tag, false, false);
+                failureHandler.moveUnparseableToDlq(body, parseEx.getMessage());
+                channel.basicAck(tag, false);
                 return true;
             } catch (Exception ex) {
                 logger.warn(
-                        "Replay failed, message kept on the retry queue | deliveryTag={} | {}",
+                        "Replay failed | deliveryTag={} | {}",
                         tag, ex.getMessage());
                 if (logger.isDebugEnabled()) {
                     logger.debug("Replay failure detail | deliveryTag={}", tag, ex);
                 }
-                channel.basicNack(tag, false, true);
+                try {
+                    ClientRetryMessage message = objectMapper.readValue(body, ClientRetryMessage.class);
+                    failureHandler.handleReplayFailure(message, ex.getMessage());
+                    channel.basicAck(tag, false);
+                } catch (JsonProcessingException parseOnFailure) {
+                    failureHandler.moveUnparseableToDlq(body, parseOnFailure.getMessage());
+                    channel.basicAck(tag, false);
+                }
                 return false;
             }
         } catch (Exception e) {

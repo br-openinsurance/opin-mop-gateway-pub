@@ -30,6 +30,12 @@ public class TraceDTO {
     @JsonProperty("operation")
     private String operation;
 
+    @JsonProperty("httpType")
+    private String httpType;
+
+    @JsonProperty("statusCode")
+    private String statusCode;
+
     @JsonProperty("clientSSId")
     private String clientSSId;
 

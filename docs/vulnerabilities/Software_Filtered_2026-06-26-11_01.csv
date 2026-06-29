@@ -1,0 +1,6 @@
+Name,Paths,Type,Exposure,Vulnerabilities
+org.springframework:spring-webmvc 6.2.11,/app/mop-client-gateway.jar/BOOT-INF/lib/spring-webmvc-6.2.11.jar,Library,Vulnerable,"CVE-2026-22745
+CVE-2026-22737
+CVE-2026-22735
+CVE-2026-22741"
+com.fasterxml.jackson.core:jackson-databind 2.18.8,/app/mop-client-gateway.jar/BOOT-INF/lib/jackson-databind-2.18.8.jar,Library,Vulnerable,CVE-2026-54515

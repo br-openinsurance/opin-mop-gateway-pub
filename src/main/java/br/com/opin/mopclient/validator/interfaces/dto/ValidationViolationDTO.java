@@ -12,7 +12,7 @@ public class ValidationViolationDTO {
     private String message;
 
     @JsonProperty("code")
-    private int code;
+    private String code;
 
     @JsonProperty("severity")
     private String severity;
@@ -20,7 +20,7 @@ public class ValidationViolationDTO {
     @JsonProperty("attribute")
     private String crumbs;
 
-    public ValidationViolationDTO(String message, int code, String severity, String crumbs) {
+    public ValidationViolationDTO(String message, String code, String severity, String crumbs) {
         this.message = message;
         this.code = code;
         this.severity = severity;

@@ -12,4 +12,9 @@ public class RabbitRetryQueueConfig {
     public Queue mopClientRetryQueue(@Value("${mop.client.retry.queue}") String queueName) {
         return new Queue(queueName, true, false, false);
     }
+
+    @Bean
+    public Queue mopClientRetryDlqQueue(@Value("${mop.client.retry.dlq.queue}") String dlqQueueName) {
+        return new Queue(dlqQueueName, true, false, false);
+    }
 }

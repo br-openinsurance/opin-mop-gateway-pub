@@ -30,5 +30,5 @@ public class ValidationResultDTO {
 
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     @JsonProperty("statusCode")
-    private HttpStatusCode httpStatusCode;
+    private HttpStatusCode statusCode;
 }
