@@ -98,6 +98,8 @@ docker compose ps
 
 UI de gestão (opcional): http://localhost:15672 (`guest`/`guest`).
 
+> **Filas RabbitMQ:** crie **as duas** filas duráveis antes do primeiro uso — `mop.client.retry.queue` (retry) e `mop.client.retry.dlq` (DLQ). Detalhes em [`docs/VARIAVEIS_DE_AMBIENTE.md`](docs/VARIAVEIS_DE_AMBIENTE.md#criação-obrigatória-das-filas) e [`docs/REPROCESSAMENTO.md`](docs/REPROCESSAMENTO.md#4-criação-das-filas-no-rabbitmq).
+
 ### Passo 2 — Configurar variáveis (~3 min)
 
 Crie um arquivo `.env.sandbox` (ou exporte no shell). **Todas as 8 variáveis abaixo são obrigatórias** — sem elas a aplicação não sobe.
@@ -266,6 +268,8 @@ Sem RabbitMQ a aplicação **não sobe**. Em runtime, se o broker cair:
 - Mensagens novas que precisariam ir para retry **falham**.
 - Mensagens já enfileiradas ficam intactas (persistentes), mas não serão drenadas.
 
+**Pré-requisito:** no broker, **crie as duas filas duráveis** — `mop.client.retry.queue` (retry) e `mop.client.retry.dlq` (DLQ). Nomes customizados via `MOP_CLIENT_RETRY_QUEUE` e `MOP_CLIENT_RETRY_DLQ_QUEUE`. Ver [`docs/VARIAVEIS_DE_AMBIENTE.md`](docs/VARIAVEIS_DE_AMBIENTE.md#criação-obrigatória-das-filas).
+
 **Recomendações:** RabbitMQ em cluster com `quorum queue` (não classic), TTL configurado para a fila de retry, e DLQ separada (`mop.client.retry.dlq`).
 
 ### 3. Chave privada JWS em variável de ambiente é desencorajada
@@ -302,6 +306,7 @@ Seu cliente HTTP **precisa** lidar com ambos os formatos.
 
 ### 7. Checklist mínimo de produção
 
+- [ ] Filas RabbitMQ **`mop.client.retry.queue`** e **`mop.client.retry.dlq`** criadas (duráveis) no broker.
 - [ ] `EXTERNAL_REQUEST_URL` aponta para **produção**: `https://mop-server-entrypoint.opinbrasil.com.br/process` (não usar host sandbox).
 - [ ] `EXTERNAL_API_DATA_ANONYMIZATION` aponta para **produção**: `https://mop-server-entrypoint.opinbrasil.com.br/anonymization-fields?schema=Consent`.
 - [ ] `MOP_PAYLOAD_SIGNING_ENABLED=true` **e** `JWS_PRIVATE_KEY`/`JWS_KID`/`JWS_ORG_ID` definidos.
@@ -488,7 +493,9 @@ Ative com `SPRING_PROFILES_ACTIVE=local` ou `--spring.profiles.active=local`.
 
 | Variável | Default | Descrição |
 |---|---|---|
-| `MOP_CLIENT_RETRY_QUEUE` | `mop.client.retry.queue` | Nome da fila AMQP. |
+| `MOP_CLIENT_RETRY_QUEUE` | `mop.client.retry.queue` | Nome da fila AMQP de **retry** — deve existir no broker (durável). |
+| `MOP_CLIENT_RETRY_DLQ_QUEUE` | `mop.client.retry.dlq` | Nome da fila **DLQ** — deve existir no broker (durável). |
+| `MOP_CLIENT_RETRY_DLQ_MAX_ATTEMPTS` | `5` | Tentativas de replay antes de mover para a DLQ. |
 | `MOP_CLIENT_RETRY_REPLAY_ENABLED` | `true` | Liga o replay agendado. |
 | `MOP_CLIENT_RETRY_REPLAY_INITIAL_DELAY_MS` | `15000` | Atraso da primeira drenagem após o boot. |
 | `MOP_CLIENT_RETRY_REPLAY_INTERVAL_MS` | `10000` *(base)* / `1800000` *(local)* | **Diverge entre profiles** — confira o seu. |

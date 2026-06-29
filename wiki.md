@@ -59,6 +59,9 @@ Detalhes de estágios internos: código-fonte e comentários em `ProcessingOrche
 
 - **Circuit breakers** protegem chamadas aos endpoints de configuração e de processamento.
 - **Fila `mop.client.retry.queue`:** mensagens JSON com contexto para reenvio.
+- **Fila `mop.client.retry.dlq`:** dead-letter após esgotar tentativas ou payload inválido.
+
+**Pré-requisito:** criar **as duas filas** (duráveis) no RabbitMQ antes da operação. Ver [VARIAVEIS_DE_AMBIENTE.md](docs/VARIAVEIS_DE_AMBIENTE.md#criação-obrigatória-das-filas).
 - **Replay:** `ClientRetryReplayService` / `ClientRetryReplayScheduler` — intervalos em `mop.client.retry.replay.*`.
 
 Documentação dedicada: [docs/REPROCESSAMENTO.md](docs/REPROCESSAMENTO.md).

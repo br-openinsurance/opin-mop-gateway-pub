@@ -60,9 +60,18 @@ O gateway **não** consome nem reenvia automaticamente mensagens da DLQ. Após a
 
 ---
 
-## 4. Propriedades `spring.rabbitmq` em `application-local.yml`
+## 4. Criação das filas no RabbitMQ
 
-Além da fila de retry, o YAML ainda declara *listener*, nomes de filas antigas e `spring.rabbitmq.retry` — legado de configurações anteriores. O que importa para o fluxo atual é o **broker** e a fila **`mop.client.retry.queue`**.
+O gateway usa **duas filas** AMQP. **Ambas devem existir** no broker antes da operação (especialmente em sandbox/produção):
+
+| Fila | Propriedade / variável | Padrão |
+|------|------------------------|--------|
+| Retry | `mop.client.retry.queue` / `MOP_CLIENT_RETRY_QUEUE` | `mop.client.retry.queue` |
+| DLQ | `mop.client.retry.dlq.queue` / `MOP_CLIENT_RETRY_DLQ_QUEUE` | `mop.client.retry.dlq` |
+
+Crie as duas como filas **duráveis**. Sem a fila de retry, o enfileiramento falha quando o MOP está indisponível; sem a DLQ, mensagens que excederem `mop.client.retry.dlq.max-attempts` ou forem inválidas não têm destino de dead-letter.
+
+Procedimento e exemplos de CLI/UI: [VARIAVEIS_DE_AMBIENTE.md — Criação obrigatória das filas](VARIAVEIS_DE_AMBIENTE.md#criação-obrigatória-das-filas).
 
 ---
 
@@ -70,6 +79,7 @@ Além da fila de retry, o YAML ainda declara *listener*, nomes de filas antigas 
 
 | Pergunta | Resposta |
 |----------|----------|
+| Quantas filas preciso criar? | **Duas** — retry (`MOP_CLIENT_RETRY_QUEUE`) e DLQ (`MOP_CLIENT_RETRY_DLQ_QUEUE`). |
 | Existe fila interna? | Sim — **retry** (`MOP_CLIENT_RETRY_QUEUE`) quando o MOP não está acessível no momento. |
 | O que acontece após muitas falhas de replay? | Mensagem vai para a **DLQ** (`MOP_CLIENT_RETRY_DLQ_QUEUE`) após `MOP_CLIENT_RETRY_DLQ_MAX_ATTEMPTS` tentativas. |
 | Como reprocessar da DLQ? | Responsabilidade do **cliente** — consumir a DLQ, corrigir e reenviar (HTTP ou fila de retry). |

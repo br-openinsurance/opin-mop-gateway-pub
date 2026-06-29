@@ -19,7 +19,7 @@ O passo a passo completo — pré-requisitos (Kubernetes 1.24+, Helm 3.8+ com OC
 | Configuração | Arquivo local `values-client.yaml` (não versionar segredos) |
 | Exemplo de instalação | `helm install mop-client oci://ghcr.io/br-openinsurance/mop-client-chart/mop-client --version <versão> -f values-client.yaml` |
 
-Após o deploy, configure variáveis de ambiente e endpoints MOP conforme [`VARIAVEIS_DE_AMBIENTE.md`](VARIAVEIS_DE_AMBIENTE.md) (URLs de **sandbox** e **produção**) e valide o health em `{context-path}/actuator/health` (padrão `/v1/anonymize/actuator/health`).
+Após o deploy, configure variáveis de ambiente e endpoints MOP conforme [`VARIAVEIS_DE_AMBIENTE.md`](VARIAVEIS_DE_AMBIENTE.md) (URLs de **sandbox** e **produção**), **provisione as filas RabbitMQ** `mop.client.retry.queue` e `mop.client.retry.dlq` (duráveis — ver [Criação obrigatória das filas](VARIAVEIS_DE_AMBIENTE.md#criação-obrigatória-das-filas)) e valide o health em `{context-path}/actuator/health` (padrão `/v1/anonymize/actuator/health`).
 
 | Ambiente | `EXTERNAL_REQUEST_URL` |
 |----------|-------------------------|

@@ -11,6 +11,7 @@ Documento para validação das **principais funcionalidades** do gateway. Cada i
 | MOP sandbox — config | `https://mop-server-entrypoint-sandbox.opinbrasil.com.br/anonymization-fields?schema=Consent` |
 | MOP produção — process | `https://mop-server-entrypoint.opinbrasil.com.br/process` |
 | MOP produção — config | `https://mop-server-entrypoint.opinbrasil.com.br/anonymization-fields?schema=Consent` |
+| Filas RabbitMQ (obrigatórias) | `mop.client.retry.queue` (retry) · `mop.client.retry.dlq` (DLQ) — **criar as duas** como duráveis; ver `docs/VARIAVEIS_DE_AMBIENTE.md` |
 | Prioridade | **P0** = bloqueante · **P1** = importante · **P2** = complementar |
 
 **Legenda de execução:** ☐ Não testado · ☑ OK · ✗ Falhou
@@ -119,7 +120,8 @@ Content-Type: application/json
 
 **Passos**
 1. Configurar variáveis (MOP, RabbitMQ, JWS) conforme `docs/VARIAVEIS_DE_AMBIENTE.md`.
-2. Subir a aplicação (`SPRING_PROFILES_ACTIVE=local` ou perfil de QA).
+2. **Criar as duas filas** no RabbitMQ: `mop.client.retry.queue` e `mop.client.retry.dlq` (duráveis).
+3. Subir a aplicação (`SPRING_PROFILES_ACTIVE=local` ou perfil de QA).
 
 **Resultado esperado**
 - Log: `Started MopClientApplication`.
@@ -144,7 +146,7 @@ Content-Type: application/json
 
 **Passos**
 1. Verificar broker (Docker Compose ou ambiente de QA).
-2. Conferir fila `mop.client.retry.queue` na UI (porta 15672, se local).
+2. Conferir filas `mop.client.retry.queue` e `mop.client.retry.dlq` na UI (porta 15672, se local).
 
 **Resultado esperado**
 - RabbitMQ **running**.
