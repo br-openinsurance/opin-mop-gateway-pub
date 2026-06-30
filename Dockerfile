@@ -5,7 +5,9 @@
 FROM eclipse-temurin:17-jre-alpine
 
 # Mantém pacotes do sistema atualizados (musl, ca-certificates, busybox, etc.).
+# Remediação Alpine: CVE-2026-11822/11824 (sqlite-libs), CVE-2026-41989 (libgcrypt).
 RUN apk update && \
+    apk upgrade --no-cache sqlite-libs libgcrypt && \
     apk upgrade --no-cache && \
     rm -rf /var/cache/apk/*
 

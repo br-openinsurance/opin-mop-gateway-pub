@@ -16,13 +16,15 @@ Somente achados com os níveis de severidade abaixo estão **no escopo de remedi
 
 Achados fora desse escopo podem constar nos exports das varreduras por transparência, mas **não exigem** ticket de remediação nem bloqueio de release.
 
-> **Último export Tenable (2026-06-26):** os itens reportados são severidade **Low** (ex.: Spring `spring-webmvc` 6.2.11) — documentados no CSV, **fora** do escopo de remediação acima.
+> **Último export Tenable (2026-06-26):** achados em dependências Java são severidade **Low** (ex.: Spring `spring-webmvc` 6.2.11) — **fora** do escopo de remediação acima.
+>
+> **Alpine (imagem base, 2026):** **Critical** e **High** em `sqlite-libs` e `libgcrypt` — **no escopo**. Detalhes: [ALPINE-2026.md](ALPINE-2026.md).
 
 ## Inventário de varreduras
 
 | Ferramenta | Data da execução | Artefatos | Observações |
 |------------|------------------|-----------|-------------|
-| **Trivy** (imagem container + JAR) | **2026-06-26** | [`trivy.txt`](trivy.txt) | Alvo: imagem `open-insurance-mop-gateway` (Alpine 3.23.5) + `mop-client-gateway.jar` — 0 vulnerabilidades |
+| **Trivy** (imagem container + JAR) | **2026-06-26** | [`trivy.txt`](trivy.txt) | `ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:develop` (Alpine 3.23.5); JAR sem achados — ver [ALPINE-2026.md](ALPINE-2026.md) para pacotes OS |
 | **Tenable** (SCA) | **2026-06-26** 11:01 | [`Vulnerabilities_All_2026-06-26-11_01.csv`](Vulnerabilities_All_2026-06-26-11_01.csv) | Export completo de vulnerabilidades |
 | **Tenable** (SCA, filtrado) | **2026-06-26** 11:01 | [`Software_Filtered_2026-06-26-11_01.csv`](Software_Filtered_2026-06-26-11_01.csv) | Visão filtrada por software |
 | **Tenable** (screenshot) | **2026-06-26** 13:58 | [`image-20260626-135821.png`](image-20260626-135821.png) | Evidência visual |

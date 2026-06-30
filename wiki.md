@@ -168,13 +168,15 @@ Somente vulnerabilidades classificadas como **Critical**, **High** ou **Medium**
 | Low | Não |
 | Info / outros | Não |
 
-Detalhes: [`docs/vulnerabilities/README.md`](docs/vulnerabilities/README.md#escopo-de-remediação-severidade).
+Detalhes: [`docs/vulnerabilities/README.md`](docs/vulnerabilities/README.md#escopo-de-remediação-severidade) · achados Alpine: [`docs/vulnerabilities/ALPINE-2026.md`](docs/vulnerabilities/ALPINE-2026.md).
 
-> **Último export Tenable (2026-06-26):** achados reportados são **Low** (ex.: Spring `spring-webmvc` 6.2.11) — fora do escopo de remediação acima.
+> **Último export Tenable (2026-06-26):** achados em dependências Java são **Low** (ex.: Spring `spring-webmvc` 6.2.11) — fora do escopo de remediação acima.
+>
+> **Alpine (imagem base):** CVE-2026-11822, CVE-2026-11824 (**Critical**, `sqlite-libs`) e CVE-2026-41989 (**High**, `libgcrypt`) — **no escopo**. Ver [ALPINE-2026.md](docs/vulnerabilities/ALPINE-2026.md).
 
 | Ferramenta | Data da execução | Artefatos | Resumo |
 |------------|------------------|-----------|--------|
-| **Trivy** (imagem container + JAR) | **2026-06-26** | [`docs/vulnerabilities/trivy.txt`](docs/vulnerabilities/trivy.txt) | `ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:develop` (Alpine 3.23.5) + `mop-client-gateway.jar`: 0 vulnerabilidades |
+| **Trivy** (imagem container + JAR) | **2026-06-26** | [`docs/vulnerabilities/trivy.txt`](docs/vulnerabilities/trivy.txt) | Imagem GHCR `develop` (Alpine 3.23.5): **Critical/High** em pacotes OS — [detalhes](docs/vulnerabilities/ALPINE-2026.md); JAR sem achados no export |
 | **Tenable** (SCA) | **2026-06-26** 11:01 | [`docs/vulnerabilities/Vulnerabilities_All_2026-06-26-11_01.csv`](docs/vulnerabilities/Vulnerabilities_All_2026-06-26-11_01.csv) · [`docs/vulnerabilities/Software_Filtered_2026-06-26-11_01.csv`](docs/vulnerabilities/Software_Filtered_2026-06-26-11_01.csv) | Achados em dependências (ex.: Spring `spring-webmvc` 6.2.11); ver CSV para severidade e fix version |
 | **Tenable** (screenshot) | **2026-06-26** 13:58 | [`docs/vulnerabilities/image-20260626-135821.png`](docs/vulnerabilities/image-20260626-135821.png) | Evidência visual da varredura |
 
@@ -187,6 +189,7 @@ Detalhes: [`docs/vulnerabilities/README.md`](docs/vulnerabilities/README.md#esco
 - [docs/VARIAVEIS_DE_AMBIENTE.md](docs/VARIAVEIS_DE_AMBIENTE.md)
 - [docs/REPROCESSAMENTO.md](docs/REPROCESSAMENTO.md)
 - [docs/vulnerabilities/](docs/vulnerabilities/) — artefatos de varredura (Trivy, Tenable)
+- [docs/vulnerabilities/ALPINE-2026.md](docs/vulnerabilities/ALPINE-2026.md) — CVEs Critical/High na imagem Alpine
 - [Open Insurance Brasil](https://www.gov.br/susep/pt-br/assuntos/open-insurance)
 
 **Última revisão:** alinhada ao serviço unificado com fila de retry e circuitos HTTP.
