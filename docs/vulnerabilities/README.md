@@ -32,7 +32,7 @@ Achados fora desse escopo podem constar nos exports das varreduras por transpar�
 
 1. Armazene exports CSV, JSON ou TXT nesta pasta com o padrão `Ferramenta_Descricao_AAAA-MM-DD-HH_MM.ext`.
 2. Opcionalmente, adicione screenshots em [`../images/`](../images/) com a data da varredura no nome do arquivo.
-3. Atualize a tabela acima e a seção **Varreduras de vulnerabilidade** no final do [`../README.md`](../README.md).
+3. Atualize a tabela acima e a seção **Varreduras de vulnerabilidade** no [`../../wiki.md`](../../wiki.md#varreduras-de-vulnerabilidade).
 
 ## Artefatos relacionados
 
