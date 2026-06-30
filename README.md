@@ -66,6 +66,12 @@ Em produção, o **MOP Client** pode ser implantado com o **Helm Chart** publica
 - **[Instalação via Helm — `INSTALA_MOP_CLIENT.md`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/feat/mop-client-install/docs/INSTALA_MOP_CLIENT.md)** (branch `feat/mop-client-install`)
 - Resumo e links neste repositório: [`docs/INSTALACAO.md`](docs/INSTALACAO.md)
 
+Imagem Docker (GHCR, branch `develop`):
+
+```bash
+docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:develop
+```
+
 ---
 
 ## Início rápido — rodando em até 10 minutos
@@ -76,23 +82,26 @@ Em produção, o **MOP Client** pode ser implantado com o **Helm Chart** publica
 
 | Ferramenta | Versão | Observação |
 |---|---|---|
-| Java | **17+** | `java -version` |
-| Maven | 3.x | `mvn -v` |
-| Docker / Docker Compose | qualquer | Para subir o RabbitMQ |
+| Docker | qualquer | Imagem do gateway + RabbitMQ |
 | Credenciais JWS | — | `mop-client-sandbox.pem` (PKCS#8), `JWS_KID`, `JWS_ORG_ID` |
 
-### Passo 1 — Clonar e subir (~2 min)
+### Passo 1 — Baixar imagem e subir RabbitMQ (~2 min)
 
 ```bash
-git clone --branch develop https://github.com/br-openinsurance/opin-mop-gateway-pub.git
-cd opin-mop-gateway-pub
-docker compose up -d
+docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:develop
+
+docker network create mop-local 2>/dev/null || true
+
+docker run -d --name rabbitmq --network mop-local \
+  -p 5672:5672 -p 15672:15672 \
+  -e RABBITMQ_DEFAULT_USER=guest -e RABBITMQ_DEFAULT_PASS=guest \
+  rabbitmq:4.2-management
 ```
 
 Confira que o RabbitMQ está saudável:
 
 ```bash
-docker compose ps
+docker ps --filter name=rabbitmq
 # rabbitmq   running   0.0.0.0:5672->5672, 0.0.0.0:15672->15672
 ```
 
@@ -114,8 +123,8 @@ export SPRING_PROFILES_ACTIVE=local
 export EXTERNAL_REQUEST_URL="https://mop-server-entrypoint-sandbox.opinbrasil.com.br/process"
 export EXTERNAL_API_DATA_ANONYMIZATION="https://mop-server-entrypoint-sandbox.opinbrasil.com.br/anonymization-fields?schema=Consent"
 
-# RabbitMQ local (do docker compose)
-export RABBITMQ_VALIDATOR_HOST=localhost
+# RabbitMQ (container na rede mop-local)
+export RABBITMQ_VALIDATOR_HOST=rabbitmq
 export RABBITMQ_VALIDATOR_PORT=5672
 export RABBITMQ_USERNAME=guest
 export RABBITMQ_PASSWORD=guest
@@ -138,7 +147,7 @@ $env:SPRING_PROFILES_ACTIVE = "local"
 $env:EXTERNAL_REQUEST_URL = "https://mop-server-entrypoint-sandbox.opinbrasil.com.br/process"
 $env:EXTERNAL_API_DATA_ANONYMIZATION = "https://mop-server-entrypoint-sandbox.opinbrasil.com.br/anonymization-fields?schema=Consent"
 
-$env:RABBITMQ_VALIDATOR_HOST = "localhost"
+$env:RABBITMQ_VALIDATOR_HOST = "rabbitmq"
 $env:RABBITMQ_VALIDATOR_PORT = "5672"
 $env:RABBITMQ_USERNAME = "guest"
 $env:RABBITMQ_PASSWORD = "guest"
@@ -156,11 +165,20 @@ $env:JWS_ORG_ID = "<seu-orgId-uuid>"
 
 ### Passo 3 — Subir a aplicação (~2 min)
 
+Com o `.env.sandbox` preenchido (Passo 2):
+
 ```bash
-mvn spring-boot:run
+docker run -d --name mop-client --network mop-local -p 8080:8080 \
+  --env-file .env.sandbox \
+  ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:develop
 ```
 
-Quando vir `Started MopClientApplication in X.X seconds (process running for ...)` a aplicação está pronta na porta **8080** com context-path `/v1/anonymize`.
+Quando o container estiver `running`, a aplicação responde na porta **8080** com context-path `/v1/anonymize`. Acompanhe os logs:
+
+```bash
+docker logs -f mop-client
+# Espere: Started MopClientApplication in X.X seconds (process running for ...)
+```
 
 ### Passo 4 — Smoke test (~1 min)
 
@@ -569,7 +587,7 @@ Todos sob `/v1/anonymize/actuator/*`:
 |---|---|---|
 | App falha no boot: `MOP_PAYLOAD_SIGNING_ENABLED=true requires ...` | Assinatura habilitada sem `JWS_PRIVATE_KEY`/`JWS_KID`/`JWS_ORG_ID`. | Defina as três variáveis (produção) ou ajuste `MOP_PAYLOAD_SIGNING_ENABLED=false` (dev). |
 | App falha no boot: `JWS_KID must not be blank` | `JWS_KID` ou `JWS_ORG_ID` vazio. | Defina ambas as variáveis. |
-| App falha no boot: `Connection refused: amqp://localhost:5672` | RabbitMQ ausente. | `docker compose up -d` ou ajuste `RABBITMQ_VALIDATOR_HOST`. |
+| App falha no boot: `Connection refused: amqp://localhost:5672` | RabbitMQ ausente ou host incorreto no container. | Suba o RabbitMQ (ver [início rápido](#passo-1--baixar-imagem-e-subir-rabbitmq-2-min)); use `RABBITMQ_VALIDATOR_HOST=rabbitmq` na rede `mop-local`. |
 | Todas as respostas com log `[MOP retry]` (mesmo retornando 200) | MOP indisponível **ou** circuit `mopProcessEndpoint` aberto. | Cheque `/actuator/health` → seção `circuitBreakers`; valide `EXTERNAL_REQUEST_URL` e conectividade. |
 | `401 Unauthorized` recebido do MOP | `kid` desconhecido pelo MOP, ou JWS expirado, ou `orgId` inválido. | Confira que a chave pública está no JWKS do participante e propagada; valide `JWS_KID` e `JWS_ORG_ID`. |
 | `400 Header 'origin' must be either 'client' or 'server'` | Header `origin` foi sobrescrito pelo proxy/CDN (colisão com CORS). | Force preservação do header no proxy ou troque de cliente para enviar valor explícito. |

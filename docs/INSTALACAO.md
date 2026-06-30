@@ -30,7 +30,13 @@ Após o deploy, configure variáveis de ambiente e endpoints MOP conforme [`VARI
 
 ## Outros modos de implantação
 
-- **Desenvolvimento local:** Maven + Docker Compose (RabbitMQ) — ver [README.md](../README.md#início-rápido--rodando-em-até-10-minutos).
-- **Container customizado:** imagem Docker do projeto; variáveis e context-path descritos em [`VARIAVEIS_DE_AMBIENTE.md`](VARIAVEIS_DE_AMBIENTE.md).
+- **Desenvolvimento local (Docker):** imagem GHCR + RabbitMQ — ver [README.md](../README.md#início-rápido--rodando-em-até-10-minutos).
+
+```bash
+docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:develop
+```
+
+- **Desenvolvimento a partir do código:** `mvn spring-boot:run` com Docker Compose (RabbitMQ) — requer clone do repositório para build local.
+- Variáveis e context-path: [`VARIAVEIS_DE_AMBIENTE.md`](VARIAVEIS_DE_AMBIENTE.md).
 
 Para dúvidas sobre versão do chart, valores Helm ou suporte à instalação, contate a equipe responsável pelo MOP Client (referência no guia oficial acima).

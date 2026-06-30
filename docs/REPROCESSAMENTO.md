@@ -29,9 +29,10 @@ Os **TTLs de cache** definem com que frequência o gateway **atualiza** dados ma
 Exemplo:
 
 ```bash
-export SPRING_PROFILES_ACTIVE=local
-export CACHE_APP_CONFIG_TTL_SECONDS=600
-mvn spring-boot:run
+docker run --rm --network mop-local -p 8080:8080 \
+  --env-file .env.sandbox \
+  -e CACHE_APP_CONFIG_TTL_SECONDS=600 \
+  ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:develop
 ```
 
 ---

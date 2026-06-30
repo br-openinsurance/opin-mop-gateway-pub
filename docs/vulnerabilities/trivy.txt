@@ -1,10 +1,11 @@
+# Varredura Trivy — 2026-06-26
 
 Report Summary
 
 ┌──────────────────────────────────────────────────────────────────────────────────┬────────┬─────────────────┬─────────┬───────────────────┐
 │                                      Target                                      │  Type  │ Vulnerabilities │ Secrets │ Misconfigurations │
 ├──────────────────────────────────────────────────────────────────────────────────┼────────┼─────────────────┼─────────┼───────────────────┤
-│ ghcr.io/br-openinsurance-infra/opin-mop-gateway/open-insurance-mop-gateway:deve- │ alpine │        0        │    -    │         -         │
+│ ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:deve- │ alpine │        0        │    -    │         -         │
 │ lop (alpine 3.23.5)                                                              │        │                 │         │                   │
 ├──────────────────────────────────────────────────────────────────────────────────┼────────┼─────────────────┼─────────┼───────────────────┤
 │ app/mop-client-gateway.jar                                                       │  jar   │        0        │    -    │         -         │

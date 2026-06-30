@@ -87,6 +87,12 @@ Implantação em **Kubernetes** via **Helm Chart** (GHCR: `ghcr.io/br-openinsura
 - Guia oficial: [INSTALA_MOP_CLIENT.md](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/feat/mop-client-install/docs/INSTALA_MOP_CLIENT.md) no repositório `opin-mop-gateway-pub` (branch `feat/mop-client-install`).
 - Índice local: [docs/INSTALACAO.md](docs/INSTALACAO.md).
 
+Imagem Docker (GHCR, branch `develop`):
+
+```bash
+docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:develop
+```
+
 ---
 
 ## Configuração
@@ -121,6 +127,14 @@ Variáveis: [docs/VARIAVEIS_DE_AMBIENTE.md](docs/VARIAVEIS_DE_AMBIENTE.md).
 
 ## Desenvolvimento
 
+Imagem publicada (branch `develop`):
+
+```bash
+docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:develop
+```
+
+Build e testes a partir do código-fonte:
+
 ```bash
 mvn test
 mvn clean package
@@ -140,7 +154,7 @@ mvn clean package
 
 ## Varreduras de vulnerabilidade
 
-Relatórios e evidências em [`docs/vulnerabilities/`](docs/vulnerabilities/). Screenshots em [`docs/images/`](docs/images/).
+Relatórios e evidências em [`docs/vulnerabilities/`](docs/vulnerabilities/).
 
 ### Escopo de tratamento (severidade)
 
@@ -160,10 +174,9 @@ Detalhes: [`docs/vulnerabilities/README.md`](docs/vulnerabilities/README.md#esco
 
 | Ferramenta | Data da execução | Artefatos | Resumo |
 |------------|------------------|-----------|--------|
-| **Trivy** (imagem container) | **2026-04-27** | [`docs/images/trivy-scan-2026-04-27.png`](docs/images/trivy-scan-2026-04-27.png) | Alpine 3.23.5 e `mop-client-gateway.jar`: 0 vulnerabilidades |
-| **Trivy** (export texto) | — | [`docs/vulnerabilities/trivy.txt`](docs/vulnerabilities/trivy.txt) | Mesmo escopo (container + JAR); 0 findings no relatório exportado |
-| **Tenable** (SCA) | **2026-06-26** 11:01 | [`Vulnerabilities_All_2026-06-26-11_01.csv`](docs/vulnerabilities/Vulnerabilities_All_2026-06-26-11_01.csv) · [`Software_Filtered_2026-06-26-11_01.csv`](docs/vulnerabilities/Software_Filtered_2026-06-26-11_01.csv) | Achados em dependências (ex.: Spring `spring-webmvc` 6.2.11); ver CSV para severidade e fix version |
-| **Tenable** (screenshot) | **2026-04-27** | [`docs/images/tenable-scan-2026-04-27.png`](docs/images/tenable-scan-2026-04-27.png) | Evidência visual da varredura |
+| **Trivy** (imagem container + JAR) | **2026-06-26** | [`docs/vulnerabilities/trivy.txt`](docs/vulnerabilities/trivy.txt) | `ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:develop` (Alpine 3.23.5) + `mop-client-gateway.jar`: 0 vulnerabilidades |
+| **Tenable** (SCA) | **2026-06-26** 11:01 | [`docs/vulnerabilities/Vulnerabilities_All_2026-06-26-11_01.csv`](docs/vulnerabilities/Vulnerabilities_All_2026-06-26-11_01.csv) · [`docs/vulnerabilities/Software_Filtered_2026-06-26-11_01.csv`](docs/vulnerabilities/Software_Filtered_2026-06-26-11_01.csv) | Achados em dependências (ex.: Spring `spring-webmvc` 6.2.11); ver CSV para severidade e fix version |
+| **Tenable** (screenshot) | **2026-06-26** 13:58 | [`docs/vulnerabilities/image-20260626-135821.png`](docs/vulnerabilities/image-20260626-135821.png) | Evidência visual da varredura |
 
 ---
 
