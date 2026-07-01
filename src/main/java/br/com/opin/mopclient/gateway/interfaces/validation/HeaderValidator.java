@@ -2,6 +2,7 @@ package br.com.opin.mopclient.gateway.interfaces.validation;
 
 import br.com.opin.mopclient.gateway.interfaces.enums.HttpMethod;
 import br.com.opin.mopclient.gateway.interfaces.enums.HttpType;
+import br.com.opin.mopclient.validator.shared.util.OpenApiPathMatcher;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -26,7 +27,7 @@ public class HeaderValidator {
      * correlationId is independent and mandatory (informed by the user in header X-Correlation-Id).
      *
      * @param correlationId  Correlation ID from header X-Correlation-Id (required, non-empty, min 1 character)
-     * @param origin         Origin header value (must be "client" or "server")
+     * @param origin         Origin header value (must be "client" or "server"; must match httpType)
      * @param path           Path header value
      * @param operation      Operation header value (must be a valid HTTP method)
      * @param httpType         HTTP message type (required: Request or Response)
@@ -59,19 +60,32 @@ public class HeaderValidator {
         if (!StringUtils.hasText(path)) {
             return ValidationResult.error("Header 'path' must not be empty");
         }
-        if (!StringUtils.hasText(operation)) {
+        ValidationResult pathFormatResult = validatePathHeaderFormat(path, operation);
+        if (!pathFormatResult.isValid()) {
+            return pathFormatResult;
+        }
+        ValidationResult mopPathResult = validateOpenInsuranceMopPath(path);
+        if (!mopPathResult.isValid()) {
+            return mopPathResult;
+        }
+        String normalizedOperation = operation != null ? operation.trim() : operation;
+        if (!StringUtils.hasText(normalizedOperation)) {
             return ValidationResult.error("Header 'operation' must not be empty");
         }
-        if (!HttpMethod.isValid(operation)) {
+        if (!HttpMethod.isValid(normalizedOperation)) {
             return ValidationResult.error(
                     String.format("Header 'operation' must be one of the following values: %s. Received: '%s'",
-                            HttpMethod.getValidValues(), operation));
+                            HttpMethod.getValidValues(), normalizedOperation));
         }
         if (!HttpType.isValid(httpType)) {
             String received = (httpType == null || httpType.isBlank()) ? "" : httpType.trim();
             return ValidationResult.error(
                     String.format("Header 'httpType' must be one of the following values: %s. Received: '%s'",
                             HttpType.getValidValues(), received));
+        }
+        ValidationResult originHttpTypeResult = validateOriginHttpTypeConsistency(origin, httpType);
+        if (!originHttpTypeResult.isValid()) {
+            return originHttpTypeResult;
         }
         if (HttpType.isResponse(httpType)) {
             if (!StringUtils.hasText(statusCode)) {
@@ -89,6 +103,63 @@ public class HeaderValidator {
                     String.format(
                             "Header 'statusCode' must be a valid HTTP status code (%d-%d). Received: '%s'",
                             STATUS_CODE_MIN, STATUS_CODE_MAX, statusCode));
+        }
+        return ValidationResult.success();
+    }
+
+    /**
+     * {@code path} must not embed the HTTP verb; when present, it must match {@code operation}.
+     */
+    private static ValidationResult validatePathHeaderFormat(String path, String operation) {
+        var embeddedMethod = OpenApiPathMatcher.extractLeadingHttpMethod(path);
+        if (embeddedMethod.isEmpty()) {
+            return ValidationResult.success();
+        }
+        String verb = embeddedMethod.get();
+        String normalizedOperation = operation != null ? operation.trim() : "";
+        if (!StringUtils.hasText(normalizedOperation)) {
+            return ValidationResult.error(
+                    "Header 'path' must not include the HTTP method ('" + verb + "'). "
+                            + "Use header 'operation' for the verb and 'path' only for the resource path "
+                            + "(e.g. path: /open-insurance/consents/v3/consents, operation: POST)");
+        }
+        if (!verb.equalsIgnoreCase(normalizedOperation)) {
+            return ValidationResult.error(
+                    "Header 'path' embeds HTTP method '" + verb + "' but header 'operation' is '"
+                            + normalizedOperation + "'. Remove the verb from 'path' and keep only 'operation'.");
+        }
+        return ValidationResult.error(
+                "Header 'path' must not include the HTTP method ('" + verb + "'). "
+                        + "Send path: /open-insurance/consents/v3/consents and operation: " + verb);
+    }
+
+    /**
+     * {@code path} must normalize to a full MOP path under {@code /open-insurance/}, not only {@code /consents}.
+     */
+    private static ValidationResult validateOpenInsuranceMopPath(String path) {
+        String mopPath = OpenApiPathMatcher.extractOpenInsurancePath(path);
+        if (mopPath != null && mopPath.startsWith(OpenApiPathMatcher.OPEN_INSURANCE_PREFIX)) {
+            return ValidationResult.success();
+        }
+        String effective = mopPath != null ? mopPath : path.trim();
+        return ValidationResult.error(
+                "Header 'path' must be the full Open Insurance path starting with /open-insurance/ "
+                        + "(e.g. /open-insurance/consents/v3/consents). "
+                        + "Do not send only the operation segment such as /consents. "
+                        + "Effective path after normalization: '" + effective + "'");
+    }
+
+    /**
+     * {@code origin=client} exige {@code httpType=Request}; {@code origin=server} exige {@code httpType=Response}.
+     */
+    private static ValidationResult validateOriginHttpTypeConsistency(String origin, String httpType) {
+        if (CLIENT.equalsIgnoreCase(origin) && HttpType.isResponse(httpType)) {
+            return ValidationResult.error(
+                    "Header 'httpType' must be 'Request' when 'origin' is 'client'");
+        }
+        if (SERVER.equalsIgnoreCase(origin) && !HttpType.isResponse(httpType)) {
+            return ValidationResult.error(
+                    "Header 'httpType' must be 'Response' when 'origin' is 'server'");
         }
         return ValidationResult.success();
     }

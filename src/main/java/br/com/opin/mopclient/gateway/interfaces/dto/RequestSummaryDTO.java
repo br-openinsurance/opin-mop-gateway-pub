@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Map;
+
 /**
  * Summary of the inbound HTTP request echoed in gateway responses.
  */
@@ -22,4 +24,8 @@ public class RequestSummaryDTO {
 
     @JsonProperty("operation")
     private String operation;
+
+    @JsonProperty("header")
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    private Map<String, String> header;
 }

@@ -8,7 +8,7 @@ import java.util.Optional;
 
 /**
  * Maps {@code swagger/current/} spec files and MOP paths to Open Insurance phases,
- * aligned with the official wiki and the endpoint groups in {@code ingestion.yaml}.
+ * aligned with the official wiki.
  */
 final class OpenApiSpecPhaseCatalog {
 
@@ -22,6 +22,10 @@ final class OpenApiSpecPhaseCatalog {
             return OpenInsurancePhase.INTERNAL;
         }
         return BY_FILE.getOrDefault(fileName, phaseForFileNameHeuristic(fileName));
+    }
+
+    static boolean excludedFromOpenInsuranceValidation(String fileName) {
+        return phaseForFile(fileName) == OpenInsurancePhase.INTERNAL;
     }
 
     static OpenInsurancePhase phaseForMopPath(String mopPath) {
@@ -177,9 +181,8 @@ final class OpenApiSpecPhaseCatalog {
                 "quote-transport.yaml",
                 "webhook.yaml");
 
-        // Infraestrutura / fora das fases MOP
+        // Infraestrutura / fora das fases MOP (não indexados para validação Open Insurance)
         register(index, OpenInsurancePhase.INTERNAL,
-                "ingestion.yaml",
                 "consent-funnel-ingestion.yaml",
                 "discovery.yaml",
                 "admin_metrics.yaml");

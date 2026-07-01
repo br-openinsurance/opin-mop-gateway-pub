@@ -29,11 +29,11 @@ Todos os headers abaixo são enviados na requisição `POST /v1/anonymize/data`.
 | Header | Obrigatório | Descrição | Regras de validação | Exemplo |
 |--------|:-----------:|-----------|---------------------|---------|
 | `X-Correlation-Id` | **Sim** | ID da intenção lógica / correlação (fornecido pelo cliente). | Não nulo; não vazio após trim; ≥ 1 caractere. Recomendado UUID v4. | `f47ac10b-58cc-4372-a567-0e02b2c3d479` |
-| `origin` | **Sim** | Origem da chamada no fluxo MOP. | `client` (valida request) ou `server` (valida response), case-insensitive. | `client` |
-| `path` | **Sim** | Rota **concreta** do recurso Open Insurance (`path_MOP` completo). | Não vazio; **não** usar `{consentId}` literal. Ver `PATH_MOP_HEADER.md`. | `/open-insurance/consents/v2/consents/urn:seguradora:abc` |
+| `origin` | **Sim** | Origem da chamada no fluxo MOP. | `client` exige `httpType=Request`; `server` exige `httpType=Response` (case-insensitive). | `client` |
+| `path` | **Sim** | Rota **concreta** do recurso Open Insurance (`path_MOP` completo). | Não vazio; deve começar com `/open-insurance/`; **não** usar `{consentId}` literal nem só `/consents`. Ver `PATH_MOP_HEADER.md`. | `/open-insurance/consents/v3/consents` |
 | `operation` | **Sim** | Verbo HTTP da operação de negócio original. | Um de: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, `OPTIONS`, `TRACE` (case-insensitive). | `POST` |
 | `httpType` | **Sim** | Tipo da mensagem HTTP no fluxo MOP. | Apenas `Request` ou `Response` (case-insensitive). | `Request` |
-| `statusCode` | **Condicional** | Código HTTP da mensagem original. | **Opcional** quando `httpType=Request`. **Obrigatório** quando `httpType=Response` (100–599). | `200` |
+| `statusCode` | **Condicional** | Código HTTP da mensagem original. | **Opcional** quando `httpType=Request`. **Obrigatório** quando `httpType=Response` (100–599). Com `Response`, use o status da spec (ex.: **201** no POST consents v3). | `201` |
 | `clientSSId` | **Não** | Identificador da parte **receptora** (SS). | Opcional; ecoado em `context.clientSSId`. | `RECEPTORA-A` |
 | `serverASId` | **Não** | Identificador da parte **transmissora** (AS). | Opcional; ecoado em `context.serverASId`. | `TRANSMISSORA-B` |
 
@@ -50,6 +50,15 @@ Todos os headers abaixo são enviados na requisição `POST /v1/anonymize/data`.
 | `traceOrigin` | **Não** | Origem do evento de trace (ex.: `CLIENT`, `SERVER`). | Campo `trace.traceOrigin` vazio no `MessageDTO` enviado ao MOP; fluxo segue normalmente. Repassado na fila de retry se informado. | `CLIENT` |
 | `X-Mop-Reportid` | **Não** | ID de rastreio MOP (legado/interno). | Gateway **gera** um identificador (`TraceabilityService`). | `mop-report-7f3c9a2b` |
 
+> **`origin` + `httpType` + `statusCode`:** apenas duas combinações válidas para validação OpenAPI:
+>
+> | `origin` | `httpType` | `statusCode` | Valida |
+> |----------|------------|--------------|--------|
+> | `client` | `Request` | opcional | **requestBody** |
+> | `server` | `Response` | **obrigatório** | **response body** do status na spec |
+>
+> `statusCode` deve ser o status **da API Open Insurance** (ex.: POST consents v3 sucesso = **201**). Detalhes: [`PATH_MOP_HEADER.md`](PATH_MOP_HEADER.md).
+
 > **`httpType` e `statusCode`:** `httpType` é sempre obrigatório. `statusCode` só é obrigatório quando `httpType=Response`; com `httpType=Request`, pode ser omitido ou informado (se informado, deve ser 100–599).
 
 > **Nota `traceOrigin`:** quando informado, é serializado em `trace.traceOrigin` do `MessageDTO` enviado ao MOP. **Não** aparece na resposta HTTP do gateway (`POST /data`).
@@ -62,12 +71,20 @@ Todos os headers abaixo são enviados na requisição `POST /v1/anonymize/data`.
 POST /v1/anonymize/data HTTP/1.1
 X-Correlation-Id: f47ac10b-58cc-4372-a567-0e02b2c3d479
 origin: client
-path: /open-insurance/consents/v2/consents
+path: /open-insurance/consents/v3/consents
 operation: POST
 httpType: Request
 Content-Type: application/json
 
-{"data":{"id":"qa-001"}}
+{
+  "data": {
+    "permissions": ["RESOURCES_READ"],
+    "loggedUser": {
+      "document": { "identification": "11111111111", "rel": "CPF" }
+    },
+    "expirationDateTime": "2026-12-31T23:59:59Z"
+  }
+}
 ```
 
 ### Exemplo completo (obrigatórios + opcionais)
@@ -76,7 +93,7 @@ Content-Type: application/json
 POST /v1/anonymize/data HTTP/1.1
 X-Correlation-Id: f47ac10b-58cc-4372-a567-0e02b2c3d479
 origin: client
-path: /open-insurance/consents/v2/consents
+path: /open-insurance/consents/v3/consents
 operation: POST
 httpType: Request
 clientSSId: RECEPTORA-A
@@ -85,24 +102,49 @@ traceOrigin: CLIENT
 X-Mop-Reportid: mop-report-7f3c9a2b
 Content-Type: application/json
 
-{"data":{"id":"qa-001"}}
+{
+  "data": {
+    "permissions": ["RESOURCES_READ"],
+    "loggedUser": {
+      "document": { "identification": "11111111111", "rel": "CPF" }
+    },
+    "expirationDateTime": "2026-12-31T23:59:59Z"
+  }
+}
 ```
 
 ### Exemplo com `httpType=Response` (`statusCode` obrigatório)
+
+POST consents v3 — resposta de sucesso na spec é **201** (`ResponseConsent`):
 
 ```http
 POST /v1/anonymize/data HTTP/1.1
 X-Correlation-Id: f47ac10b-58cc-4372-a567-0e02b2c3d479
 origin: server
-path: /open-insurance/consents/v2/consents
-operation: GET
+path: /open-insurance/consents/v3/consents
+operation: POST
 httpType: Response
-statusCode: 200
+statusCode: 201
 clientSSId: RECEPTORA-A
 serverASId: TRANSMISSORA-B
 Content-Type: application/json
 
-{"data":{"id":"qa-002"}}
+{"data":{"consentId":"urn:prudential:C1DD93123","creationDateTime":"2021-05-21T08:30:00Z","status":"AWAITING_AUTHORISATION","statusUpdateDateTime":"2021-05-21T08:30:00Z","permissions":["RESOURCES_READ"],"expirationDateTime":"2021-05-21T08:30:00Z"},"links":{"self":"https://api.organizacao.com.br/open-insurance/consents/v3/consents/urn:prudential:C1DD93123"},"meta":{"totalRecords":1,"totalPages":1}}
+```
+
+GET customers — resposta de sucesso com **200**:
+
+```http
+POST /v1/anonymize/data HTTP/1.1
+X-Correlation-Id: f47ac10b-58cc-4372-a567-0e02b2c3d479
+origin: server
+path: /open-insurance/customers/v2/personal/identifications
+operation: GET
+httpType: Response
+statusCode: 200
+Content-Type: application/json
+
+{"data":[],"links":{"self":"..."},"meta":{"totalRecords":0,"totalPages":1}}
 ```
 
 ### Corpo da requisição (body)
@@ -159,7 +201,7 @@ Content-Type: application/json
 ### Cenário 2.1 — Requisição válida mínima (P0)
 
 **Passos**
-1. Enviar `POST /v1/anonymize/data` usando apenas os **7 headers obrigatórios** (ver tabela acima) e body JSON objeto — ver *Exemplo mínimo* na referência de headers.
+1. Enviar `POST /v1/anonymize/data` usando apenas os **headers obrigatórios** (`X-Correlation-Id`, `origin`, `path`, `operation`, `httpType`) e body JSON objeto — ver *Exemplo mínimo* na referência de headers.
 
 **Resultado esperado**
 - HTTP **200** (MOP disponível) ou **202** (MOP indisponível).
@@ -210,11 +252,11 @@ Headers **opcionais** (`traceOrigin`, `X-Mop-Reportid`) não devem ser enviados 
 ### Cenário 3.1 — Header obrigatório ausente (P0)
 
 **Passos**
-1. Omitir `clientSSId` (ou outro obrigatório) mantendo o restante válido.
+1. Omitir `httpType` (ou outro header obrigatório: `X-Correlation-Id`, `origin`, `path`, `operation`) mantendo o restante válido.
 
 **Resultado esperado**
 - HTTP **400**.
-- Resposta em formato **array de strings** (Spring), ex.: `"Missing required header: clientSSId"`.
+- Resposta em formato **array de strings** (Spring), ex.: `"Missing required header: httpType"`.
 
 ---
 
@@ -263,14 +305,63 @@ Headers **opcionais** (`traceOrigin`, `X-Mop-Reportid`) não devem ser enviados 
 
 ---
 
-### Cenário 3.6 — Path ou participant IDs vazios (P0)
+### Cenário 3.6 — Path vazio ou incompleto (P0)
 
 **Passos**
-1. Enviar `path` vazio **ou** `clientSSId` / `serverASId` vazio.
+1. Enviar `path` vazio.
+2. Enviar `path: /consents` (sem prefixo `/open-insurance/`).
 
 **Resultado esperado**
-- HTTP **400**.
-- Mensagem indicando qual header não pode ser vazio.
+- HTTP **400** em ambos.
+- Mensagem indicando path vazio **ou** que o path deve começar com `/open-insurance/`.
+
+---
+
+### Cenário 3.6b — `clientSSId` / `serverASId` opcionais (P1)
+
+**Passos**
+1. Enviar requisição válida **sem** `clientSSId` e `serverASId`.
+2. Repetir omitindo apenas um dos dois.
+
+**Resultado esperado**
+- HTTP **200** ou **202** (não é erro de header).
+- `context.clientSSId` pode refletir fallback de `origin` quando `clientSSId` ausente.
+
+---
+
+### Cenário 3.12 — `origin` / `httpType` inconsistentes (P0)
+
+**Passos**
+1. Enviar `origin: client` com `httpType: Response`.
+2. Enviar `origin: server` com `httpType: Request`.
+
+**Resultado esperado**
+- HTTP **400** em ambos.
+- `details` exige `Request` para `client` ou `Response` para `server`.
+
+---
+
+### Cenário 3.13 — Validação OpenAPI com path MOP completo (P0)
+
+**Passos**
+1. `origin: client`, `httpType: Request`, `path: /open-insurance/consents/v3/consents`, `operation: POST`, body `CreateConsent` válido.
+2. Repetir com `path: /consents` (inválido — deve falhar no header **antes** da validação OpenAPI).
+
+**Resultado esperado**
+- Passo 1: HTTP **200** ou **202**; `validations.status`: `"SUCCESS"`.
+- Passo 2: HTTP **400** (path deve começar com `/open-insurance/`).
+
+---
+
+### Cenário 3.14 — `statusCode` incorreto em Response (P1)
+
+**Passos**
+1. `origin: server`, `httpType: Response`, `statusCode: 200`, POST consents v3, body de sucesso (`data`, `links`).
+
+**Resultado esperado**
+- HTTP **200** ou **202** (gateway aceita headers).
+- `validations.status`: `"ERROR"` — schema de erro (`errors`) aplicado em vez de `ResponseConsent`.
+- Corrigir para `statusCode: 201` → `validations.status`: `"SUCCESS"`.
 
 ---
 
@@ -332,7 +423,7 @@ Headers **opcionais** (`traceOrigin`, `X-Mop-Reportid`) não devem ser enviados 
 ## Funcionalidade 4 — Headers opcionais de trace
 
 Testa apenas os headers marcados como **opcionais** na [Referência — Headers HTTP](#referência--headers-http-post-data).  
-Em todos os cenários, manter os **7 headers obrigatórios** preenchidos (incluindo `httpType`).
+Em todos os cenários, manter os **headers obrigatórios** preenchidos (`X-Correlation-Id`, `origin`, `path`, `operation`, `httpType`; `statusCode` quando `httpType=Response`).
 
 | Header testado nesta seção | Obrigatório? |
 |----------------------------|:------------:|
@@ -419,7 +510,7 @@ Em todos os cenários, manter os **7 headers obrigatórios** preenchidos (inclui
 2. Analisar body da resposta.
 
 **Resultado esperado**
-- Body contém: `message`, `timestamp`, `context` (`correlationId`, `clientSSId`, `serverASId`), `request` (`path`, `operation`), `validations` (`status`, `total`, `pending`) e, em entrega síncrona ao MOP, `response` (`status` + `body` do `/process`).
+- Body contém: `message`, `timestamp`, `context` (`correlationId`, `clientSSId`, `serverASId`), `request` (`path`, `operation`, `header` com headers ecoados), `validations` (`status`, `total`, `pending`) e, em entrega síncrona ao MOP, `response` (`status` + `body` do `/process`).
 - **Não** contém `traceOrigin`, `MessageDTO` nem objeto `trace` completo.
 
 ---
@@ -526,10 +617,10 @@ Fluxo interno: validação → anonimização (GET fields + apply) → montagem 
 2. Uma requisição com MOP **DOWN** (esperar 202).
 
 **Resultado esperado**
-| Situação | HTTP | `status` no body |
-|----------|------|------------------|
-| Entregue ao MOP | **200** | `SUCCESS` |
-| Apenas enfileirado | **202** | `ACCEPTED` |
+| Situação | HTTP | Campo `message` no body |
+|----------|------|-------------------------|
+| Entregue ao MOP | **200** | Texto de sucesso síncrono; inclui `response` |
+| Apenas enfileirado | **202** | Texto de aceite para fila; **sem** `response` |
 
 - Mensagens de body **diferentes** entre 200 e 202.
 - QA **não** deve assumir entrega ao MOP só pelo fato de não haver erro HTTP.
@@ -574,7 +665,7 @@ Fluxo interno: validação → anonimização (GET fields + apply) → montagem 
 **Resultado esperado**
 | Origem | Formato da resposta |
 |--------|---------------------|
-| Controller (`HeaderValidator`) | JSON objeto: `status`, `error`, `details`, `timestamp` |
+| Controller (`HeaderValidator`) | JSON objeto: `error`, `details`, `timestamp` |
 | Spring (header obrigatório ausente) | **Array de strings** |
 
 - Cliente integrador deve tratar **ambos** os formatos.

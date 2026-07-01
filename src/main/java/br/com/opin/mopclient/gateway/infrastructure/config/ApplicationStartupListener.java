@@ -139,12 +139,23 @@ public class ApplicationStartupListener implements ApplicationListener<Applicati
 
         logger.info("[OPENAPI]");
         if (openApiCurrentSpecRegistry != null) {
+            openApiCurrentSpecRegistry.loadAllSpecs();
             logger.info(
                     "- swagger/current | indexed = {} | discovered = {} | loaded = {} | parsed routes = {}",
                     openApiCurrentSpecRegistry.indexedRouteCount(),
                     openApiCurrentSpecRegistry.discoveredSpecFileCount(),
                     openApiCurrentSpecRegistry.loadedSpecFileCount(),
                     openApiCurrentSpecRegistry.routeCount());
+            if (!openApiCurrentSpecRegistry.failedSpecFiles().isEmpty()) {
+                warnings.add("OpenAPI spec load failures: " + openApiCurrentSpecRegistry.failedSpecFiles());
+            }
+            if (openApiCurrentSpecRegistry.resolve("/open-insurance/consents/v3/consents").isEmpty()) {
+                warnings.add(
+                        "OpenAPI route /open-insurance/consents/v3/consents is not resolvable — "
+                                + "consent API validation will fail until swagger/current specs load correctly");
+            } else {
+                logger.info("- swagger/current | consents v3 POST route = OK");
+            }
         } else {
             warnings.add("OpenApiCurrentSpecRegistry bean missing — modular OpenAPI validation unavailable");
             logger.info("- swagger/current | (registry bean missing)");

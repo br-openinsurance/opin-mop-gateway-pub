@@ -44,7 +44,7 @@ API HTTP **auto-hospedada** que cada participante do **Open Insurance Brasil** i
 1. **Sua aplicação** envia `POST /v1/anonymize/data` com os headers de trace.
 2. **O gateway** valida os headers, anonimiza o payload e assina.
 3. **Envia ao MOP** — se o MOP estiver fora, **enfileira no RabbitMQ** e tenta de novo automaticamente.
-4. **Você recebe `HTTP 200 SUCCESS`** *nos dois casos*. Quando o MOP volta, o replay drena a fila.
+4. **Você recebe `HTTP 200`** quando o MOP aceita na hora, ou **`HTTP 202`** quando o pedido é enfileirado para retry (MOP indisponível). Em ambos os casos a validação OpenAPI roda antes do envio.
 
 ```mermaid
 flowchart LR
@@ -55,7 +55,7 @@ flowchart LR
 ```
 
 > [!CAUTION]
-> A resposta `HTTP 200 SUCCESS` cobre **os dois cenários** (entregue ou enfileirado) com o **mesmo body**. Para saber qual aconteceu, olhe os **logs** e a **profundidade da fila**. Trate como at-least-once e leia [Antes de ir para produção](#antes-de-ir-para-produção).
+> **`HTTP 200` ≠ entrega garantida ao MOP.** Use **`202`** quando o MOP estiver indisponível (body sem `response`). Para saber o que ocorreu, confira o **status HTTP**, os **logs** e o campo `response`. Trate como at-least-once e leia [Antes de ir para produção](#antes-de-ir-para-produção).
 
 ---
 
@@ -195,13 +195,19 @@ Primeira requisição:
 curl -i -X POST http://localhost:8080/v1/anonymize/data \
   -H "X-Correlation-Id: $(uuidgen)" \
   -H "origin: client" \
-  -H "path: /open-insurance/consents/v2/consents" \
-  -H "operation: POST" \
   -H "httpType: Request" \
-  -H "clientSSId: RECEPTORA-A" \
-  -H "serverASId: TRANSMISSORA-B" \
+  -H "path: /open-insurance/consents/v3/consents" \
+  -H "operation: POST" \
   -H "Content-Type: application/json" \
-  -d '{"data":{"id":"123"}}'
+  -d '{
+    "data": {
+      "permissions": ["RESOURCES_READ"],
+      "loggedUser": {
+        "document": { "identification": "11111111111", "rel": "CPF" }
+      },
+      "expirationDateTime": "2026-12-31T23:59:59Z"
+    }
+  }'
 ```
 
 Resposta esperada:
@@ -219,8 +225,16 @@ Content-Type: application/json
     "serverASId": "TRANSMISSORA-B"
   },
   "request": {
-    "path": "/open-insurance/consents/v2/consents",
-    "operation": "POST"
+    "path": "/open-insurance/consents/v3/consents",
+    "operation": "POST",
+    "header": {
+      "x-correlation-id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      "origin": "client",
+      "httpType": "Request",
+      "path": "/open-insurance/consents/v3/consents",
+      "operation": "POST",
+      "content-type": "application/json"
+    }
   },
   "response": {
     "status": 201,
@@ -317,7 +331,7 @@ Os headers `origin`, `path`, `operation`, `clientSSId`, `serverASId` **não usam
 
 | Origem do erro | Formato |
 |---|---|
-| Validação de header pelo controller | JSON estruturado (`status: ERROR`, `error`, `details`, `timestamp`) |
+| Validação de header pelo controller | JSON estruturado (`error`, `details`, `timestamp`) |
 | Header obrigatório ausente / JSON malformado | **Array de strings** (`["Missing required header: ...", "Details: ..."]`) |
 
 Seu cliente HTTP **precisa** lidar com ambos os formatos.
@@ -348,11 +362,11 @@ Seu cliente HTTP **precisa** lidar com ambos os formatos.
 | Header | Descrição | Restrições | Exemplo |
 |---|---|---|---|
 | `X-Correlation-Id` | ID da intenção lógica (idempotência at-least-once). | Não vazio, ≥ 1 char. **Recomendado: UUID v4.** | `f47ac10b-58cc-4372-a567-0e02b2c3d479` |
-| `origin` | Origem da chamada no fluxo MOP. | `client` ou `server` (case-insensitive). `client` valida body como **request** OpenAPI; `server` como **response**. | `client` |
-| `path` | Path **concreto** da transação Open Insurance (`basePath + operationPath` com IDs reais). | Não vazio. **Não** use `{consentId}` literal. Ver [`docs/PATH_MOP_HEADER.md`](docs/PATH_MOP_HEADER.md). | `/open-insurance/consents/v2/consents/urn:seguradora:abc` |
+| `origin` | Origem da chamada no fluxo MOP. | `client` (com `httpType=Request`) ou `server` (com `httpType=Response`), case-insensitive. Combinações inconsistentes retornam HTTP 400. | `client` |
+| `path` | Path **concreto** da transação Open Insurance (`basePath + operationPath` com IDs reais). | Não vazio; deve começar com `/open-insurance/` após normalização. **Não** use `{consentId}` literal nem só `/consents`. Ver [`docs/PATH_MOP_HEADER.md`](docs/PATH_MOP_HEADER.md). | `/open-insurance/consents/v3/consents` |
 | `operation` | Verbo HTTP da operação original. | `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, `OPTIONS`, `TRACE`. | `POST` |
-| `httpType` | Tipo da mensagem HTTP no fluxo MOP. | `Request` ou `Response` (case-insensitive). | `Request` |
-| `statusCode` | Código HTTP da mensagem original. | **Condicional:** opcional quando `httpType=Request`; **obrigatório** quando `httpType=Response` (100–599). | `200` |
+| `httpType` | Tipo da mensagem HTTP no fluxo MOP. | `Request` ou `Response` (case-insensitive). Deve casar com `origin`: `client`→`Request`, `server`→`Response`. | `Request` |
+| `statusCode` | Código HTTP da mensagem original. | **Condicional:** opcional quando `httpType=Request`; **obrigatório** quando `httpType=Response` (100–599). Com `Response`, use o status da **spec Open Insurance** (ex.: `201` no POST consents v3). | `201` |
 
 ### Headers opcionais
 
@@ -363,29 +377,109 @@ Seu cliente HTTP **precisa** lidar com ambos os formatos.
 | `traceOrigin` | Origem do evento de trace. | Repassado ao MOP em `trace.traceOrigin` do `MessageDTO`. | `CLIENT` |
 | `X-Mop-Reportid` | ID de rastreio MOP interno. | Gerado pelo gateway se omitido. | `mop-report-7f3c9a2b` |
 
-**Regras de `httpType` e `statusCode`**
+**Combinações válidas de `origin`, `httpType` e `statusCode`**
+
+O gateway aceita **apenas duas combinações** para validação OpenAPI. Qualquer outro par retorna **HTTP 400** (`HeaderValidator`).
+
+| `origin` | `httpType` | `statusCode` | O que valida no body | Cenário típico |
+|---|---|---|---|---|
+| `client` | `Request` | omitido ou 100–599 | **requestBody** da operação (`path` + `operation`) | Payload que a **receptora enviou** à transmissora |
+| `server` | `Response` | **obrigatório** (100–599) | **response body** da operação para o `statusCode` informado | Payload que a **transmissora devolveu** à receptora |
+
+Combinações **rejeitadas** (HTTP 400):
+
+| `origin` | `httpType` | Erro |
+|---|---|---|
+| `client` | `Response` | `httpType` deve ser `Request` |
+| `server` | `Request` | `httpType` deve ser `Response` |
+| `server` | `Response` | `statusCode` omitido — obrigatório com `httpType=Response` |
+
+> **`statusCode` não é o HTTP da resposta do gateway.** É o status HTTP **da transação Open Insurance** que você está reportando. Ex.: criar consentimento (POST `/consents`) retorna **201** na spec — use `statusCode: 201`, não `200`. Com `statusCode` errado, o validador pode aplicar o schema de **erro** (`ResponseError` com campo `errors`) e falhar em bodies de sucesso (`data`, `links`).
+
+**Exemplo — request do cliente (criar consentimento v3)**
+
+```bash
+curl -i -X POST http://localhost:8080/v1/anonymize/data \
+  -H "X-Correlation-Id: $(uuidgen)" \
+  -H "origin: client" \
+  -H "httpType: Request" \
+  -H "path: /open-insurance/consents/v3/consents" \
+  -H "operation: POST" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "data": {
+      "permissions": ["RESOURCES_READ"],
+      "loggedUser": {
+        "document": { "identification": "11111111111", "rel": "CPF" }
+      },
+      "expirationDateTime": "2026-12-31T23:59:59Z"
+    }
+  }'
+```
+
+Valida o schema **`CreateConsent`** (requestBody do POST).
+
+**Exemplo — response do servidor (consentimento criado, status 201)**
+
+```bash
+curl -i -X POST http://localhost:8080/v1/anonymize/data \
+  -H "X-Correlation-Id: $(uuidgen)" \
+  -H "origin: server" \
+  -H "httpType: Response" \
+  -H "statusCode: 201" \
+  -H "path: /open-insurance/consents/v3/consents" \
+  -H "operation: POST" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "data": {
+      "consentId": "urn:prudential:C1DD93123",
+      "creationDateTime": "2021-05-21T08:30:00Z",
+      "status": "AWAITING_AUTHORISATION",
+      "statusUpdateDateTime": "2021-05-21T08:30:00Z",
+      "permissions": ["RESOURCES_READ"],
+      "expirationDateTime": "2021-05-21T08:30:00Z"
+    },
+    "links": {
+      "self": "https://api.organizacao.com.br/open-insurance/consents/v3/consents/urn:prudential:C1DD93123"
+    },
+    "meta": { "totalRecords": 1, "totalPages": 1 }
+  }'
+```
+
+Valida o schema **`ResponseConsent`** (resposta `201` do POST). Consulte `consents_v3.yaml` para o status correto de cada operação.
+
+**Regras de `origin`, `httpType` e `statusCode` (referência rápida)**
+
+| `origin` | `httpType` | `statusCode` | Validação OpenAPI |
+|---|---|---|---|
+| `client` | `Request` | omitido | Body como **request** da operação |
+| `client` | `Request` | informado | Body como **request** (statusCode deve ser 100–599 se informado) |
+| `client` | `Response` | — | **HTTP 400** — `httpType` deve ser `Request` |
+| `server` | `Response` | omitido | **HTTP 400** — `statusCode` obrigatório |
+| `server` | `Response` | informado | Body como **response** do status informado na spec |
+| `server` | `Request` | — | **HTTP 400** — `httpType` deve ser `Response` |
 
 | `httpType` | `statusCode` | Comportamento |
 |---|---|---|
 | `Request` | omitido | Aceito. |
 | `Request` | informado | Deve ser um código HTTP válido (100–599). |
 | `Response` | omitido | **HTTP 400** — `Header 'statusCode' is required when 'httpType' is 'Response'`. |
-| `Response` | informado | Obrigatório; deve ser 100–599. |
+| `Response` | informado | Obrigatório; deve ser 100–599 e **casar com a resposta definida no OpenAPI** para `path` + `operation`. |
 
-Exemplo com `httpType=Response`:
+Exemplo legado com `httpType=Response` (GET identifications — status 200):
 
 ```bash
 curl -i -X POST http://localhost:8080/v1/anonymize/data \
   -H "X-Correlation-Id: $(uuidgen)" \
   -H "origin: server" \
-  -H "path: /open-insurance/consents/v2/consents" \
+  -H "path: /open-insurance/customers/v2/personal/identifications" \
   -H "operation: GET" \
   -H "httpType: Response" \
   -H "statusCode: 200" \
   -H "clientSSId: RECEPTORA-A" \
   -H "serverASId: TRANSMISSORA-B" \
   -H "Content-Type: application/json" \
-  -d '{"data":{"id":"123"}}'
+  -d '{"data":[],"links":{"self":"..."},"meta":{"totalRecords":0,"totalPages":1}}'
 ```
 
 ### Resposta — `200 OK`
@@ -400,8 +494,16 @@ curl -i -X POST http://localhost:8080/v1/anonymize/data \
     "serverASId": "TRANSMISSORA-B"
   },
   "request": {
-    "path": "/open-insurance/consents/v2/consents",
-    "operation": "POST"
+    "path": "/open-insurance/consents/v3/consents",
+    "operation": "POST",
+    "header": {
+      "x-correlation-id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      "origin": "client",
+      "httpType": "Request",
+      "path": "/open-insurance/consents/v3/consents",
+      "operation": "POST",
+      "content-type": "application/json"
+    }
   },
   "response": {
     "status": 201,
@@ -432,8 +534,16 @@ curl -i -X POST http://localhost:8080/v1/anonymize/data \
     "serverASId": "TRANSMISSORA-B"
   },
   "request": {
-    "path": "/open-insurance/consents/v2/consents",
-    "operation": "POST"
+    "path": "/open-insurance/consents/v3/consents",
+    "operation": "POST",
+    "header": {
+      "x-correlation-id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+      "origin": "client",
+      "httpType": "Request",
+      "path": "/open-insurance/consents/v3/consents",
+      "operation": "POST",
+      "content-type": "application/json"
+    }
   },
   "validations": {
     "status": "SUCCESS",
@@ -459,8 +569,8 @@ curl -i -X POST http://localhost:8080/v1/anonymize/data \
 
 ```json
 [
-  "Missing required header: clientSSId",
-  "Details: Required request header 'clientSSId' for method parameter type String is not present"
+  "Missing required header: httpType",
+  "Details: Required request header 'httpType' for method parameter type String is not present"
 ]
 ```
 
@@ -574,7 +684,8 @@ Todos sob `/v1/anonymize/actuator/*`:
 | Padrão de log | Significado | Ação |
 |---|---|---|
 | `Payload successfully processed. clientSSId=... correlationId=...` | Entrega ao MOP confirmada. | OK. |
-| `[MOP retry] Client received HTTP 200; body sent to retry queue` | Mensagem **enfileirada**, não entregue. | Alertar se taxa elevada. |
+| `[MOP retry] Client received HTTP 202; body sent to retry queue` | Mensagem **enfileirada**, não entregue. | Alertar se taxa elevada. |
+| `[OPENAPI]` (startup) | Specs Open Insurance carregadas; rota consents v3 verificada. | Conferir log no boot; ausência de WARN indica registry OK. |
 | `Header validation failed: ...` | `400` por validação. | Sem ação se baixa frequência. |
 | `Failed to process JSON: ...` | `400` por JSON ilegível. | Sem ação se baixa frequência. |
 | `Unexpected error processing request: ...` | `500`. | **Alertar imediatamente.** |
@@ -588,7 +699,11 @@ Todos sob `/v1/anonymize/actuator/*`:
 | App falha no boot: `MOP_PAYLOAD_SIGNING_ENABLED=true requires ...` | Assinatura habilitada sem `JWS_PRIVATE_KEY`/`JWS_KID`/`JWS_ORG_ID`. | Defina as três variáveis (produção) ou ajuste `MOP_PAYLOAD_SIGNING_ENABLED=false` (dev). |
 | App falha no boot: `JWS_KID must not be blank` | `JWS_KID` ou `JWS_ORG_ID` vazio. | Defina ambas as variáveis. |
 | App falha no boot: `Connection refused: amqp://localhost:5672` | RabbitMQ ausente ou host incorreto no container. | Suba o RabbitMQ (ver [início rápido](#passo-1--baixar-imagem-e-subir-rabbitmq-2-min)); use `RABBITMQ_VALIDATOR_HOST=rabbitmq` na rede `mop-local`. |
-| Todas as respostas com log `[MOP retry]` (mesmo retornando 200) | MOP indisponível **ou** circuit `mopProcessEndpoint` aberto. | Cheque `/actuator/health` → seção `circuitBreakers`; valide `EXTERNAL_REQUEST_URL` e conectividade. |
+| Todas as respostas com log `[MOP retry]` (HTTP **202**, sem `response` no body) | MOP indisponível **ou** circuit `mopProcessEndpoint` aberto. | Cheque `/actuator/health` → seção `circuitBreakers`; valide `EXTERNAL_REQUEST_URL` e conectividade. |
+| `validations.status: ERROR` com `Operation path not found from URL '/consents'` | Header `path` enviado só com o segmento da operação, sem `basePath`. | Use path MOP completo: `/open-insurance/consents/v3/consents`. Ver [`docs/PATH_MOP_HEADER.md`](docs/PATH_MOP_HEADER.md). |
+| `validations.status: ERROR` pedindo campo `errors` em body com `data`/`links` | `origin: server` + `httpType: Response` com `statusCode` errado (ex.: `200` no POST consents). | Use o status da spec (POST consents v3 sucesso = **`201`**). |
+| `400` — `path` must start with /open-insurance/` | Path incompleto ou URL sem trecho Open Insurance reconhecível. | Aplicar fórmula `basePath + operationPath`; não enviar `/consents` isolado. |
+| `400 Header 'httpType' must be 'Request' when 'origin' is 'client'` | Par `origin`/`httpType` inconsistente. | `client`+`Request` ou `server`+`Response`+`statusCode`. |
 | `401 Unauthorized` recebido do MOP | `kid` desconhecido pelo MOP, ou JWS expirado, ou `orgId` inválido. | Confira que a chave pública está no JWKS do participante e propagada; valide `JWS_KID` e `JWS_ORG_ID`. |
 | `400 Header 'origin' must be either 'client' or 'server'` | Header `origin` foi sobrescrito pelo proxy/CDN (colisão com CORS). | Force preservação do header no proxy ou troque de cliente para enviar valor explícito. |
 | `400 Header 'operation' must be one of: ...` | Verbo HTTP inválido (ex.: `OPTIONS`). | Use `GET/POST/PUT/PATCH/DELETE`. |

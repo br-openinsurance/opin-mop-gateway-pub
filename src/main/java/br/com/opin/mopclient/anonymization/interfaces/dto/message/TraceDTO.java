@@ -42,12 +42,6 @@ public class TraceDTO {
     @JsonProperty("serverASId")
     private String serverASId;
 
-    @JsonProperty("step")
-    private String step;
-
-    @JsonProperty("DataEventoStep")
-    private String dataEventoStep;
-
     @JsonProperty("origin")
     private String origin;
 

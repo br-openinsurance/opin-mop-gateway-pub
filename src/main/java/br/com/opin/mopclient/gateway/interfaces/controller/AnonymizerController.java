@@ -153,6 +153,7 @@ public class AnonymizerController {
                     responseServerASId,
                     headersDTO.getPath(),
                     headersDTO.getOperation(),
+                    headersDTO.getHeaders(),
                     processingResult.validations(),
                     processingResult.serverResponse());
 
@@ -184,6 +185,7 @@ public class AnonymizerController {
                     responseServerASId,
                     h.getPath(),
                     h.getOperation(),
+                    h.getHeaders(),
                     e.getSuccessMessage());
         } catch (Exception e) {
             LOGGER.error("Unexpected error processing request: {}", e.getMessage(), e);

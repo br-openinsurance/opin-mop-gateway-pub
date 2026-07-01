@@ -30,14 +30,14 @@ import java.util.Optional;
 /**
  * Validates payloads against Open Insurance OpenAPI specifications in {@code swagger/current/}
  * via {@link OpenApiCurrentSpecRegistry} (MOP path = {@code servers.url} path + {@code paths} key).
- * Uses HTTP {@code operation} header and {@code origin} (client=request, server=response).
+ * Uses HTTP {@code operation} header and {@code httpType} (Request=request body, Response=response body).
+ * {@code origin} must be consistent with {@code httpType} (enforced by {@link br.com.opin.mopclient.gateway.interfaces.validation.HeaderValidator}).
  */
 @Service
 public class OpenApiValidationService {
 
     private static final Logger logger = LoggerFactory.getLogger(OpenApiValidationService.class);
     private static final int MAX_VALIDATION_ERRORS = 100;
-    private static final String ORIGIN_SERVER = "server";
 
     private final OpenApiCurrentSpecRegistry currentSpecRegistry;
 
@@ -46,7 +46,7 @@ public class OpenApiValidationService {
     }
 
     public ValidationResponseDTO validate(String rawPayload, HttpHeaders headers, String endpointUrl) {
-        return validate(rawPayload, headers, endpointUrl, null, null);
+        return validate(rawPayload, headers, endpointUrl, null, null, null);
     }
 
     /**
@@ -56,20 +56,22 @@ public class OpenApiValidationService {
      * @param headers      HTTP headers (OpenAPI parameters)
      * @param endpointUrl  full MOP {@code path} header
      * @param httpMethod   HTTP verb from MOP {@code operation} header (GET, POST, …)
-     * @param origin       {@code client} validates request body; {@code server} validates response body
+     * @param httpType     {@code Request} validates request body; {@code Response} validates response body
+     * @param statusCode   HTTP status for response validation when {@code httpType} is {@code Response}
      */
     public ValidationResponseDTO validate(
             String rawPayload,
             HttpHeaders headers,
             String endpointUrl,
             String httpMethod,
-            String origin) {
+            String httpType,
+            String statusCode) {
 
         validateInputs(rawPayload, endpointUrl);
 
         String normalizedMopPath = normalizeEndpointUrl(endpointUrl);
         Request.Method method = toRequestMethod(httpMethod);
-        boolean validateAsResponse = ORIGIN_SERVER.equalsIgnoreCase(origin);
+        boolean validateAsResponse = isResponseHttpType(httpType);
 
         long startTime = System.currentTimeMillis();
         ValidationResponseDTO response = new ValidationResponseDTO();
@@ -77,11 +79,11 @@ public class OpenApiValidationService {
         try {
             ResolvedValidationTarget target = resolveValidationTarget(normalizedMopPath);
             logger.info(
-                    "Starting validation | mopPath={} | validationPath={} | method={} | origin={} | spec={}",
+                    "Starting validation | mopPath={} | validationPath={} | method={} | httpType={} | spec={}",
                     normalizedMopPath,
                     target.validationPath(),
                     method,
-                    origin != null ? origin : "client",
+                    httpType != null && !httpType.isBlank() ? httpType : "Request",
                     target.sourceLabel());
             String normalizedPayload = normalizePayload(rawPayload);
             Map<String, Collection<String>> headersMap = normalizeHeaders(headers);
@@ -96,14 +98,14 @@ public class OpenApiValidationService {
 
             if (validateAsResponse) {
                 Body responseBody = createRequestBody(normalizedPayload);
-                Response openApiResponse = new DefaultResponse.Builder(inferResponseStatus(method))
+                Response openApiResponse = new DefaultResponse.Builder(resolveResponseStatus(statusCode, method))
                         .body(responseBody)
                         .headers(headersMap)
                         .build();
                 var responseValidation = OpenApiOperationSupport.validateResponse(
                         target.openApi(), target.validationPath(), method, openApiResponse);
                 if (!responseValidation.isValid()) {
-                    logger.warn("Validation failed | validationPath={} | origin=server", target.validationPath());
+                    logger.warn("Validation failed | validationPath={} | httpType=Response", target.validationPath());
                     response.setValidationResult(buildValidationErrorResponse(
                             responseValidation.results(), "Invalid response"));
                     logger.info("Validation process completed in {} ms", System.currentTimeMillis() - startTime);
@@ -111,7 +113,8 @@ public class OpenApiValidationService {
                 }
             } else {
                 Body requestBody = createRequestBody(normalizedPayload);
-                Request openApiRequest = new DefaultRequest.Builder(target.validationPath(), method)
+                // openapi4j RequestValidator matches server.url + paths key; use full MOP path, not YAML template.
+                Request openApiRequest = new DefaultRequest.Builder(target.mopPath(), method)
                         .body(requestBody)
                         .headers(headersMap)
                         .build();
@@ -179,6 +182,21 @@ public class OpenApiValidationService {
             case DELETE -> 204;
             default -> 200;
         };
+    }
+
+    private static int resolveResponseStatus(String statusCode, Request.Method method) {
+        if (statusCode != null && !statusCode.isBlank()) {
+            try {
+                return Integer.parseInt(statusCode.trim());
+            } catch (NumberFormatException ignored) {
+                // fall through to inferred default
+            }
+        }
+        return inferResponseStatus(method);
+    }
+
+    private static boolean isResponseHttpType(String httpType) {
+        return httpType != null && httpType.trim().equalsIgnoreCase("Response");
     }
 
     private void validateInputs(String rawPayload, String endpointUrl) {

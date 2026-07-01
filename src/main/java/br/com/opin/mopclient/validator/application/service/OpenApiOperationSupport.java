@@ -72,14 +72,18 @@ final class OpenApiOperationSupport {
         Path apiPath = resolveApiPath(openApi, validationPath, relativePath);
         if (apiPath == null) {
             throw new OpenApiOperationResolutionException(
-                    "Operation path not found from URL '" + mopPath + "'.",
+                    "Operation path not found from URL '" + mopPath + "'"
+                            + " (OpenAPI template: '" + validationPath + "').",
                     OpenApiOperationResolutionException.CODE_NOT_FOUND);
         }
 
         Operation operation = resolveOperation(apiPath, method);
         if (operation == null) {
             throw new OpenApiOperationResolutionException(
-                    "No " + method + " operation for path '" + mopPath + "'.");
+                    "No " + method + " operation for path '" + mopPath + "'. "
+                            + "Check that headers 'path' and 'operation' match the OpenAPI spec "
+                            + "(e.g. POST /open-insurance/consents/v3/consents for create consent).",
+                    OpenApiOperationResolutionException.CODE_NOT_FOUND);
         }
     }
 

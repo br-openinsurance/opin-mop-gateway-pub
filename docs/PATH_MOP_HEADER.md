@@ -106,7 +106,7 @@ origin: client
 path: {path_MOP}
 operation: {GET|POST|PUT|DELETE}
 httpType: {Request|Response}
-statusCode: {obrigatório quando httpType=Response, ex.: 200}
+statusCode: {obrigatório quando httpType=Response — use o status da spec OpenAPI, ex.: 201 para POST /consents}
 clientSSId: {receptora}
 serverASId: {transmissora}
 traceOrigin: {opcional, ex.: CLIENT}
@@ -115,6 +115,48 @@ Content-Type: application/json
 { ... payload JSON conforme requestBody ou response do spec ... }
 ```
 
+### Combinação `origin` + `httpType` + `statusCode`
+
+O gateway valida o body JSON conforme a **mensagem HTTP original** da transação Open Insurance. Os três headers trabalham juntos:
+
+| `origin` | `httpType` | `statusCode` | Schema OpenAPI validado | Quem envia o evento |
+|----------|------------|--------------|-------------------------|---------------------|
+| `client` | `Request` | opcional (100–599) | **requestBody** de `path` + `operation` | Receptora reportando o que **enviou** |
+| `server` | `Response` | **obrigatório** (100–599) | **response body** do status na spec | Transmissora reportando o que **respondeu** |
+
+**Únicas combinações aceitas.** Demais pares (`client`+`Response`, `server`+`Request`, `server`+`Response` sem `statusCode`) → **HTTP 400**.
+
+#### `statusCode` com `httpType=Response`
+
+- Deve ser o **status HTTP real da API Open Insurance**, não o status da resposta do gateway MOP.
+- O validador escolhe o schema em `responses['{statusCode}']` do YAML. Se o status não existir na operação, pode cair no schema `default` (geralmente `ResponseError` com campo `errors`).
+- Exemplo: POST `/open-insurance/consents/v3/consents` — sucesso é **`201`** (`ResponseConsent`), não `200`. Com `statusCode: 200` e body de sucesso (`data`, `links`), a validação falha pedindo `errors`.
+
+#### Exemplos rápidos (consents v3)
+
+**Request (cliente cria consentimento):**
+
+```http
+origin: client
+httpType: Request
+path: /open-insurance/consents/v3/consents
+operation: POST
+```
+
+Body: schema `CreateConsent`.
+
+**Response (servidor confirma criação):**
+
+```http
+origin: server
+httpType: Response
+statusCode: 201
+path: /open-insurance/consents/v3/consents
+operation: POST
+```
+
+Body: schema `ResponseConsent` (resposta `201`).
+
 ### Regras dos headers `httpType` e `statusCode`
 
 | `httpType` | `statusCode` | Comportamento |
@@ -122,14 +164,16 @@ Content-Type: application/json
 | `Request` | omitido | Aceito. |
 | `Request` | informado | Deve ser código HTTP válido (100–599). |
 | `Response` | omitido | **HTTP 400** — `statusCode` obrigatório. |
-| `Response` | informado | Obrigatório; 100–599. |
+| `Response` | informado | Obrigatório; 100–599; deve existir em `responses` da operação na spec. |
 
-### Regras do header `origin`
+### Regras do header `origin` e acoplamento com `httpType`
 
-| `origin` | Validação OpenAPI do body |
-|----------|---------------------------|
-| `client` | **Request** da operação (`operation` + `path`) |
-| `server` | **Response** da operação (status inferido: 201 POST, 200 GET, 204 DELETE) |
+| `origin` | `httpType` obrigatório | Validação OpenAPI do body |
+|----------|------------------------|---------------------------|
+| `client` | `Request` | **requestBody** da operação (`operation` + `path`) |
+| `server` | `Response` | **response body** da operação (`statusCode` + `operation` + `path`) |
+
+Combinações inconsistentes (`client` + `Response`, `server` + `Request`) retornam **HTTP 400** pelo `HeaderValidator`.
 
 ---
 
@@ -139,7 +183,9 @@ Content-Type: application/json
 |------|-------|----------|
 | `path not found from` | path_MOP não existe em nenhum yaml de `swagger/current/` | Confira a fórmula `basePath + operationPath`; use o arquivo correto (v2 vs v3) |
 | Path com `{consentId}` literal | Placeholder não substituído | Trocar `{consentId}` pelo URN real |
-| Só `/consents` no header | Faltou o basePath | Aplicar a fórmula completa |
+| Só `/consents` no header | Faltou o basePath | Aplicar a fórmula completa; gateway rejeita com HTTP 400 se não começar com `/open-insurance/` |
+| `statusCode: 200` em POST consents | Status de sucesso na spec é **201** | Usar `statusCode: 201` com `origin: server` e `httpType: Response` |
+| Body com `data`/`links` e erro pedindo `errors` | `statusCode` não casa com schema de sucesso | Conferir `responses` da operação no YAML |
 | URL completa no header | Host incluído | Enviar **somente** o path: `/open-insurance/...` |
 | Barra final | `/consents/` | Remover barra final (gateway normaliza, mas prefira sem) |
 | v2 vs v3 | Arquivo errado | `consents_v3.yaml` → base termina em `/v3`; v2 em `/v2` |
@@ -150,17 +196,19 @@ Content-Type: application/json
 
 | Onde validar | Spec a usar | Path na validação |
 |--------------|-------------|-------------------|
-| **Gateway MOP (runtime)** | `swagger/current/` | path_MOP completo no header; openapi4j usa path relativo + `operation` + `origin` |
+| **Gateway MOP (runtime)** | `swagger/current/` | path_MOP completo + `operation` + `httpType` (+ `statusCode` se Response) |
 | **Local / CI** (openapi4j, Postman) | Arquivo em `swagger/current/` | Path **relativo** do yaml (`/consents`) + método HTTP correto |
 
 ### Comportamento do `OpenApiValidationService`
 
-1. Resolve `path` MOP → spec em `swagger/current/` via `OpenApiCurrentSpecRegistry` (fórmula `basePath + operationPath`).
-2. Usa header **`operation`** (`GET`, `POST`, `PUT`, `DELETE`, …) na validação openapi4j.
-3. Usa header **`origin`**:
-   - `client` → valida **requestBody**
-   - `server` → valida **response body** (status 201 para POST, 200 para GET, 204 para DELETE)
-4. Se nenhum spec modular casar, retorna `NOT_FOUND` (`Operation path not found from URL '...'`).
+1. No **startup**, `ApplicationStartupListener` chama `loadAllSpecs()` e registra log `[OPENAPI]`; verifica se `/open-insurance/consents/v3/consents` resolve no registry.
+2. Resolve `path` MOP → spec em `swagger/current/` via `OpenApiCurrentSpecRegistry` (fórmula `basePath + operationPath`).
+3. Usa header **`operation`** (`GET`, `POST`, `PUT`, `DELETE`, …) na validação openapi4j.
+4. Usa header **`httpType`** (deve casar com **`origin`**):
+   - `origin=client` + `httpType=Request` → valida **requestBody**
+   - `origin=server` + `httpType=Response` → valida **response body** (usa `statusCode` do header)
+5. O **RequestValidator** do openapi4j recebe o **path MOP completo** (ex.: `/open-insurance/consents/v3/consents`), não apenas o segmento relativo do YAML (`/consents`).
+6. Se nenhum spec modular casar, retorna `NOT_FOUND` (`Operation path not found from URL '...'`).
 
 ---
 

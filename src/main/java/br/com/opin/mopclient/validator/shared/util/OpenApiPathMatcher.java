@@ -29,6 +29,22 @@ public final class OpenApiPathMatcher {
     /**
      * Strips scheme and host when {@code urlOrPath} is a full URL; otherwise normalizes as a path.
      */
+    /**
+     * Returns the HTTP verb when {@code urlOrPath} starts with {@code GET }, {@code POST }, etc.
+     */
+    public static java.util.Optional<String> extractLeadingHttpMethod(String urlOrPath) {
+        if (urlOrPath == null || urlOrPath.isBlank()) {
+            return java.util.Optional.empty();
+        }
+        String value = urlOrPath.trim();
+        int space = value.indexOf(' ');
+        if (space <= 0) {
+            return java.util.Optional.empty();
+        }
+        String token = value.substring(0, space).trim().toUpperCase();
+        return isHttpMethodToken(token) ? java.util.Optional.of(token) : java.util.Optional.empty();
+    }
+
     public static String extractPathOnly(String urlOrPath) {
         if (urlOrPath == null) {
             return null;
@@ -37,6 +53,7 @@ public final class OpenApiPathMatcher {
         if (value.isEmpty()) {
             return value;
         }
+        value = stripLeadingHttpMethodPrefix(value);
         try {
             if (value.startsWith("http://") || value.startsWith("https://")) {
                 URI uri = URI.create(value);
@@ -48,6 +65,19 @@ public final class OpenApiPathMatcher {
             // keep original value
         }
         return value.startsWith("/") ? value : "/" + value;
+    }
+
+    private static String stripLeadingHttpMethodPrefix(String value) {
+        return extractLeadingHttpMethod(value)
+                .map(method -> value.substring(method.length()).trim())
+                .orElse(value);
+    }
+
+    private static boolean isHttpMethodToken(String token) {
+        return switch (token) {
+            case "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE" -> true;
+            default -> false;
+        };
     }
 
     /**

@@ -32,6 +32,9 @@ final class OpenApiSpecPathIndex {
                 continue;
             }
             resourceByFileName.put(fileName, resource);
+            if (OpenApiSpecPhaseCatalog.excludedFromOpenInsuranceValidation(fileName)) {
+                continue;
+            }
             Optional<OpenApiSpecMetadata> metadata = OpenApiSpecMetadataReader.read(resource);
             if (metadata.isEmpty()) {
                 continue;

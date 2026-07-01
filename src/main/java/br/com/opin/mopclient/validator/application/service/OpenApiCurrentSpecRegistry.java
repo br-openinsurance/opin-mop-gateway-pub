@@ -207,7 +207,10 @@ public class OpenApiCurrentSpecRegistry {
 
     private void loadSpecFileIfNeeded(Resource resource) {
         String fileName = resource.getFilename();
-        if (fileName == null || loadedSpecFileNames.contains(fileName) || failedSpecFileNames.contains(fileName)) {
+        if (fileName == null
+                || OpenApiSpecPhaseCatalog.excludedFromOpenInsuranceValidation(fileName)
+                || loadedSpecFileNames.contains(fileName)
+                || failedSpecFileNames.contains(fileName)) {
             return;
         }
         loadSpecFile(resource);

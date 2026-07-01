@@ -142,7 +142,7 @@ class AnonymizerControllerTest {
             when(jsonParser.parse(anyString())).thenReturn(jsonNode);
             when(jsonParser.toJsonString(any(JsonNode.class))).thenReturn(VALID_JSON);
             mockBuildAndOrchestrator(headersDTO);
-            when(responseBuilder.buildSuccessResponse(anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyList(), isNull()))
+            when(responseBuilder.buildSuccessResponse(anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), any(), anyList(), isNull()))
                     .thenReturn(ResponseEntity.ok(createSuccessResponse(CORRELATION_ID, TIMESTAMP)));
 
             ResponseEntity<ApiResponseDTO> response = controller.receivedRequest(
@@ -174,7 +174,7 @@ class AnonymizerControllerTest {
             when(jsonParser.parse("")).thenReturn(emptyNode);
             when(jsonParser.toJsonString(emptyNode)).thenReturn("{}");
             mockBuildAndOrchestrator(headersDTO);
-            when(responseBuilder.buildSuccessResponse(anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyList(), isNull()))
+            when(responseBuilder.buildSuccessResponse(anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), any(), anyList(), isNull()))
                     .thenReturn(ResponseEntity.ok(createSuccessResponse(CORRELATION_ID, TIMESTAMP)));
 
             ResponseEntity<ApiResponseDTO> response = controller.receivedRequest(
@@ -200,7 +200,7 @@ class AnonymizerControllerTest {
                     .thenReturn(headersDTO);
             when(orchestratorService.processRequest(anyString(), anyString(), captor.capture()))
                     .thenReturn(new ProcessingResult("{}", List.of(), null));
-            when(responseBuilder.buildSuccessResponse(anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyList(), isNull()))
+            when(responseBuilder.buildSuccessResponse(anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), any(), anyList(), isNull()))
                     .thenReturn(ResponseEntity.ok(createSuccessResponse(correlationIdValue, TIMESTAMP)));
 
             controller.receivedRequest(
@@ -235,7 +235,7 @@ class AnonymizerControllerTest {
                     .validations(ValidationsSummaryDTO.from(List.of()))
                     .build();
             when(responseBuilder.buildAcceptedResponse(
-                    anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString()))
+                    anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), any(), anyString()))
                     .thenReturn(ResponseEntity.status(HttpStatus.ACCEPTED).body(retryBody));
 
             ResponseEntity<ApiResponseDTO> response = controller.receivedRequest(
@@ -252,6 +252,7 @@ class AnonymizerControllerTest {
                     eq(SERVER_AS_ID),
                     eq(PATH),
                     eq(OPERATION),
+                    any(),
                     eq(ClientRetryUserMessages.SUCCESS_AFTER_ENQUEUE));
         }
     }

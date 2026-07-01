@@ -24,6 +24,7 @@ class SwaggerCurrentSpecsIntegrityTest {
         assertTrue(resources.length > 0, "expected swagger/current/*.yaml resources on the test classpath");
         return Stream.of(resources)
                 .map(Resource::getFilename)
+                .filter(fileName -> !OpenApiSpecPhaseCatalog.excludedFromOpenInsuranceValidation(fileName))
                 .sorted();
     }
 

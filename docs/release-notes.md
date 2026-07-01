@@ -2,7 +2,7 @@
 
 Notas de versão do **MOP Client**, no estilo do ecossistema MOP (New features, Enhancements, Bug fixes).
 
-**Última atualização do documento: 02 de junho de 2026.**
+**Última atualização do documento: 28 de junho de 2026.**
 
 ```mermaid
 flowchart LR
@@ -41,17 +41,21 @@ flowchart LR
 
 ### New features
 
-- **Validações reportadas às participantes (MOP Client)**: o gateway passa a devolver, na resposta HTTP de sucesso (`200`), o campo **`validations[]`** com o resultado das checagens OpenAPI (e demais validações do fluxo), permitindo que a aplicação participante **analise advertências e inconsistências** sem depender apenas de logs internos.
+- **Validações reportadas às participantes (MOP Client)**: o gateway passa a devolver, na resposta HTTP de sucesso (`200` ou `202`), o objeto **`validations`** com `status`, `total` e `pending`, resultado das checagens OpenAPI (e demais validações do fluxo), permitindo que a aplicação participante **analise advertências e inconsistências** sem depender apenas de logs internos.
 - **Fila de DLQ (Dead-Letter Queue)**: quando um evento na fila de retry (`mop.client.retry.queue`) **excede o número máximo de tentativas** configurado (`mop.client.retry.dlq.max-attempts`, padrão **5**), o MOP Client **encaminha automaticamente** o payload para a fila **`mop.client.retry.dlq`**, com metadados de rastreio (`correlationId`, `dlqReason`, `lastFailureDetail`, contador de tentativas). O **consumo e reenvio** a partir da DLQ ficam sob responsabilidade do **participante**.
 
 ### Enhancements
 
 - **`clientSSId` opcional**: o header `clientSSId` deixa de ser obrigatório no contrato do gateway. Esse identificador **só se aplica às fases 2 e 3** do Open Insurance; integrações que não operam nessas fases podem omitir o header. Quando ausente, a resposta HTTP utiliza `origin` como fallback e o trace interno segue o processamento normalmente.
-- **Documentação**: EGE de entrada HTTP, cenários de QA e `docs/REPROCESSAMENTO.md` atualizados com DLQ e contrato de headers.
+- **Acoplamento `origin` / `httpType` / `statusCode`**: apenas `client`+`Request` (valida requestBody) ou `server`+`Response`+`statusCode` (valida response body da spec). Combinações inconsistentes retornam HTTP 400.
+- **`request.header` na resposta**: eco dos headers HTTP recebidos no objeto `request` das respostas 200/202.
+- **Pré-carga de specs OpenAPI no startup**: log `[OPENAPI]` e verificação da rota consents v3 no boot.
+- **Documentação**: README, `PATH_MOP_HEADER.md`, cenários QA e especificação do gateway alinhados ao contrato `origin`/`httpType`/`statusCode` e ao path MOP completo.
 
 ### Bug fixes
 
-- Não reportados nesta versão.
+- **Validação OpenAPI com path relativo**: corrigida falha em que o validador openapi4j recebia apenas o segmento da operação (ex.: `/consents`) em vez do path MOP completo (`/open-insurance/consents/v3/consents`), gerando `Operation path not found` com headers corretos.
+- **Header `path` incompleto**: rejeição explícita (HTTP 400) quando o path não normaliza para `/open-insurance/...`.
 
 ---
 <a id="v1-0-3"></a>

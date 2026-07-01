@@ -25,6 +25,7 @@ class HeaderValidatorTest {
 
     private static final String VALID_CORRELATION_ID = "my-correlation-id-123";
     private static final String VALID_ORIGIN = "client";
+    private static final String VALID_MOP_PATH = "/open-insurance/consents/v3/consents";
 
     private HeaderValidator.ValidationResult validate(
             String correlationId, String origin, String path, String operation,
@@ -45,7 +46,7 @@ class HeaderValidatorTest {
     @DisplayName("Returns success when all headers are valid (including correlationId)")
     void shouldReturnSuccessWhenAllHeadersAreValid() {
         HeaderValidator.ValidationResult result = validateDefaults(
-                VALID_CORRELATION_ID, VALID_ORIGIN, "/path", "POST");
+                VALID_CORRELATION_ID, VALID_ORIGIN, "/open-insurance/consents/v3/consents", "POST");
         assertTrue(result.isValid());
         assertNull(result.getErrorMessage());
     }
@@ -54,7 +55,7 @@ class HeaderValidatorTest {
     @DisplayName("Returns error when correlationId is null")
     void shouldReturnErrorWhenCorrelationIdIsNull() {
         HeaderValidator.ValidationResult result = validate(
-                null, VALID_ORIGIN, "/path", "POST",
+                null, VALID_ORIGIN, "/open-insurance/consents/v3/consents", "POST",
                 HTTP_TYPE_REQUEST, null, CLIENT_SS_ID, SERVER_AS_ID);
         assertFalse(result.isValid());
         assertTrue(result.getErrorMessage().contains("X-Correlation-Id"));
@@ -64,7 +65,7 @@ class HeaderValidatorTest {
     @Test
     @DisplayName("Returns error when correlationId is empty")
     void shouldReturnErrorWhenCorrelationIdIsEmpty() {
-        HeaderValidator.ValidationResult result = validateDefaults("", VALID_ORIGIN, "/path", "POST");
+        HeaderValidator.ValidationResult result = validateDefaults("", VALID_ORIGIN, "/open-insurance/consents/v3/consents", "POST");
         assertFalse(result.isValid());
         assertEquals("Header 'X-Correlation-Id' (correlationId) must not be empty", result.getErrorMessage());
     }
@@ -72,7 +73,7 @@ class HeaderValidatorTest {
     @Test
     @DisplayName("Returns error when origin is empty")
     void shouldReturnErrorWhenOriginIsEmpty() {
-        HeaderValidator.ValidationResult result = validateDefaults(VALID_CORRELATION_ID, "", "/path", "POST");
+        HeaderValidator.ValidationResult result = validateDefaults(VALID_CORRELATION_ID, "", "/open-insurance/consents/v3/consents", "POST");
         assertFalse(result.isValid());
         assertEquals("Header 'origin' must not be empty", result.getErrorMessage());
     }
@@ -80,7 +81,7 @@ class HeaderValidatorTest {
     @Test
     @DisplayName("Returns error when origin is null")
     void shouldReturnErrorWhenOriginIsNull() {
-        HeaderValidator.ValidationResult result = validateDefaults(VALID_CORRELATION_ID, null, "/path", "POST");
+        HeaderValidator.ValidationResult result = validateDefaults(VALID_CORRELATION_ID, null, "/open-insurance/consents/v3/consents", "POST");
         assertFalse(result.isValid());
         assertEquals("Header 'origin' must not be empty", result.getErrorMessage());
     }
@@ -89,19 +90,26 @@ class HeaderValidatorTest {
     @DisplayName("Returns error when origin is invalid (only client or server allowed)")
     void shouldReturnErrorWhenOriginIsInvalid() {
         HeaderValidator.ValidationResult result = validateDefaults(
-                VALID_CORRELATION_ID, "INVALID_ORIGIN", "/path", "POST");
+                VALID_CORRELATION_ID, "INVALID_ORIGIN", "/open-insurance/consents/v3/consents", "POST");
         assertFalse(result.isValid());
         assertEquals("Header 'origin' must be either 'client' or 'server'", result.getErrorMessage());
     }
 
     @Test
-    @DisplayName("Accepts client and server origins (case-insensitive)")
+    @DisplayName("Accepts client and server origins when httpType matches (case-insensitive)")
     void shouldAcceptValidOrigins() {
-        String[] validOrigins = {"client", "server", "Client", "SERVER"};
-        for (String origin : validOrigins) {
-            HeaderValidator.ValidationResult result = validateDefaults(VALID_CORRELATION_ID, origin, "/path", "POST");
-            assertTrue(result.isValid(), "Origin " + origin + " should be valid");
-        }
+        assertTrue(validate(
+                VALID_CORRELATION_ID, "client", "/open-insurance/consents/v3/consents", "POST",
+                HTTP_TYPE_REQUEST, null, CLIENT_SS_ID, SERVER_AS_ID).isValid());
+        assertTrue(validate(
+                VALID_CORRELATION_ID, "Client", "/open-insurance/consents/v3/consents", "POST",
+                "request", null, CLIENT_SS_ID, SERVER_AS_ID).isValid());
+        assertTrue(validate(
+                VALID_CORRELATION_ID, "server", "/open-insurance/consents/v3/consents", "POST",
+                HTTP_TYPE_RESPONSE, STATUS_CODE_OK, CLIENT_SS_ID, SERVER_AS_ID).isValid());
+        assertTrue(validate(
+                VALID_CORRELATION_ID, "SERVER", "/open-insurance/consents/v3/consents", "POST",
+                "response", "201", CLIENT_SS_ID, SERVER_AS_ID).isValid());
     }
 
     @Test
@@ -115,7 +123,7 @@ class HeaderValidatorTest {
     @Test
     @DisplayName("Returns error when operation is empty")
     void shouldReturnErrorWhenOperationIsEmpty() {
-        HeaderValidator.ValidationResult result = validateDefaults(VALID_CORRELATION_ID, VALID_ORIGIN, "/path", "");
+        HeaderValidator.ValidationResult result = validateDefaults(VALID_CORRELATION_ID, VALID_ORIGIN, "/open-insurance/consents/v3/consents", "");
         assertFalse(result.isValid());
         assertEquals("Header 'operation' must not be empty", result.getErrorMessage());
     }
@@ -123,7 +131,7 @@ class HeaderValidatorTest {
     @Test
     @DisplayName("Returns error when operation is null")
     void shouldReturnErrorWhenOperationIsNull() {
-        HeaderValidator.ValidationResult result = validateDefaults(VALID_CORRELATION_ID, VALID_ORIGIN, "/path", null);
+        HeaderValidator.ValidationResult result = validateDefaults(VALID_CORRELATION_ID, VALID_ORIGIN, "/open-insurance/consents/v3/consents", null);
         assertFalse(result.isValid());
         assertEquals("Header 'operation' must not be empty", result.getErrorMessage());
     }
@@ -132,7 +140,7 @@ class HeaderValidatorTest {
     @DisplayName("Returns error when operation is invalid")
     void shouldReturnErrorWhenOperationIsInvalid() {
         HeaderValidator.ValidationResult result = validateDefaults(
-                VALID_CORRELATION_ID, VALID_ORIGIN, "/path", "INVALID_METHOD");
+                VALID_CORRELATION_ID, VALID_ORIGIN, "/open-insurance/consents/v3/consents", "INVALID_METHOD");
         assertFalse(result.isValid());
         assertTrue(result.getErrorMessage().contains("Header 'operation' must be one of the following values"));
         assertTrue(result.getErrorMessage().contains("INVALID_METHOD"));
@@ -144,7 +152,7 @@ class HeaderValidatorTest {
     void shouldAcceptAllValidHttpMethods() {
         String[] validMethods = {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE", "get", "Post"};
         for (String method : validMethods) {
-            HeaderValidator.ValidationResult result = validateDefaults(VALID_CORRELATION_ID, VALID_ORIGIN, "/path", method);
+            HeaderValidator.ValidationResult result = validateDefaults(VALID_CORRELATION_ID, VALID_ORIGIN, "/open-insurance/consents/v3/consents", method);
             assertTrue(result.isValid(), "Method " + method + " should be valid");
         }
     }
@@ -153,7 +161,7 @@ class HeaderValidatorTest {
     @DisplayName("Returns error when httpType is missing or blank")
     void shouldReturnErrorWhenHttpTypeIsMissing() {
         HeaderValidator.ValidationResult result = validate(
-                VALID_CORRELATION_ID, VALID_ORIGIN, "/path", "POST",
+                VALID_CORRELATION_ID, VALID_ORIGIN, "/open-insurance/consents/v3/consents", "POST",
                 null, null, CLIENT_SS_ID, SERVER_AS_ID);
         assertFalse(result.isValid());
         assertEquals(
@@ -161,7 +169,7 @@ class HeaderValidatorTest {
                 result.getErrorMessage());
 
         result = validate(
-                VALID_CORRELATION_ID, VALID_ORIGIN, "/path", "POST",
+                VALID_CORRELATION_ID, VALID_ORIGIN, "/open-insurance/consents/v3/consents", "POST",
                 "", null, CLIENT_SS_ID, SERVER_AS_ID);
         assertFalse(result.isValid());
         assertEquals(
@@ -173,7 +181,7 @@ class HeaderValidatorTest {
     @DisplayName("Returns error when httpType is invalid")
     void shouldReturnErrorWhenHttpTypeIsInvalid() {
         HeaderValidator.ValidationResult result = validate(
-                VALID_CORRELATION_ID, VALID_ORIGIN, "/path", "POST",
+                VALID_CORRELATION_ID, VALID_ORIGIN, "/open-insurance/consents/v3/consents", "POST",
                 "INVALID", null, CLIENT_SS_ID, SERVER_AS_ID);
         assertFalse(result.isValid());
         assertTrue(result.getErrorMessage().contains("Header 'httpType' must be one of the following values"));
@@ -181,27 +189,47 @@ class HeaderValidatorTest {
     }
 
     @Test
-    @DisplayName("Accepts Request and Response httpType values (case-insensitive)")
+    @DisplayName("Accepts Request and Response httpType when consistent with origin (case-insensitive)")
     void shouldAcceptValidHttpTypeValues() {
         assertTrue(validate(
-                VALID_CORRELATION_ID, VALID_ORIGIN, "/path", "POST",
+                VALID_CORRELATION_ID, VALID_ORIGIN, "/open-insurance/consents/v3/consents", "POST",
                 "Request", null, CLIENT_SS_ID, SERVER_AS_ID).isValid());
         assertTrue(validate(
-                VALID_CORRELATION_ID, VALID_ORIGIN, "/path", "POST",
+                VALID_CORRELATION_ID, VALID_ORIGIN, "/open-insurance/consents/v3/consents", "POST",
                 "request", null, CLIENT_SS_ID, SERVER_AS_ID).isValid());
         assertTrue(validate(
-                VALID_CORRELATION_ID, VALID_ORIGIN, "/path", "POST",
+                VALID_CORRELATION_ID, "server", "/open-insurance/consents/v3/consents", "POST",
                 "Response", STATUS_CODE_OK, CLIENT_SS_ID, SERVER_AS_ID).isValid());
         assertTrue(validate(
-                VALID_CORRELATION_ID, VALID_ORIGIN, "/path", "POST",
+                VALID_CORRELATION_ID, "server", "/open-insurance/consents/v3/consents", "POST",
                 "response", "404", CLIENT_SS_ID, SERVER_AS_ID).isValid());
+    }
+
+    @Test
+    @DisplayName("Returns error when origin is client and httpType is Response")
+    void shouldReturnErrorWhenClientOriginHasResponseHttpType() {
+        HeaderValidator.ValidationResult result = validate(
+                VALID_CORRELATION_ID, VALID_ORIGIN, "/open-insurance/consents/v3/consents", "POST",
+                HTTP_TYPE_RESPONSE, STATUS_CODE_OK, CLIENT_SS_ID, SERVER_AS_ID);
+        assertFalse(result.isValid());
+        assertEquals("Header 'httpType' must be 'Request' when 'origin' is 'client'", result.getErrorMessage());
+    }
+
+    @Test
+    @DisplayName("Returns error when origin is server and httpType is Request")
+    void shouldReturnErrorWhenServerOriginHasRequestHttpType() {
+        HeaderValidator.ValidationResult result = validate(
+                VALID_CORRELATION_ID, "server", "/open-insurance/consents/v3/consents", "POST",
+                HTTP_TYPE_REQUEST, null, CLIENT_SS_ID, SERVER_AS_ID);
+        assertFalse(result.isValid());
+        assertEquals("Header 'httpType' must be 'Response' when 'origin' is 'server'", result.getErrorMessage());
     }
 
     @Test
     @DisplayName("Returns error when httpType is Response and statusCode is missing")
     void shouldReturnErrorWhenResponseHasNoStatusCode() {
         HeaderValidator.ValidationResult result = validate(
-                VALID_CORRELATION_ID, VALID_ORIGIN, "/path", "POST",
+                VALID_CORRELATION_ID, "server", "/open-insurance/consents/v3/consents", "POST",
                 HTTP_TYPE_RESPONSE, null, CLIENT_SS_ID, SERVER_AS_ID);
         assertFalse(result.isValid());
         assertEquals("Header 'statusCode' is required when 'httpType' is 'Response'", result.getErrorMessage());
@@ -211,7 +239,7 @@ class HeaderValidatorTest {
     @DisplayName("Returns error when httpType is Response and statusCode is invalid")
     void shouldReturnErrorWhenResponseStatusCodeIsInvalid() {
         HeaderValidator.ValidationResult result = validate(
-                VALID_CORRELATION_ID, VALID_ORIGIN, "/path", "POST",
+                VALID_CORRELATION_ID, "server", "/open-insurance/consents/v3/consents", "POST",
                 HTTP_TYPE_RESPONSE, "abc", CLIENT_SS_ID, SERVER_AS_ID);
         assertFalse(result.isValid());
         assertTrue(result.getErrorMessage().contains("Header 'statusCode' must be a valid HTTP status code"));
@@ -221,7 +249,7 @@ class HeaderValidatorTest {
     @DisplayName("Returns success when httpType is Request and statusCode is absent")
     void shouldReturnSuccessWhenRequestHasNoStatusCode() {
         assertTrue(validate(
-                VALID_CORRELATION_ID, VALID_ORIGIN, "/path", "POST",
+                VALID_CORRELATION_ID, VALID_ORIGIN, "/open-insurance/consents/v3/consents", "POST",
                 HTTP_TYPE_REQUEST, null, CLIENT_SS_ID, SERVER_AS_ID).isValid());
     }
 
@@ -229,29 +257,63 @@ class HeaderValidatorTest {
     @DisplayName("Returns error when httpType is Request and optional statusCode is invalid")
     void shouldReturnErrorWhenRequestStatusCodeIsInvalid() {
         HeaderValidator.ValidationResult result = validate(
-                VALID_CORRELATION_ID, VALID_ORIGIN, "/path", "POST",
+                VALID_CORRELATION_ID, VALID_ORIGIN, "/open-insurance/consents/v3/consents", "POST",
                 HTTP_TYPE_REQUEST, "abc", CLIENT_SS_ID, SERVER_AS_ID);
         assertFalse(result.isValid());
         assertTrue(result.getErrorMessage().contains("Header 'statusCode' must be a valid HTTP status code"));
     }
 
     @Test
+    @DisplayName("Returns error when path is only operation segment without open-insurance prefix")
+    void shouldReturnErrorWhenPathIsOnlyOperationSegment() {
+        HeaderValidator.ValidationResult result = validate(
+                VALID_CORRELATION_ID, VALID_ORIGIN, "/consents", "POST",
+                HTTP_TYPE_REQUEST, null, CLIENT_SS_ID, SERVER_AS_ID);
+        assertFalse(result.isValid());
+        assertTrue(result.getErrorMessage().contains("full Open Insurance path"));
+        assertTrue(result.getErrorMessage().contains("/consents"));
+    }
+
+    @Test
+    @DisplayName("Returns error when path embeds HTTP method")
+    void shouldReturnErrorWhenPathEmbedsHttpMethod() {
+        HeaderValidator.ValidationResult result = validate(
+                VALID_CORRELATION_ID, VALID_ORIGIN,
+                "POST https://api.seguro.com.br/open-insurance/consents/v3/consents",
+                "POST", HTTP_TYPE_REQUEST, null, CLIENT_SS_ID, SERVER_AS_ID);
+        assertFalse(result.isValid());
+        assertTrue(result.getErrorMessage().contains("Header 'path' must not include the HTTP method"));
+    }
+
+    @Test
+    @DisplayName("Returns error when path embeds HTTP method different from operation")
+    void shouldReturnErrorWhenPathMethodDiffersFromOperation() {
+        HeaderValidator.ValidationResult result = validate(
+                VALID_CORRELATION_ID, VALID_ORIGIN,
+                "POST https://api.seguro.com.br/open-insurance/consents/v3/consents",
+                "GET", HTTP_TYPE_REQUEST, null, CLIENT_SS_ID, SERVER_AS_ID);
+        assertFalse(result.isValid());
+        assertTrue(result.getErrorMessage().contains("embeds HTTP method 'POST'"));
+        assertTrue(result.getErrorMessage().contains("operation' is 'GET'"));
+    }
+
+    @Test
     @DisplayName("Returns success when clientSSId and serverASId are null or blank (optional headers)")
     void shouldReturnSuccessWhenPartyHeadersAreOptional() {
         assertTrue(validate(
-                VALID_CORRELATION_ID, VALID_ORIGIN, "/path", "POST",
+                VALID_CORRELATION_ID, VALID_ORIGIN, "/open-insurance/consents/v3/consents", "POST",
                 HTTP_TYPE_REQUEST, null, null, SERVER_AS_ID).isValid());
         assertTrue(validate(
-                VALID_CORRELATION_ID, VALID_ORIGIN, "/path", "POST",
+                VALID_CORRELATION_ID, VALID_ORIGIN, "/open-insurance/consents/v3/consents", "POST",
                 HTTP_TYPE_REQUEST, null, CLIENT_SS_ID, null).isValid());
         assertTrue(validate(
-                VALID_CORRELATION_ID, VALID_ORIGIN, "/path", "POST",
+                VALID_CORRELATION_ID, VALID_ORIGIN, "/open-insurance/consents/v3/consents", "POST",
                 HTTP_TYPE_REQUEST, null, null, null).isValid());
         assertTrue(validate(
-                VALID_CORRELATION_ID, VALID_ORIGIN, "/path", "POST",
+                VALID_CORRELATION_ID, VALID_ORIGIN, "/open-insurance/consents/v3/consents", "POST",
                 HTTP_TYPE_REQUEST, null, "", "").isValid());
         assertTrue(validate(
-                VALID_CORRELATION_ID, VALID_ORIGIN, "/path", "POST",
+                VALID_CORRELATION_ID, VALID_ORIGIN, "/open-insurance/consents/v3/consents", "POST",
                 HTTP_TYPE_REQUEST, null, "   ", "  ").isValid());
     }
 }

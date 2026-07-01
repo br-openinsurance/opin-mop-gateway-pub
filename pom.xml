@@ -30,7 +30,7 @@
         <netty.version>4.1.133.Final</netty.version>
         <!-- Override logback to fix CVE-2025-11228 and CVE-2026-1225 -->
         <logback.version>1.5.32</logback.version>
-        <!-- Override jackson BOM: CVE-2026-54512, CVE-2026-54513, CVE-2026-54515 (fix em 2.18.9 — ainda não publicado no Central) -->
+        <!-- Override jackson BOM: latest 2.18.x on Maven Central (2.18.9 not published yet; CVE-2026-54515 targets 2.18.9) -->
         <jackson-bom.version>2.18.8</jackson-bom.version>
         <!-- Spring Framework: CVE-2025-41249; spring-webmvc CVE-2026-22735/22737/22741/22745 -->
         <spring-framework.version>6.2.18</spring-framework.version>
@@ -43,11 +43,9 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>com.fasterxml.jackson</groupId>
-                <artifactId>jackson-bom</artifactId>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
                 <version>${jackson-bom.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
             </dependency>
             <dependency>
                 <groupId>org.springframework</groupId>

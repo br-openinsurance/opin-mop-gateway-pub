@@ -48,9 +48,10 @@ Cache (Caffeine) reduz chamadas repetidas a especificação e configurações.
 
 ## Fluxo de processamento
 
-1. Validação de headers obrigatórios (`HeaderValidator`).
+1. Validação de headers obrigatórios (`HeaderValidator`) — inclui path completo sob `/open-insurance/` e par `origin`/`httpType`.
 2. Parse do corpo JSON (`JsonPayloadParser`).
-3. Execução do pipeline interno e envio ao MOP ou enfileiramento conforme política de resiliência.
+3. Validação OpenAPI (`OpenApiValidationService`) com path MOP completo.
+4. Execução do pipeline interno e envio ao MOP ou enfileiramento conforme política de resiliência.
 
 Detalhes de estágios internos: código-fonte e comentários em `ProcessingOrchestratorService`.
 
@@ -72,9 +73,9 @@ Documentação dedicada: [docs/REPROCESSAMENTO.md](docs/REPROCESSAMENTO.md).
 - Headers obrigatórios: `X-Correlation-Id`, `origin` (`client`/`server`), `path`, `operation`, `httpType`.
 - Header condicional: `statusCode` — opcional com `httpType=Request`; **obrigatório** com `httpType=Response` (100–599).
 - Opcionais: `traceOrigin`, `clientSSId`, `serverASId`, `X-Mop-Reportid`.
-- **`path`:** enviar o path **concreto** da transação (com URN/ID reais); não usar `{consentId}`. Ver [`docs/PATH_MOP_HEADER.md`](docs/PATH_MOP_HEADER.md).
-- **`origin`:** `client` valida body como request OpenAPI; `server` como response OpenAPI.
-- Resposta HTTP: `context`, `request`, `validations` (`status`, `total`, `pending`); `response` quando entrega síncrona ao MOP.
+- **`path`:** enviar o path **concreto** da transação (path MOP completo, começando com `/open-insurance/`; com URN/ID reais); não usar `{consentId}` nem só `/consents`. Ver [`docs/PATH_MOP_HEADER.md`](docs/PATH_MOP_HEADER.md).
+- **`origin` + `httpType` + `statusCode`:** combinação fixa — `client`+`Request` (valida requestBody) ou `server`+`Response`+`statusCode` (valida response body). Ver tabela em [`README.md`](README.md#contrato-da-api) e [`docs/PATH_MOP_HEADER.md`](docs/PATH_MOP_HEADER.md).
+- Resposta HTTP: `context`, `request` (com `path`, `operation`, `header`), `validations` (`status`, `total`, `pending`); `response` quando entrega síncrona ao MOP.
 
 Contrato resumido: [README.md](README.md).
 

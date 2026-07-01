@@ -79,6 +79,24 @@ class OpenApiPathMatcherTest {
     }
 
     @Test
+    @DisplayName("extractOpenInsurancePath from path prefixed with HTTP method and full URL")
+    void extractOpenInsurancePathFromMethodPrefixedUrl() {
+        assertEquals(
+                "/open-insurance/consents/v3/consents",
+                OpenApiPathMatcher.extractOpenInsurancePath(
+                        "POST https://api.seguro.com.br/open-insurance/consents/v3/consents"));
+    }
+
+    @Test
+    @DisplayName("extractLeadingHttpMethod from method-prefixed path")
+    void extractLeadingHttpMethodFromPrefixedPath() {
+        assertEquals("POST", OpenApiPathMatcher.extractLeadingHttpMethod(
+                "POST https://api.seguro.com.br/open-insurance/consents/v3/consents").orElseThrow());
+        assertTrue(OpenApiPathMatcher.extractLeadingHttpMethod(
+                "/open-insurance/consents/v3/consents").isEmpty());
+    }
+
+    @Test
     @DisplayName("substitutePathParameters replaces placeholders")
     void substitutePathParametersReplacesPlaceholders() {
         assertEquals(

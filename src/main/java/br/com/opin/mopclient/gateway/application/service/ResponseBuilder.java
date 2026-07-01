@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Service for building HTTP responses.
@@ -40,14 +41,14 @@ public class ResponseBuilder {
     public ResponseEntity<ApiResponseDTO> buildSuccessResponse(String correlationId, String timestamp,
                                                                String clientSSId, String serverASId,
                                                                String path, String operation) {
-        return buildSuccessResponse(correlationId, timestamp, clientSSId, serverASId, path, operation, null, null, null);
+        return buildSuccessResponse(correlationId, timestamp, clientSSId, serverASId, path, operation, null, null, null, null);
     }
 
     public ResponseEntity<ApiResponseDTO> buildSuccessResponse(String correlationId, String timestamp,
                                                                String clientSSId, String serverASId,
                                                                String path, String operation,
                                                                List<Validation> validations) {
-        return buildSuccessResponse(correlationId, timestamp, clientSSId, serverASId, path, operation, null, validations, null);
+        return buildSuccessResponse(correlationId, timestamp, clientSSId, serverASId, path, operation, null, null, validations, null);
     }
 
     public ResponseEntity<ApiResponseDTO> buildSuccessResponse(String correlationId, String timestamp,
@@ -55,34 +56,53 @@ public class ResponseBuilder {
                                                                String path, String operation,
                                                                List<Validation> validations,
                                                                ServerResponseDTO serverResponse) {
-        return buildSuccessResponse(correlationId, timestamp, clientSSId, serverASId, path, operation, null, validations, serverResponse);
+        return buildSuccessResponse(correlationId, timestamp, clientSSId, serverASId, path, operation, null, null, validations, serverResponse);
     }
 
     public ResponseEntity<ApiResponseDTO> buildSuccessResponse(String correlationId, String timestamp,
                                                                String clientSSId, String serverASId,
                                                                String path, String operation,
+                                                               Map<String, String> requestHeaders,
+                                                               List<Validation> validations,
+                                                               ServerResponseDTO serverResponse) {
+        return buildSuccessResponse(correlationId, timestamp, clientSSId, serverASId, path, operation, requestHeaders, null, validations, serverResponse);
+    }
+
+    public ResponseEntity<ApiResponseDTO> buildSuccessResponse(String correlationId, String timestamp,
+                                                               String clientSSId, String serverASId,
+                                                               String path, String operation,
+                                                               Map<String, String> requestHeaders,
                                                                String message,
                                                                List<Validation> validations,
                                                                ServerResponseDTO serverResponse) {
         List<Validation> preservedValidations = ValidationExecutionStatusResolver.preserveValidations(validations);
         return buildResponse(HttpStatus.OK,
                 message != null ? message : SUCCESS_MESSAGE,
-                correlationId, timestamp, clientSSId, serverASId, path, operation, preservedValidations, serverResponse);
+                correlationId, timestamp, clientSSId, serverASId, path, operation, requestHeaders, preservedValidations, serverResponse);
     }
 
     public ResponseEntity<ApiResponseDTO> buildAcceptedResponse(String correlationId, String timestamp,
                                                                 String clientSSId, String serverASId,
                                                                 String path, String operation,
                                                                 String message) {
+        return buildAcceptedResponse(correlationId, timestamp, clientSSId, serverASId, path, operation, null, message);
+    }
+
+    public ResponseEntity<ApiResponseDTO> buildAcceptedResponse(String correlationId, String timestamp,
+                                                                String clientSSId, String serverASId,
+                                                                String path, String operation,
+                                                                Map<String, String> requestHeaders,
+                                                                String message) {
         return buildResponse(HttpStatus.ACCEPTED,
                 message != null ? message : API_ACCEPTED_BODY_MESSAGE,
-                correlationId, timestamp, clientSSId, serverASId, path, operation, null, null);
+                correlationId, timestamp, clientSSId, serverASId, path, operation, requestHeaders, null, null);
     }
 
     private ResponseEntity<ApiResponseDTO> buildResponse(HttpStatus httpStatus, String message,
                                                          String correlationId, String timestamp,
                                                          String clientSSId, String serverASId,
                                                          String path, String operation,
+                                                         Map<String, String> requestHeaders,
                                                          List<Validation> validations,
                                                          ServerResponseDTO mopResponse) {
         List<Validation> responseValidations = validations != null ? validations : Collections.emptyList();
@@ -94,7 +114,11 @@ public class ResponseBuilder {
                         .clientSSId(clientSSId)
                         .serverASId(serverASId)
                         .build())
-                .request(RequestSummaryDTO.builder().path(path).operation(operation).build())
+                .request(RequestSummaryDTO.builder()
+                        .path(path)
+                        .operation(operation)
+                        .header(requestHeaders)
+                        .build())
                 .validations(ValidationsSummaryDTO.from(responseValidations))
                 .response(mopResponse)
                 .build();

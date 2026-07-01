@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import br.com.opin.mopclient.validator.shared.util.OpenApiPathMatcher;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 
@@ -196,12 +197,14 @@ public class ProcessingOrchestratorService {
 
     private ValidationResponseDTO performValidation(String payload, RequestHeadersDTO headersDTO) {
         HttpHeaders httpHeaders = convertHeadersToHttpHeaders(headersDTO.getHeaders());
+        String mopPath = OpenApiPathMatcher.extractOpenInsurancePath(headersDTO.getPath());
         return validationService.validate(
                 payload,
                 httpHeaders,
-                headersDTO.getPath(),
+                mopPath,
                 headersDTO.getOperation(),
-                headersDTO.getOrigin());
+                headersDTO.getHttpType(),
+                headersDTO.getStatusCode());
     }
 
     private List<Validation> convertValidations(ValidationResponseDTO validatorResponse) {
@@ -238,7 +241,6 @@ public class ProcessingOrchestratorService {
         Map<String, String> headers = headersDTO.getHeaders() != null ? headersDTO.getHeaders() : Map.of();
         String host = extractHost(headers);
         String url = extractUrl(headers);
-        String step = deriveStepFromPathAndOperation(headersDTO.getPath(), headersDTO.getOperation());
         String orgId = signingProperties.getOrgId() != null ? signingProperties.getOrgId() : "";
 
         return MessageDTOBuilder.buildFromHeaders(
@@ -249,22 +251,7 @@ public class ProcessingOrchestratorService {
                 anonymizedPayload,
                 host,
                 url,
-                step,
                 orgId);
-    }
-
-    private String deriveStepFromPathAndOperation(String path, String operation) {
-        if (path == null) path = "";
-        if (operation == null) operation = "";
-        String pathLower = path.toLowerCase();
-        String opUpper = operation.toUpperCase();
-        if (pathLower.contains("consent")) {
-            if ("POST".equals(opUpper)) return "consent-created";
-            if ("GET".equals(opUpper)) return "consent-read";
-            if ("PUT".equals(opUpper) || "PATCH".equals(opUpper)) return "consent-updated";
-            if ("DELETE".equals(opUpper)) return "consent-deleted";
-        }
-        return "request-received";
     }
 
     private HttpHeaders convertHeadersToHttpHeaders(Map<String, String> headers) {

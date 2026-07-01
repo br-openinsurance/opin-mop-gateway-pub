@@ -5,6 +5,7 @@ import br.com.opin.mopclient.gateway.interfaces.dto.RequestHeadersDTO;
 import br.com.opin.mopclient.validator.application.service.MopPathResolver;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -72,21 +73,31 @@ public class RequestHeadersBuilder {
         String resolvedStatusCode = (statusCode != null && !statusCode.isBlank())
                 ? statusCode.trim()
                 : getHeaderIgnoreCase(headers, HttpHeaderConstants.STATUS_CODE);
+        Map<String, String> resolvedHeaders = syncResolvedPathInHeaders(headers, resolvedPath);
 
         return RequestHeadersDTO.builder()
                 .correlationId(correlationIdTrimmed)
                 .origin(origin)
                 .path(resolvedPath)
-                .operation(operation)
+                .operation(operation != null ? operation.trim() : null)
                 .httpType(resolvedHttpType)
                 .statusCode(resolvedStatusCode)
                 .mopReportid(mopReportid)
                 .timestamp(timestamp)
                 .clientSSId(resolvedClientSSId)
                 .serverASId(resolvedServerASId)
-                .headers(headers)
+                .headers(resolvedHeaders)
                 .traceOrigin(resolvedTraceOrigin)
                 .build();
+    }
+
+    private static Map<String, String> syncResolvedPathInHeaders(Map<String, String> headers, String resolvedPath) {
+        if (resolvedPath == null || resolvedPath.isBlank()) {
+            return headers;
+        }
+        Map<String, String> copy = headers != null ? new HashMap<>(headers) : new HashMap<>();
+        copy.put(HttpHeaderConstants.PATH, resolvedPath);
+        return copy;
     }
 
     private static String getHeaderIgnoreCase(Map<String, String> headers, String name) {

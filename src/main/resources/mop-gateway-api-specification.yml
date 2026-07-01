@@ -24,7 +24,10 @@ info:
 
     **Header `path`:** envie o **path concreto** da transação Open Insurance (`basePath + operationPath` com parâmetros substituídos). **Não** envie placeholders `{consentId}`. Ver `docs/PATH_MOP_HEADER.md`.
 
-    **Header `origin`:** `client` valida o body como **request** OpenAPI; `server` valida como **response** OpenAPI.
+    **Headers `origin`, `httpType` e `statusCode`:** apenas duas combinações válidas para validação OpenAPI:
+    - `origin=client` + `httpType=Request` → valida **requestBody** (`statusCode` opcional).
+    - `origin=server` + `httpType=Response` + `statusCode` obrigatório → valida **response body** do status informado (deve existir em `responses` da spec; ex.: POST consents v3 sucesso = **201**, não 200).
+    Combinações inconsistentes retornam HTTP 400. Ver `docs/PATH_MOP_HEADER.md`.
 
   contact:
     name: MOP Team
@@ -35,14 +38,8 @@ servers:
     description: |
       Ambiente local: host/porta conforme `server.port` (padrão 8080) + `server.servlet.context-path=/v1/anonymize`.
       Operação documentada: `POST /data` (URL absoluta = base acima + `/data`).
-  - url: "https://mop-client-gateway-sandbox.opinbrasil.com.br/v1/anonymize"
-    description: |
-      **Sandbox OPIN** — base URL do MOP Client em homologação.
-      Operação documentada: `POST /data` → `https://mop-client-gateway-sandbox.opinbrasil.com.br/v1/anonymize/data`
-  - url: "https://mop-client-gateway.opinbrasil.com.br/v1/anonymize"
-    description: |
-      **Produção OPIN** — base URL do MOP Client em ambiente operacional.
-      Operação documentada: `POST /data` → `https://mop-client-gateway.opinbrasil.com.br/v1/anonymize/data`
+  - url: "https://gateway-exemplo.intranet.opinbrasil/v1/anonymize"
+    description: "Exemplo de base URL em ambiente remoto; substitua o host e o context-path conforme o deployment e `application-*.yml`."
 
 paths:
   /data:
@@ -89,13 +86,15 @@ paths:
               additionalProperties: true
             examples:
               consentWrite:
-                summary: "Exemplo alinhado a consentimento (path/operation típicos nos headers)"
+                summary: "CreateConsent v3 (path/operation típicos nos headers)"
                 value:
                   data:
-                    status: "AUTHORISED"
-                    document:
-                      identification: "11111111111"
-                      rel: "CPF"
+                    permissions: ["RESOURCES_READ"]
+                    loggedUser:
+                      document:
+                        identification: "11111111111"
+                        rel: "CPF"
+                    expirationDateTime: "2026-12-31T23:59:59Z"
               emptyBody:
                 summary: "Corpo vazio / omitido (aceito)"
                 value: {}
@@ -119,8 +118,14 @@ paths:
                       clientSSId: "RECEPTORA_A"
                       serverASId: "TRANSMISSORA_B"
                     request:
-                      path: "/open-insurance/consents/v2/consents"
+                      path: "/open-insurance/consents/v3/consents"
                       operation: "POST"
+                      header:
+                        X-Correlation-Id: "550e8400-e29b-41d4-a716-446655440000"
+                        origin: "client"
+                        path: "/open-insurance/consents/v3/consents"
+                        operation: "POST"
+                        httpType: "Request"
                     response:
                       status: 201
                       body:
@@ -149,8 +154,14 @@ paths:
                       clientSSId: "RECEPTORA_A"
                       serverASId: "TRANSMISSORA_B"
                     request:
-                      path: "/open-insurance/consents/v2/consents"
+                      path: "/open-insurance/consents/v3/consents"
                       operation: "POST"
+                      header:
+                        X-Correlation-Id: "550e8400-e29b-41d4-a716-446655440000"
+                        origin: "client"
+                        path: "/open-insurance/consents/v3/consents"
+                        operation: "POST"
+                        httpType: "Request"
                     validations:
                       status: "SUCCESS"
                       total: 0
@@ -234,9 +245,8 @@ components:
       in: "header"
       description: |
         Origem da chamada: `client` ou `server` (**comparação case-insensitive** em `HeaderValidator`).
-        Define qual lado do OpenAPI é validado no body:
-        - `client` → **request** (corpo da requisição Open Insurance)
-        - `server` → **response** (corpo da resposta Open Insurance)
+        Deve ser **consistente** com `httpType`: `client` → `Request`; `server` → `Response`.
+        Usado para rastreio no `MessageDTO` (`trace.origin`) e define qual schema OpenAPI é validado (via `httpType` acoplado).
       required: true
       schema:
         type: string
@@ -252,10 +262,11 @@ components:
         Fórmula: `basePath` (`servers[0].url` da spec) + `operationPath` (`paths` no YAML), com `{param}` substituídos pelos valores reais.
 
         Exemplos:
-        - Coleção: `/open-insurance/consents/v2/consents`
-        - Por ID: `/open-insurance/consents/v2/consents/urn:seguradora:0cc2ac05-a088-43f2-96b7-48ff2f271b97`
+        - Coleção: `/open-insurance/consents/v3/consents`
+        - Por ID: `/open-insurance/consents/v3/consents/urn:seguradora:0cc2ac05-a088-43f2-96b7-48ff2f271b97`
 
-        **Não** envie placeholders literais (`{consentId}`). Pode ser path ou URL completa; o gateway normaliza a partir de `/open-insurance/`.
+        **Não** envie placeholders literais (`{consentId}`) nem apenas o segmento da operação (`/consents`).
+        O path efetivo deve começar com `/open-insurance/`. Pode ser path ou URL completa; o gateway normaliza a partir de `/open-insurance/`.
 
         Referência: `docs/PATH_MOP_HEADER.md`.
       required: true
@@ -265,10 +276,10 @@ components:
       examples:
         collection:
           summary: "Operação na coleção (sem parâmetro de path)"
-          value: "/open-insurance/consents/v2/consents"
+          value: "/open-insurance/consents/v3/consents"
         byId:
           summary: "Operação com identificador concreto no path"
-          value: "/open-insurance/consents/v2/consents/urn:seguradora:0cc2ac05-a088-43f2-96b7-48ff2f271b97"
+          value: "/open-insurance/consents/v3/consents/urn:seguradora:0cc2ac05-a088-43f2-96b7-48ff2f271b97"
 
     operationHeader:
       name: "operation"
@@ -287,7 +298,7 @@ components:
       in: "header"
       description: |
         Tipo da mensagem HTTP no fluxo MOP. **Obrigatório.** Aceita (**case-insensitive**): `Request`, `Response`.
-        Quando `Response`, o header `statusCode` também é obrigatório.
+        Deve ser **consistente** com `origin`: `client` exige `Request`; `server` exige `Response` (e `statusCode` obrigatório).
       required: true
       schema:
         type: string
@@ -298,12 +309,15 @@ components:
       name: "statusCode"
       in: "header"
       description: |
-        Código de status HTTP. **Opcional** quando `httpType=Request`; **obrigatório** quando `httpType=Response` (100–599).
+        Código de status HTTP da **transação Open Insurance original** (não o HTTP da resposta do gateway).
+        **Opcional** quando `httpType=Request`; **obrigatório** quando `httpType=Response` (100–599).
+        Deve corresponder a uma entrada em `responses` da operação na spec OpenAPI
+        (ex.: POST `/open-insurance/consents/v3/consents` → sucesso `201`, não `200`).
       required: false
       schema:
         type: string
         pattern: "^[1-5][0-9]{2}$"
-        example: "200"
+        example: "201"
 
     clientSSIdHeader:
       name: "clientSSId"
@@ -358,10 +372,22 @@ components:
       properties:
         path:
           type: string
-          example: "/open-insurance/consents/v2/consents"
+          example: "/open-insurance/consents/v3/consents"
         operation:
           type: string
-          example: "GET"
+          example: "POST"
+        header:
+          type: object
+          description: "Headers HTTP recebidos na requisição inbound (eco literal)."
+          additionalProperties:
+            type: string
+          example:
+            X-Correlation-Id: "550e8400-e29b-41d4-a716-446655440000"
+            origin: "client"
+            path: "/open-insurance/consents/v3/consents"
+            operation: "POST"
+            httpType: "Request"
+            Content-Type: "application/json"
       required:
         - path
         - operation

@@ -4,6 +4,7 @@ import br.com.opin.mopclient.anonymization.interfaces.dto.validation.Validation;
 import br.com.opin.mopclient.gateway.interfaces.dto.RequestHeadersDTO;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -22,7 +23,6 @@ public final class MessageDTOBuilder {
             String payloadData,
             String host,
             String url,
-            String step,
             String orgId) {
 
         String correlationId = headersDTO.getCorrelationId();
@@ -46,8 +46,6 @@ public final class MessageDTOBuilder {
         Map<String, String> headers = headersDTO.getHeaders() != null ? headersDTO.getHeaders() : Map.of();
         String method = extractMethod(headers);
 
-        String traceStep = step != null && !step.isBlank() ? step : "request-received";
-        String traceDataEventoStep = Instant.now().toString();
         String traceOrigin = headersDTO.getTraceOrigin() != null && !headersDTO.getTraceOrigin().isBlank()
                 ? headersDTO.getTraceOrigin()
                 : "";
@@ -56,7 +54,7 @@ public final class MessageDTOBuilder {
 
         MetadataDTO metadata = MetadataDTO.builder()
                 .version("1.0")
-                .environment("sandbox")
+                .environment("dev")
                 .module("MOP")
                 .initiatedBy("mop-client-gateway")
                 .purpose("Data anonymization and routing")
@@ -74,8 +72,6 @@ public final class MessageDTOBuilder {
                 .statusCode(statusCode)
                 .clientSSId(clientSSId != null ? clientSSId : "")
                 .serverASId(serverASId != null ? serverASId : "")
-                .step(traceStep)
-                .dataEventoStep(traceDataEventoStep)
                 .origin(origin != null ? origin : "")
                 .traceOrigin(traceOrigin)
                 .orgId(orgId != null ? orgId : "")
@@ -85,6 +81,7 @@ public final class MessageDTOBuilder {
                 .method(method != null ? method : "POST")
                 .host(host)
                 .url(url)
+                .header(copyHeaders(headers))
                 .build();
 
         PrivacyDTO privacy = PrivacyDTO.builder()
@@ -114,5 +111,12 @@ public final class MessageDTOBuilder {
 
     private static String generateTraceId() {
         return UUID.randomUUID().toString();
+    }
+
+    private static Map<String, String> copyHeaders(Map<String, String> headers) {
+        if (headers == null || headers.isEmpty()) {
+            return Map.of();
+        }
+        return Map.copyOf(new LinkedHashMap<>(headers));
     }
 }
