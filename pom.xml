@@ -30,8 +30,8 @@
         <netty.version>4.1.133.Final</netty.version>
         <!-- Override logback to fix CVE-2025-11228 and CVE-2026-1225 -->
         <logback.version>1.5.32</logback.version>
-        <!-- Override jackson BOM: CVE-2026-54512, CVE-2026-54513, CVE-2026-54515 -->
-        <jackson-bom.version>2.18.9</jackson-bom.version>
+        <!-- Override jackson BOM: CVE-2026-54512, CVE-2026-54513, CVE-2026-54515 (fix em 2.18.9 — ainda não publicado no Central) -->
+        <jackson-bom.version>2.18.8</jackson-bom.version>
         <!-- Spring Framework: CVE-2025-41249; spring-webmvc CVE-2026-22735/22737/22741/22745 -->
         <spring-framework.version>6.2.18</spring-framework.version>
         <!-- External dependency versions -->
