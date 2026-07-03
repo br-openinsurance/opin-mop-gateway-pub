@@ -9,10 +9,10 @@ spring:
     active: ${SPRING_PROFILES_ACTIVE:default}
 
   rabbitmq:
-    host: rabbitmq.broker-client.svc.cluster.local
-    port: 5672
-    username: user
-    password: bitnami
+    host: ${RABBITMQ_VALIDATOR_HOST}
+    port: ${RABBITMQ_VALIDATOR_PORT}
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
 
   # Cache configuration
   cache:

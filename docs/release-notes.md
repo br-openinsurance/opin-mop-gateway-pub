@@ -32,8 +32,8 @@ flowchart LR
 
 ### New features
 
-- **Promoção da branch de produção (`main`)**: a release **1.0.5** consolida o que está na branch **`main`** — linha oficial de produção do repositório, distinta da **`develop`** (homologação/sandbox). O pipeline publica a imagem Docker no GHCR com tag **`main`** (e `main-<sha>`), pronta para deploy nos ambientes produtivos dos participantes (03/07/2026).
-- **URL de produção (MOP Server):** https://mop-server-entrypoint.opinbrasil.com.br/
+- **Promoção da branch (`main`)**: a release **1.0.5** consiste, essencialmente, na organização do código para a tag adequada. **Não há alteração funcional no gateway**: o que já estava validado na branch **`main`** — linha oficial de produção do repositório, distinta da **`develop`** (homologação/sandbox) — passa a ser publicado com o versionamento correto. O pipeline publica a imagem Docker no **GHCR** com a tag **`main`** (e `main-<sha>`), devidamente identificada e pronta para deploy nos ambientes produtivos dos participantes.
+- **Ressalva**: a atualização para a versão **1.0.5** é altamente recomendada, pois garante o alinhamento com a linha oficial de produção do repositório (**`main`**), assegurando compatibilidade com os artefatos atualmente disponibilizados pelo pipeline e reduzindo riscos de divergências entre ambientes, problemas de suporte e inconsistências em futuras evoluções da solução.
 
 ### Enhancements
 
