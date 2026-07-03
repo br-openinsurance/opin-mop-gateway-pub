@@ -1,6 +1,7 @@
 package br.com.opin.mopclient.anonymization.interfaces.dto.validation;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,6 +11,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonPropertyOrder({"violation", "code", "severity", "attribute"})
 public class Validation {
 
     @JsonProperty("violation")

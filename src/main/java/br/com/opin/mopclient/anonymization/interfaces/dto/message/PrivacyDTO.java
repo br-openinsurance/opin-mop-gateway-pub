@@ -1,6 +1,7 @@
 package br.com.opin.mopclient.anonymization.interfaces.dto.message;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,6 +13,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonPropertyOrder({"anonymizedFields", "exposedFields"})
 public class PrivacyDTO {
 
     @JsonProperty("anonymizedFields")

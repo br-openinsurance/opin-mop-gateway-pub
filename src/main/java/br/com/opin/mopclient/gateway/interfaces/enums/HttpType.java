@@ -1,7 +1,7 @@
 package br.com.opin.mopclient.gateway.interfaces.enums;
 
 /**
- * Allowed values for the {@code httpType} header: {@code Request} or {@code Response}.
+ * Allowed values for the {@code httpType} header: {@code request} or {@code response} (case-insensitive on input).
  */
 public enum HttpType {
     REQUEST,
@@ -29,6 +29,6 @@ public enum HttpType {
     }
 
     public static String getValidValues() {
-        return "Request, Response";
+        return "request, response";
     }
 }

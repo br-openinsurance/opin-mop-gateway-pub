@@ -2,6 +2,7 @@ package br.com.opin.mopclient.anonymization.interfaces.dto.message;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,14 +13,18 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.ALWAYS)
+@JsonPropertyOrder({
+        "correlationId", "mopReportId", "traceId", "path", "operation", "httpType", "statusCode",
+        "clientSSId", "serverASId", "origin", "traceOrigin", "orgId"
+})
 public class TraceDTO {
 
     /** Correlation ID (required). Present only in the final JSON (MessageDTO), not in the API response. */
     @JsonProperty("correlationId")
     private String correlationId;
 
-    @JsonProperty("mopReportid")
-    private String mopReportid;
+    @JsonProperty("mopReportId")
+    private String mopReportId;
 
     @JsonProperty("traceId")
     private String traceId;
@@ -51,6 +56,6 @@ public class TraceDTO {
     @JsonProperty("traceOrigin")
     private String traceOrigin;
 
-    @JsonProperty("OrgId")
+    @JsonProperty("orgId")
     private String orgId;
 }

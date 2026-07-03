@@ -108,7 +108,7 @@ class AnonymizerControllerTest {
                 .path(PATH)
                 .operation(OPERATION)
                 .traceOrigin(TRACE_ORIGIN_VALUE)
-                .mopReportid(correlationId)
+                .mopReportId(correlationId)
                 .timestamp(timestamp)
                 .clientSSId(CLIENT_SS_ID)
                 .serverASId(SERVER_AS_ID)
@@ -139,7 +139,8 @@ class AnonymizerControllerTest {
         void shouldProcessRequestSuccessfullyWhenAllHeadersAreValid() throws Exception {
             RequestHeadersDTO headersDTO = createHeadersDTO(CORRELATION_ID, TIMESTAMP);
             mockValidationSuccess();
-            when(jsonParser.parse(anyString())).thenReturn(jsonNode);
+            when(jsonParser.normalizeRequestBody(VALID_JSON)).thenReturn(VALID_JSON);
+            when(jsonParser.parse(VALID_JSON)).thenReturn(jsonNode);
             when(jsonParser.toJsonString(any(JsonNode.class))).thenReturn(VALID_JSON);
             mockBuildAndOrchestrator(headersDTO);
             when(responseBuilder.buildSuccessResponse(anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), any(), anyList(), isNull()))
@@ -171,7 +172,8 @@ class AnonymizerControllerTest {
             ObjectNode emptyNode = OBJECT_MAPPER.createObjectNode();
             RequestHeadersDTO headersDTO = createHeadersDTO(CORRELATION_ID, TIMESTAMP);
             mockValidationSuccess();
-            when(jsonParser.parse("")).thenReturn(emptyNode);
+            when(jsonParser.normalizeRequestBody("")).thenReturn("{}");
+            when(jsonParser.parse("{}")).thenReturn(emptyNode);
             when(jsonParser.toJsonString(emptyNode)).thenReturn("{}");
             mockBuildAndOrchestrator(headersDTO);
             when(responseBuilder.buildSuccessResponse(anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), any(), anyList(), isNull()))
@@ -184,7 +186,28 @@ class AnonymizerControllerTest {
             assertEquals(HttpStatus.OK, response.getStatusCode());
             ApiResponseDTO body = response.getBody();
             assertNotNull(body);
-            verify(orchestratorService).processRequest(anyString(), anyString(), any());
+            verify(orchestratorService).processRequest(eq("{}"), eq("{}"), any());
+        }
+
+        @Test
+        @DisplayName("Processes successfully when request body is null")
+        void shouldProcessRequestSuccessfullyWhenRequestBodyIsNull() throws Exception {
+            ObjectNode emptyNode = OBJECT_MAPPER.createObjectNode();
+            RequestHeadersDTO headersDTO = createHeadersDTO(CORRELATION_ID, TIMESTAMP);
+            mockValidationSuccess();
+            when(jsonParser.normalizeRequestBody(null)).thenReturn("{}");
+            when(jsonParser.parse("{}")).thenReturn(emptyNode);
+            when(jsonParser.toJsonString(emptyNode)).thenReturn("{}");
+            mockBuildAndOrchestrator(headersDTO);
+            when(responseBuilder.buildSuccessResponse(anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), any(), anyList(), isNull()))
+                    .thenReturn(ResponseEntity.ok(createSuccessResponse(CORRELATION_ID, TIMESTAMP)));
+
+            ResponseEntity<ApiResponseDTO> response = controller.receivedRequest(
+                    null, CORRELATION_ID, ORIGIN, PATH, OPERATION, HTTP_TYPE, null,
+                    TRACE_ORIGIN_VALUE, CLIENT_SS_ID, SERVER_AS_ID, headers);
+
+            assertEquals(HttpStatus.OK, response.getStatusCode());
+            verify(orchestratorService).processRequest(eq("{}"), eq("{}"), any());
         }
 
         @Test
@@ -194,7 +217,8 @@ class AnonymizerControllerTest {
             String correlationIdValue = "my-correlation-123";
             RequestHeadersDTO headersDTO = createHeadersDTO(correlationIdValue, TIMESTAMP);
             mockValidationSuccess();
-            when(jsonParser.parse(anyString())).thenReturn(jsonNode);
+            when(jsonParser.normalizeRequestBody(VALID_JSON)).thenReturn(VALID_JSON);
+            when(jsonParser.parse(VALID_JSON)).thenReturn(jsonNode);
             when(jsonParser.toJsonString(any(JsonNode.class))).thenReturn(VALID_JSON);
             when(headersBuilder.build(anyString(), anyString(), anyString(), anyString(), anyString(), any(), any(), any(), anyString(), anyString()))
                     .thenReturn(headersDTO);
@@ -216,7 +240,8 @@ class AnonymizerControllerTest {
         void shouldReturnAcceptedWithRetryMessageWhenClientRetryEnqueuedException() throws Exception {
             RequestHeadersDTO headersDTO = createHeadersDTO(CORRELATION_ID, TIMESTAMP);
             mockValidationSuccess();
-            when(jsonParser.parse(anyString())).thenReturn(jsonNode);
+            when(jsonParser.normalizeRequestBody(VALID_JSON)).thenReturn(VALID_JSON);
+            when(jsonParser.parse(VALID_JSON)).thenReturn(jsonNode);
             when(jsonParser.toJsonString(any(JsonNode.class))).thenReturn(VALID_JSON);
             when(headersBuilder.build(anyString(), anyString(), anyString(), anyString(), anyString(), any(), any(), any(), anyString(), anyString()))
                     .thenReturn(headersDTO);
@@ -267,8 +292,10 @@ class AnonymizerControllerTest {
             String details =
                     "Request body must be a single JSON object. JSON arrays and other root types are not allowed—send one event per HTTP request.";
             JsonNode arrayRoot = OBJECT_MAPPER.readTree("[{\"a\":1},{\"a\":2}]");
+            String batchJson = "[{\"a\":1}]";
             mockValidationSuccess();
-            when(jsonParser.parse(anyString())).thenReturn(arrayRoot);
+            when(jsonParser.normalizeRequestBody(batchJson)).thenReturn(batchJson);
+            when(jsonParser.parse(batchJson)).thenReturn(arrayRoot);
             when(responseBuilder.buildErrorResponse(HttpStatus.BAD_REQUEST, "Invalid JSON body", details))
                     .thenReturn(ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                             ApiResponseDTO.builder()
@@ -363,7 +390,8 @@ class AnonymizerControllerTest {
         void shouldReturnInternalServerErrorWhenExceptionIsThrown() throws Exception {
             RequestHeadersDTO headersDTO = createHeadersDTO(CORRELATION_ID, TIMESTAMP);
             mockValidationSuccess();
-            when(jsonParser.parse(anyString())).thenReturn(jsonNode);
+            when(jsonParser.normalizeRequestBody(VALID_JSON)).thenReturn(VALID_JSON);
+            when(jsonParser.parse(VALID_JSON)).thenReturn(jsonNode);
             when(jsonParser.toJsonString(any(JsonNode.class))).thenReturn(VALID_JSON);
             mockBuildAndOrchestrator(headersDTO);
             when(orchestratorService.processRequest(anyString(), anyString(), any())).thenThrow(new RuntimeException("Error sending message"));

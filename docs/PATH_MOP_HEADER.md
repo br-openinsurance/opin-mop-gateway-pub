@@ -208,7 +208,8 @@ Combinações inconsistentes (`client` + `Response`, `server` + `Request`) retor
    - `origin=client` + `httpType=Request` → valida **requestBody**
    - `origin=server` + `httpType=Response` → valida **response body** (usa `statusCode` do header)
 5. O **RequestValidator** do openapi4j recebe o **path MOP completo** (ex.: `/open-insurance/consents/v3/consents`), não apenas o segmento relativo do YAML (`/consents`).
-6. Se nenhum spec modular casar, retorna `NOT_FOUND` (`Operation path not found from URL '...'`).
+6. Campos `type: string` com `format: double|float|int32|int64` (ex.: `shareholding`) são ajustados no carregamento da spec (`OpenApiSpecCompatibilityPatcher`) para validar como **string** via `pattern`, conforme a spec Open Insurance.
+7. Se nenhum spec modular casar, retorna `NOT_FOUND` (`Operation path not found from URL '...'`).
 
 ---
 

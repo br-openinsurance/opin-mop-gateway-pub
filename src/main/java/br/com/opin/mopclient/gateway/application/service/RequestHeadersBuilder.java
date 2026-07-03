@@ -32,7 +32,8 @@ public class RequestHeadersBuilder {
     /**
      * Builds RequestHeadersDTO from individual header values and headers map.
      * correlationId is mandatory and supplied by the user (header X-Correlation-Id).
-     * Header "origin" accepts only "client" or "server".
+     * Header "origin" accepts only "client" or "server" (normalized to lowercase in the outbound payload).
+     * Header "httpType" accepts "Request" or "Response" case-insensitively (normalized to lowercase in the outbound payload).
      *
      * @param correlationId  Correlation ID from header X-Correlation-Id (required, already validated)
      * @param origin         Origin header value ("client" or "server")
@@ -53,7 +54,7 @@ public class RequestHeadersBuilder {
                                     String clientSSId, String serverASId) {
         String correlationIdTrimmed = correlationId != null ? correlationId.trim() : null;
         traceabilityService.setCorrelationIdInContext(correlationIdTrimmed);
-        String mopReportid = traceabilityService.getOrGenerateMopReportid(headers);
+        String mopReportId = traceabilityService.getOrGenerateMopReportid(headers);
         String timestamp = traceabilityService.generateTimestamp();
         String resolvedClientSSId = (clientSSId != null && !clientSSId.isBlank())
                 ? clientSSId
@@ -67,28 +68,77 @@ public class RequestHeadersBuilder {
         String resolvedPath = path != null && !path.isBlank()
                 ? mopPathResolver.resolveFromTransmitterUrl(path).mopPath()
                 : path;
-        String resolvedHttpType = (httpType != null && !httpType.isBlank())
+        String resolvedHttpType = normalizeHttpType((httpType != null && !httpType.isBlank())
                 ? httpType.trim()
-                : getHeaderIgnoreCase(headers, HttpHeaderConstants.HTTP_TYPE);
+                : getHeaderIgnoreCase(headers, HttpHeaderConstants.HTTP_TYPE));
         String resolvedStatusCode = (statusCode != null && !statusCode.isBlank())
                 ? statusCode.trim()
                 : getHeaderIgnoreCase(headers, HttpHeaderConstants.STATUS_CODE);
+        String normalizedOrigin = normalizeOrigin(origin);
         Map<String, String> resolvedHeaders = syncResolvedPathInHeaders(headers, resolvedPath);
+        resolvedHeaders = syncOriginInHeaders(resolvedHeaders, normalizedOrigin);
+        resolvedHeaders = syncHttpTypeInHeaders(resolvedHeaders, resolvedHttpType);
 
         return RequestHeadersDTO.builder()
                 .correlationId(correlationIdTrimmed)
-                .origin(origin)
+                .origin(normalizedOrigin)
                 .path(resolvedPath)
                 .operation(operation != null ? operation.trim() : null)
                 .httpType(resolvedHttpType)
                 .statusCode(resolvedStatusCode)
-                .mopReportid(mopReportid)
+                .mopReportId(mopReportId)
                 .timestamp(timestamp)
                 .clientSSId(resolvedClientSSId)
                 .serverASId(resolvedServerASId)
                 .headers(resolvedHeaders)
                 .traceOrigin(resolvedTraceOrigin)
                 .build();
+    }
+
+    static String normalizeOrigin(String origin) {
+        if (origin == null || origin.isBlank()) {
+            return origin;
+        }
+        String trimmed = origin.trim();
+        if ("client".equalsIgnoreCase(trimmed)) {
+            return "client";
+        }
+        if ("server".equalsIgnoreCase(trimmed)) {
+            return "server";
+        }
+        return trimmed;
+    }
+
+    static String normalizeHttpType(String httpType) {
+        if (httpType == null || httpType.isBlank()) {
+            return httpType;
+        }
+        String trimmed = httpType.trim();
+        if ("request".equalsIgnoreCase(trimmed)) {
+            return "request";
+        }
+        if ("response".equalsIgnoreCase(trimmed)) {
+            return "response";
+        }
+        return trimmed;
+    }
+
+    private static Map<String, String> syncHttpTypeInHeaders(Map<String, String> headers, String normalizedHttpType) {
+        if (normalizedHttpType == null || normalizedHttpType.isBlank()) {
+            return headers;
+        }
+        Map<String, String> copy = headers != null ? new HashMap<>(headers) : new HashMap<>();
+        copy.put(HttpHeaderConstants.HTTP_TYPE, normalizedHttpType);
+        return copy;
+    }
+
+    private static Map<String, String> syncOriginInHeaders(Map<String, String> headers, String normalizedOrigin) {
+        if (normalizedOrigin == null || normalizedOrigin.isBlank()) {
+            return headers;
+        }
+        Map<String, String> copy = headers != null ? new HashMap<>(headers) : new HashMap<>();
+        copy.put(HttpHeaderConstants.ORIGIN, normalizedOrigin);
+        return copy;
     }
 
     private static Map<String, String> syncResolvedPathInHeaders(Map<String, String> headers, String resolvedPath) {

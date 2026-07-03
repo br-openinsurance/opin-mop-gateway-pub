@@ -462,13 +462,13 @@ components:
       type: object
       description: |
         Corpo JSON retornado em HTTP 200 por `ResponseBuilder.buildSuccessResponse` — payload entregue ao MOP de forma síncrona.
-        Campos `error` e `details` não são usados no sucesso. `mopReportid` pode existir no DTO mas **é omitido** na serialização quando nulo.
+        Campos `error` e `details` não são usados no sucesso. `mopReportId` pode existir no DTO mas **é omitido** na serialização quando nulo.
       properties:
         message:
           type: string
           description: "Texto fixo de sucesso síncrono."
           example: "Request processed successfully. Your data has been received and forwarded to the server."
-        mopReportid:
+        mopReportId:
           type: string
           description: "Reservado; normalmente **ausente** na resposta de sucesso atual."
         timestamp:

@@ -190,4 +190,116 @@ class OpenApiValidationServiceTest {
                 result.getValidations().get(0).getMessage());
         assertEquals("NOT_FOUND", result.getValidations().get(0).getCode());
     }
+
+    @Test
+    @DisplayName("accepts shareholding as string in business identifications GET response")
+    void acceptsShareholdingStringInBusinessIdentificationsResponse() {
+        String payload = """
+                {
+                  "data": [{
+                    "updateDateTime": "2021-05-21T08:30:00Z",
+                    "brandName": "Organização A",
+                    "companyInfo": { "cnpjNumber": "01773247000563", "name": "Empresa" },
+                    "businessName": "Empresa Ltda",
+                    "document": { "businesscnpjNumber": "50685362006773", "country": "BRA" },
+                    "contact": {
+                      "postalAddresses": [{
+                        "address": {
+                          "flagPostCode": "NACIONAL",
+                          "address": {
+                            "type": "AEROPORTO",
+                            "number": "1",
+                            "districtName": "Centro",
+                            "townName": "Marília",
+                            "countrySubDivision": "SP",
+                            "postCode": "17500001"
+                          }
+                        }
+                      }]
+                    },
+                    "parties": [{
+                      "type": "SOCIO",
+                      "civilName": "Juan Kaique",
+                      "startDate": "2014-05-21",
+                      "shareholding": "0.510000",
+                      "documentType": "CPF",
+                      "documentNumber": "73677831148",
+                      "documentCountry": "BRA",
+                      "documentExpirationDate": "2021-05-21"
+                    }]
+                  }],
+                  "links": { "self": "https://api.example.com/open-insurance/customers/v2/business/identifications" },
+                  "meta": { "totalRecords": 1, "totalPages": 1 }
+                }
+                """;
+        var response = validationService.validate(
+                payload,
+                new HttpHeaders(),
+                "/open-insurance/customers/v2/business/identifications",
+                "GET",
+                "Response",
+                "200");
+
+        var result = response.getValidationResult();
+        assertNotNull(result);
+        if (result.getValidations() != null) {
+            assertTrue(result.getValidations().stream().noneMatch(v -> "1007".equals(v.getCode())),
+                    () -> "string shareholding must not fail format double: " + result.getValidations());
+        }
+    }
+
+    @Test
+    @DisplayName("accepts shareholding string 0.51 in business identifications GET response")
+    void acceptsShareholdingShortStringInBusinessIdentificationsResponse() {
+        String payload = """
+                {
+                  "data": [{
+                    "updateDateTime": "2021-05-21T08:30:00Z",
+                    "brandName": "Organização A",
+                    "companyInfo": { "cnpjNumber": "01773247000563", "name": "Empresa" },
+                    "businessName": "Empresa Ltda",
+                    "document": { "businesscnpjNumber": "50685362006773", "country": "BRA" },
+                    "contact": {
+                      "postalAddresses": [{
+                        "address": {
+                          "flagPostCode": "NACIONAL",
+                          "address": {
+                            "type": "AEROPORTO",
+                            "number": "1",
+                            "districtName": "Centro",
+                            "townName": "Marília",
+                            "countrySubDivision": "SP",
+                            "postCode": "17500001"
+                          }
+                        }
+                      }]
+                    },
+                    "parties": [{
+                      "type": "SOCIO",
+                      "civilName": "Juan Kaique",
+                      "startDate": "2014-05-21",
+                      "shareholding": "0.51",
+                      "documentType": "CPF",
+                      "documentNumber": "73677831148",
+                      "documentCountry": "BRA",
+                      "documentExpirationDate": "2021-05-21"
+                    }]
+                  }],
+                  "links": { "self": "https://api.example.com/open-insurance/customers/v2/business/identifications" },
+                  "meta": { "totalRecords": 1, "totalPages": 1 }
+                }
+                """;
+        var response = validationService.validate(
+                payload,
+                new HttpHeaders(),
+                "/open-insurance/customers/v2/business/identifications",
+                "GET",
+                "Response",
+                "200");
+
+        var result = response.getValidationResult();
+        assertNotNull(result);
+        assertTrue(result.getValidations() == null || result.getValidations().isEmpty(),
+                () -> "shareholding 0.51 string should pass: " + result.getValidations());
+    }
 }

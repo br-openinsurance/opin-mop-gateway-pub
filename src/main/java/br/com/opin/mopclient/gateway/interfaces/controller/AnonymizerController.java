@@ -90,7 +90,7 @@ public class AnonymizerController {
      */
     @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponseDTO> receivedRequest(
-            @RequestBody String requestBody,
+            @RequestBody(required = false) String requestBody,
             @RequestHeader(value = CORRELATION_ID, required = true) String correlationId,
             @RequestHeader(value = ORIGIN, required = true) String origin,
             @RequestHeader(value = PATH, required = true) String path,
@@ -116,8 +116,10 @@ public class AnonymizerController {
         }
 
         try {
+            String effectiveRequestBody = jsonParser.normalizeRequestBody(requestBody);
+
             // Parse JSON payload
-            JsonNode jsonNode = jsonParser.parse(requestBody);
+            JsonNode jsonNode = jsonParser.parse(effectiveRequestBody);
             if (!jsonNode.isObject()) {
                 LOGGER.warn(
                         "Rejected request body: root JSON must be an object (not an array or other type) | correlationId={}",
@@ -135,7 +137,8 @@ public class AnonymizerController {
                     headers, clientSSId, serverASId);
 
             // Process request through unified flow: validation -> anonymization -> external API
-            ProcessingResult processingResult = orchestratorService.processRequest(requestBody, jsonPayload, headersDTO);
+            ProcessingResult processingResult = orchestratorService.processRequest(
+                    effectiveRequestBody, jsonPayload, headersDTO);
 
             String responseClientSSId = headersDTO.getClientSSId() != null && !headersDTO.getClientSSId().isBlank()
                     ? headersDTO.getClientSSId() : headersDTO.getOrigin();
@@ -169,8 +172,8 @@ public class AnonymizerController {
                     ? h.getClientSSId() : h.getOrigin();
             String responseServerASId = h.getServerASId() != null && !h.getServerASId().isBlank()
                     ? h.getServerASId() : "";
-            String mopReportIdForLog = h.getMopReportid() != null && !h.getMopReportid().isBlank()
-                    ? h.getMopReportid()
+            String mopReportIdForLog = h.getMopReportId() != null && !h.getMopReportId().isBlank()
+                    ? h.getMopReportId()
                     : "-";
             String dateTimeBr = LocalDateTime.now().format(LOG_DATE_TIME_BR);
             LOGGER.warn(

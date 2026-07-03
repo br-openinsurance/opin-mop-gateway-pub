@@ -8,9 +8,9 @@ import br.com.opin.mopclient.anonymization.interfaces.dto.validation.Validation;
 import br.com.opin.mopclient.anonymization.infrastructure.mapper.MessagePayloadWrapper;
 import br.com.opin.mopclient.anonymization.shared.exception.infrastructure.ConfigUnavailableException;
 import br.com.opin.mopclient.anonymization.shared.util.MopReportidManager;
-import br.com.opin.mopclient.anonymization.shared.util.JsonConverter;
-import br.com.opin.mopclient.gateway.interfaces.dto.ServerResponseDTO;
+import br.com.opin.mopclient.gateway.infrastructure.config.GatewayMetadataProvider;
 import br.com.opin.mopclient.gateway.interfaces.dto.RequestHeadersDTO;
+import br.com.opin.mopclient.gateway.interfaces.dto.ServerResponseDTO;
 import br.com.opin.mopclient.gateway.shared.exception.ErrorResponseException;
 import br.com.opin.mopclient.retry.ClientRetryUserMessages;
 import br.com.opin.mopclient.retry.application.ClientRetryEnqueueService;
@@ -54,6 +54,7 @@ public class ProcessingOrchestratorService {
     private final ObjectMapper objectMapper;
     private final ClientRetryEnqueueService clientRetryEnqueueService;
     private final SigningProperties signingProperties;
+    private final GatewayMetadataProvider gatewayMetadataProvider;
 
     public ProcessingOrchestratorService(
             OpenApiValidationService validationService,
@@ -62,7 +63,8 @@ public class ProcessingOrchestratorService {
             MessagePayloadWrapper messagePayloadWrapper,
             ObjectMapper objectMapper,
             ClientRetryEnqueueService clientRetryEnqueueService,
-            SigningProperties signingProperties) {
+            SigningProperties signingProperties,
+            GatewayMetadataProvider gatewayMetadataProvider) {
         this.validationService = Objects.requireNonNull(validationService, "OpenApiValidationService cannot be null");
         this.anonymizeDataUseCase = Objects.requireNonNull(anonymizeDataUseCase, "AnonymizeDataUseCase cannot be null");
         this.externalApiClient = Objects.requireNonNull(externalApiClient, "ExternalApiClient cannot be null");
@@ -70,6 +72,8 @@ public class ProcessingOrchestratorService {
         this.objectMapper = Objects.requireNonNull(objectMapper, "ObjectMapper cannot be null");
         this.clientRetryEnqueueService = Objects.requireNonNull(clientRetryEnqueueService, "ClientRetryEnqueueService cannot be null");
         this.signingProperties = Objects.requireNonNull(signingProperties, "SigningProperties cannot be null");
+        this.gatewayMetadataProvider = Objects.requireNonNull(
+                gatewayMetadataProvider, "GatewayMetadataProvider cannot be null");
     }
 
     public ProcessingResult processRequest(String originalRequestBody, String normalizedPayload, RequestHeadersDTO headersDTO) {
@@ -86,7 +90,7 @@ public class ProcessingOrchestratorService {
             String normalizedPayload,
             RequestHeadersDTO headersDTO,
             boolean suppressRetryEnqueue) {
-        String correlationId = headersDTO.getCorrelationId() != null ? headersDTO.getCorrelationId() : headersDTO.getMopReportid();
+        String correlationId = headersDTO.getCorrelationId() != null ? headersDTO.getCorrelationId() : headersDTO.getMopReportId();
         MopReportidManager.setMopReportid(correlationId);
         
         try {
@@ -132,11 +136,10 @@ public class ProcessingOrchestratorService {
             logger.info("[STEP 4] Building MessageDTO | Correlation ID: {}", correlationId);
             List<Validation> validations = convertValidations(validationResult);
             MessageDTO messageDTO = buildMessageDTO(headersDTO, anonymizedFields, exposedFields, validations, anonymizedPayload);
-            String messageJson = JsonConverter.toJson(messageDTO);
 
             logger.info("[STEP 5] Wrapping payload | Correlation ID: {}", correlationId);
             JsonNode payloadNode = parseJsonNode(anonymizedPayload);
-            String wrappedJson = messagePayloadWrapper.wrap(messageJson, payloadNode);
+            String wrappedJson = messagePayloadWrapper.toOutboundJson(messageDTO, payloadNode);
             logger.info("[STEP 5] Payload wrapped | Correlation ID: {}", correlationId);
 
             logger.info(
@@ -251,7 +254,9 @@ public class ProcessingOrchestratorService {
                 anonymizedPayload,
                 host,
                 url,
-                orgId);
+                orgId,
+                gatewayMetadataProvider.getVersion(),
+                gatewayMetadataProvider.getEnvironment());
     }
 
     private HttpHeaders convertHeadersToHttpHeaders(Map<String, String> headers) {

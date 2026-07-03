@@ -1,69 +1,59 @@
 package br.com.opin.mopclient.anonymization.infrastructure.mapper;
 
+import br.com.opin.mopclient.anonymization.interfaces.dto.message.MessageDTO;
+import br.com.opin.mopclient.anonymization.interfaces.dto.message.PayloadDTO;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
- * Mapper for wrapping message payloads in JSON structure.
+ * Serializes {@link MessageDTO} for outbound delivery to the MOP server.
  */
 @Component
 public class MessagePayloadWrapper {
 
     private static final String DATA_NODE_NAME = "data";
-    private static final String PAYLOAD_NODE_NAME = "payload";
     private static final Logger logger = LoggerFactory.getLogger(MessagePayloadWrapper.class);
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper messageMapper;
 
-    public MessagePayloadWrapper() {
-        this.objectMapper = new ObjectMapper();
+    public MessagePayloadWrapper(ObjectMapper objectMapper) {
+        this.messageMapper = objectMapper.copy()
+                .disable(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY)
+                .disable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS);
     }
 
-    public String wrap(String originalJson, JsonNode node) {
+    public String toOutboundJson(MessageDTO message, JsonNode anonymizedPayload) {
         try {
-            if (originalJson == null || originalJson.isBlank()) {
-                logger.warn("Original JSON is null or empty");
-                return "{}";
-            }
-
-            JsonNode originalNode = objectMapper.readTree(originalJson);
-            ObjectNode updatedNode = objectMapper.createObjectNode();
-
-            if (originalNode instanceof ObjectNode) {
-                updatedNode.setAll((ObjectNode) originalNode);
-            } else {
-                logger.warn("Original JSON is not an ObjectNode");
-                return originalJson;
-            }
-
-            ObjectNode payloadNode;
-            JsonNode existingPayload = updatedNode.get(PAYLOAD_NODE_NAME);
-            if (existingPayload instanceof ObjectNode) {
-                payloadNode = (ObjectNode) existingPayload;
-            } else {
-                payloadNode = objectMapper.createObjectNode();
-                updatedNode.set(PAYLOAD_NODE_NAME, payloadNode);
-            }
-
-            if (node == null || node.isEmpty()) {
-                payloadNode.set(DATA_NODE_NAME, objectMapper.createObjectNode());
-            } else {
-                JsonNode dataNode = node.get(DATA_NODE_NAME);
-                if (dataNode != null && !dataNode.isEmpty()) {
-                    payloadNode.set(DATA_NODE_NAME, dataNode);
-                } else {
-                    payloadNode.set(DATA_NODE_NAME, node);
-                }
-            }
-
-            return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(updatedNode);
-
-        } catch (Exception e) {
-            logger.error("Error while wrapping JSON: {}", e.getMessage(), e);
-            return originalJson != null ? originalJson : "{}";
+            applyPayloadData(message, anonymizedPayload);
+            return messageMapper.writerWithDefaultPrettyPrinter().writeValueAsString(message);
+        } catch (JsonProcessingException e) {
+            logger.error("Error while serializing MessageDTO: {}", e.getMessage(), e);
+            throw new IllegalStateException("Failed to serialize MessageDTO for MOP delivery", e);
         }
+    }
+
+    private void applyPayloadData(MessageDTO message, JsonNode anonymizedPayload) {
+        PayloadDTO payload = message.getPayload();
+        if (payload == null) {
+            payload = PayloadDTO.builder().build();
+            message.setPayload(payload);
+        }
+        payload.setData(resolvePayloadData(anonymizedPayload));
+    }
+
+    private JsonNode resolvePayloadData(JsonNode node) {
+        if (node == null || node.isEmpty()) {
+            return messageMapper.createObjectNode();
+        }
+        JsonNode dataNode = node.get(DATA_NODE_NAME);
+        if (dataNode != null && !dataNode.isEmpty()) {
+            return dataNode;
+        }
+        return node;
     }
 }

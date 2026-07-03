@@ -22,8 +22,20 @@ public class JsonPayloadParser {
     private static final Logger LOGGER = LoggerFactory.getLogger(JsonPayloadParser.class);
     private final ObjectMapper objectMapper;
 
+    private static final String EMPTY_OBJECT_JSON = "{}";
+
     public JsonPayloadParser(ObjectMapper objectMapper) {
         this.objectMapper = Objects.requireNonNull(objectMapper, "ObjectMapper cannot be null");
+    }
+
+    /**
+     * Normalizes null, empty or whitespace-only bodies to {@code "{}"}.
+     */
+    public String normalizeRequestBody(String requestBody) {
+        if (!StringUtils.hasText(requestBody)) {
+            return EMPTY_OBJECT_JSON;
+        }
+        return requestBody.trim();
     }
 
     /**
@@ -34,7 +46,11 @@ public class JsonPayloadParser {
      * @return JsonNode representing the parsed JSON, or empty object if invalid
      */
     public JsonNode parse(String requestBody) {
-        if (!StringUtils.hasText(requestBody)) {
+        return parseNormalized(normalizeRequestBody(requestBody));
+    }
+
+    private JsonNode parseNormalized(String requestBody) {
+        if (EMPTY_OBJECT_JSON.equals(requestBody)) {
             return objectMapper.createObjectNode();
         }
         try {
