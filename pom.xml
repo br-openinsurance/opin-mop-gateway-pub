@@ -14,7 +14,7 @@
 
     <groupId>gateway</groupId>
     <artifactId>gateway</artifactId>
-    <version>1.0.4-SNAPSHOT</version>
+    <version>1.0.5</version>
     <name>openinsurance-gateway</name>
     <description>MOP Client — serviço unificado de validação, anonimização e comunicação com a API externa</description>
 
@@ -25,6 +25,7 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <skipTests>false</skipTests>
+        <mop.environment>sandbox</mop.environment>
         <!-- Dependency versions to override transitive vulnerabilities -->
         <tomcat.version>10.1.55</tomcat.version>
         <netty.version>4.1.133.Final</netty.version>
@@ -195,6 +196,23 @@
 
     <build>
         <finalName>${project.artifactId}</finalName>
+
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>gateway-version.properties</include>
+                </includes>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <excludes>
+                    <exclude>gateway-version.properties</exclude>
+                </excludes>
+            </resource>
+        </resources>
         
         <plugins>
             <!-- Maven Compiler Plugin -->
@@ -241,6 +259,13 @@
                         </exclude>
                     </excludes>
                 </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>build-info</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
 
             <!-- Maven Resources Plugin -->

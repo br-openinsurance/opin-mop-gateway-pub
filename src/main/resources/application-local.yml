@@ -2,17 +2,14 @@ spring:
   application:
     name: mop-client-gateway
 
-  config:
-    import: optional:classpath:gateway-version.properties
-  
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:default}
 
   rabbitmq:
-    host: rabbitmq.broker-client.svc.cluster.local
-    port: 5672
-    username: user
-    password: bitnami
+    host: ${RABBITMQ_VALIDATOR_HOST}
+    port: ${RABBITMQ_VALIDATOR_PORT}
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
 
   # Cache configuration
   cache:
@@ -77,10 +74,10 @@ mop:
     org-id: ${JWS_ORG_ID}
   client:
     retry:
-      queue: mop.client.retry.queue
+      queue: ${MOP_CLIENT_RETRY_QUEUE:mop.client.retry.queue}
       dlq:
-        queue: mop.client.retry.dlq
-        max-attempts: ${MOP_CLIENT_RETRY_DLQ_MAX_ATTEMPTS:3}
+        queue: ${MOP_CLIENT_RETRY_DLQ_QUEUE:mop.client.retry.dlq}
+        max-attempts: ${MOP_CLIENT_RETRY_DLQ_MAX_ATTEMPTS:5}
       replay:
         enabled: ${MOP_CLIENT_RETRY_REPLAY_ENABLED:true}
         initial-delay-ms: ${MOP_CLIENT_RETRY_REPLAY_INITIAL_DELAY_MS:60000}
@@ -93,7 +90,7 @@ mop:
       connect-timeout-ms: ${MOP_SERVER_AVAILABILITY_CONNECT_TIMEOUT_MS:3000}
       read-timeout-ms: ${MOP_SERVER_AVAILABILITY_READ_TIMEOUT_MS:5000}
   rabbit:
-    require-at-startup: true
+    require-at-startup: ${MOP_RABBIT_REQUIRE_AT_STARTUP:true}
 
 resilience4j:
   circuitbreaker:

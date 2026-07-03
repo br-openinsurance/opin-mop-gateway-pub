@@ -86,6 +86,15 @@ public class OpenApiValidationService {
                     httpType != null && !httpType.isBlank() ? httpType : "Request",
                     target.sourceLabel());
             String normalizedPayload = normalizePayload(rawPayload);
+            int responseStatus = resolveResponseStatus(statusCode, method);
+            normalizedPayload = OpenApiStringNumericPayloadCoercer.coerce(
+                    target.openApi(),
+                    target.validationPath(),
+                    target.relativePath(),
+                    method,
+                    validateAsResponse,
+                    responseStatus,
+                    normalizedPayload);
             Map<String, Collection<String>> headersMap = normalizeHeaders(headers);
             RequestValidator validator = new RequestValidator(target.openApi());
 
@@ -98,7 +107,7 @@ public class OpenApiValidationService {
 
             if (validateAsResponse) {
                 Body responseBody = createRequestBody(normalizedPayload);
-                Response openApiResponse = new DefaultResponse.Builder(resolveResponseStatus(statusCode, method))
+                Response openApiResponse = new DefaultResponse.Builder(responseStatus)
                         .body(responseBody)
                         .headers(headersMap)
                         .build();
@@ -106,8 +115,11 @@ public class OpenApiValidationService {
                         target.openApi(), target.validationPath(), method, openApiResponse);
                 if (!responseValidation.isValid()) {
                     logger.warn("Validation failed | validationPath={} | httpType=Response", target.validationPath());
-                    response.setValidationResult(buildValidationErrorResponse(
-                            responseValidation.results(), "Invalid response"));
+                    ValidationResultDTO errorResult = buildValidationErrorResponse(
+                            responseValidation.results(), "Invalid response");
+                    response.setValidationResult(hasValidationViolations(errorResult)
+                            ? errorResult
+                            : buildSuccessResponse());
                     logger.info("Validation process completed in {} ms", System.currentTimeMillis() - startTime);
                     return response;
                 }
@@ -130,7 +142,10 @@ public class OpenApiValidationService {
                     null, e.getMessage(), e.getValidationCode()));
         } catch (ValidationException e) {
             logger.warn("Validation failed | mopPath={} | reason={}", normalizedMopPath, e.getMessage());
-            response.setValidationResult(buildValidationErrorResponse(e));
+            ValidationResultDTO errorResult = buildValidationErrorResponse(e);
+            response.setValidationResult(hasValidationViolations(errorResult)
+                    ? errorResult
+                    : buildSuccessResponse());
         } catch (IllegalArgumentException e) {
             logger.warn("Input validation error: {}", e.getMessage());
             response.setValidationResult(buildInputValidationErrorResponse(e));
@@ -255,6 +270,12 @@ public class OpenApiValidationService {
         return headersMap;
     }
 
+    private static boolean hasValidationViolations(ValidationResultDTO result) {
+        return result != null
+                && result.getValidations() != null
+                && !result.getValidations().isEmpty();
+    }
+
     private ValidationResultDTO buildSuccessResponse() {
         return ValidationResultDTO.builder()
                 .detailMessage("Validation completed successfully")
@@ -285,6 +306,12 @@ public class OpenApiValidationService {
                         break;
                     }
                     try {
+                        if (OpenApiSpecCompatibilityPatcher.isStringNumericFormatFalsePositive(
+                                item.code(), item.message())) {
+                            logger.debug("Suppressing openapi4j string/numeric format false-positive: {}",
+                                    item.message());
+                            continue;
+                        }
                         errorDetails.add(ValidationViolationDTO.builder()
                                 .code(String.valueOf(item.code()))
                                 .message(sanitizeMessage(item.message()))

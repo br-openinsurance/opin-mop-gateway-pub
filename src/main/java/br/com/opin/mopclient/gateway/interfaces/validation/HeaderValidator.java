@@ -90,7 +90,7 @@ public class HeaderValidator {
         if (HttpType.isResponse(httpType)) {
             if (!StringUtils.hasText(statusCode)) {
                 return ValidationResult.error(
-                        "Header 'statusCode' is required when 'httpType' is 'Response'");
+                        "Header 'statusCode' is required when 'httpType' is 'response'");
             }
             if (!isValidStatusCode(statusCode)) {
                 return ValidationResult.error(
@@ -155,11 +155,11 @@ public class HeaderValidator {
     private static ValidationResult validateOriginHttpTypeConsistency(String origin, String httpType) {
         if (CLIENT.equalsIgnoreCase(origin) && HttpType.isResponse(httpType)) {
             return ValidationResult.error(
-                    "Header 'httpType' must be 'Request' when 'origin' is 'client'");
+                    "Header 'httpType' must be 'request' when 'origin' is 'client'");
         }
         if (SERVER.equalsIgnoreCase(origin) && !HttpType.isResponse(httpType)) {
             return ValidationResult.error(
-                    "Header 'httpType' must be 'Response' when 'origin' is 'server'");
+                    "Header 'httpType' must be 'response' when 'origin' is 'server'");
         }
         return ValidationResult.success();
     }

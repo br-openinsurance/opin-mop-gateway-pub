@@ -1,46 +1,71 @@
 {
-  "origin": "A1",
-  "path": "",
-  "headers": {
-    "Content-Type": "application/json",
-    "mopReportid": "2025-09-30T11:25:00Z",
-    "timestamp": "2025-09-30T11:25:00Z"
+  "metadata": {
+    "version": "1.0.5",
+    "environment": "sandbox",
+    "module": "MOP",
+    "initiatedBy": "mop-client-gateway",
+    "purpose": "Data anonymization and routing",
+    "timestamp": "2025-09-30T11:25:00Z",
+    "contentType": "application/json"
+  },
+  "trace": {
+    "correlationId": "corr-123",
+    "mopReportId": "2025-09-30T11:25:00Z",
+    "traceId": "550e8400-e29b-41d4-a716-446655440000",
+    "path": "/open-insurance/consents/v3/consents",
+    "operation": "POST",
+    "httpType": "Request",
+    "statusCode": "",
+    "clientSSId": "client",
+    "serverASId": "server",
+    "origin": "client",
+    "traceOrigin": "CLIENT",
+    "orgId": "org-id"
   },
   "request": {
     "method": "POST",
     "host": "mop-server-entrypoint-sandbox.opinbrasil.com.br",
-    "path": "/process",
-    "url": "https://mop-server-entrypoint-sandbox.opinbrasil.com.br/process"
+    "url": "https://mop-server-entrypoint-sandbox.opinbrasil.com.br/process",
+    "header": {
+      "Content-Type": "application/json",
+      "X-Correlation-Id": "corr-123"
+    },
+    "validations": {
+      "status": "ERROR",
+      "total": 3,
+      "pending": [
+        {
+          "violation": "Field 'data' is required.",
+          "code": "1026",
+          "severity": "ERROR",
+          "attribute": "body"
+        },
+        {
+          "violation": "Field 'links' is required.",
+          "code": "1026",
+          "severity": "ERROR",
+          "attribute": "body"
+        },
+        {
+          "violation": "Field 'meta' is required.",
+          "code": "1026",
+          "severity": "ERROR",
+          "attribute": "body"
+        }
+      ]
+    }
   },
-  "traceabilityFields": {
-    "anonymized": [
+  "privacy": {
+    "anonymizedFields": [
       "cnpjNumber",
       "incomeFrequency"
     ],
-    "exposed": [
+    "exposedFields": [
       "consentId",
       "civilName"
-    ],
-    "processingContext": {
-      "module": "MOP",
-      "initiatedBy": "mop-client-gateway",
-      "purpose": "Data anonymization and routing",
-      "environment": "sandbox"
-    }
+    ]
   },
-  "data": {},
-  "validations": [
-    {
-      "violation": "Additional property 'consentId' is not allowed.",
-      "code": 1000,
-      "severity": "ERROR",
-      "attribute": "body.data"
-    },
-    {
-      "violation": "Additional property 'quoteCustomer' is not allowed.",
-      "code": 1000,
-      "severity": "ERROR",
-      "attribute": "body.data"
-    }
-  ]
+  "payload": {
+    "data": {}
+  }
 }

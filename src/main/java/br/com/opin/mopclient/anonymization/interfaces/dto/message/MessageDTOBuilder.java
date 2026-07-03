@@ -2,6 +2,7 @@ package br.com.opin.mopclient.anonymization.interfaces.dto.message;
 
 import br.com.opin.mopclient.anonymization.interfaces.dto.validation.Validation;
 import br.com.opin.mopclient.gateway.interfaces.dto.RequestHeadersDTO;
+import br.com.opin.mopclient.gateway.interfaces.dto.ValidationsSummaryDTO;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -23,13 +24,15 @@ public final class MessageDTOBuilder {
             String payloadData,
             String host,
             String url,
-            String orgId) {
+            String orgId,
+            String metadataVersion,
+            String metadataEnvironment) {
 
         String correlationId = headersDTO.getCorrelationId();
         if (correlationId == null || correlationId.isBlank()) {
             throw new IllegalArgumentException("TraceDTO requires correlationId (header X-Correlation-Id); it is mandatory.");
         }
-        String mopReportid = headersDTO.getMopReportid();
+        String mopReportId = headersDTO.getMopReportId();
         String origin = headersDTO.getOrigin();
         String path = headersDTO.getPath();
         String operation = headersDTO.getOperation();
@@ -53,8 +56,8 @@ public final class MessageDTOBuilder {
         String statusCode = headersDTO.getStatusCode() != null ? headersDTO.getStatusCode() : "";
 
         MetadataDTO metadata = MetadataDTO.builder()
-                .version("1.0")
-                .environment("dev")
+                .version(metadataVersion != null && !metadataVersion.isBlank() ? metadataVersion : "unknown")
+                .environment(metadataEnvironment != null && !metadataEnvironment.isBlank() ? metadataEnvironment : "unknown")
                 .module("MOP")
                 .initiatedBy("mop-client-gateway")
                 .purpose("Data anonymization and routing")
@@ -64,7 +67,7 @@ public final class MessageDTOBuilder {
 
         TraceDTO trace = TraceDTO.builder()
                 .correlationId(correlationId)
-                .mopReportid(mopReportid != null ? mopReportid : correlationId)
+                .mopReportId(mopReportId != null ? mopReportId : correlationId)
                 .traceId(generateTraceId())
                 .path(path != null ? path : "")
                 .operation(operation != null ? operation : "")
@@ -82,6 +85,7 @@ public final class MessageDTOBuilder {
                 .host(host)
                 .url(url)
                 .header(copyHeaders(headers))
+                .validations(ValidationsSummaryDTO.from(validations != null ? validations : List.of()))
                 .build();
 
         PrivacyDTO privacy = PrivacyDTO.builder()
@@ -98,7 +102,6 @@ public final class MessageDTOBuilder {
                 .trace(trace)
                 .request(request)
                 .privacy(privacy)
-                .validations(validations != null ? validations : List.of())
                 .payload(payload)
                 .build();
     }

@@ -220,6 +220,7 @@ public class OpenApiCurrentSpecRegistry {
         String fileName = resource.getFilename() != null ? resource.getFilename() : "unknown.yaml";
         try (InputStream inputStream = resource.getInputStream()) {
             OpenApi3 openApi = new OpenApi3Parser().parse(FileUtils.inputStreamToFile(inputStream, fileName), false);
+            OpenApiSpecCompatibilityPatcher.patch(openApi);
             String basePath = extractBasePathFromSpec(openApi);
             var paths = openApi.getPaths();
             if (paths == null || paths.isEmpty()) {

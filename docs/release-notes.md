@@ -2,7 +2,7 @@
 
 Notas de versão do **MOP Client**, no estilo do ecossistema MOP (New features, Enhancements, Bug fixes).
 
-**Última atualização do documento: 28 de junho de 2026.**
+**Última atualização do documento: 3 de julho de 2026.**
 
 ```mermaid
 flowchart LR
@@ -13,19 +13,10 @@ flowchart LR
     Q -.->|limite de tentativas| D[(DLQ)]
 ```
 
-### Em produção
-
-- **MOP disponível:** o pedido é concluído na hora e a API responde **`200`** — o rastreio segue para o servidor MOP como esperado pela regulação.
-- **MOP indisponível ou instável:** a API responde **`202`** e o pedido fica **retido para nova tentativa**; quando o ambiente normaliza, o reenvio ocorre **sem** a aplicação participante ter de repetir a chamada manualmente.
-- **Infraestrutura:** o **broker de mensagens** usado pela fila de retry tem de estar **sempre disponível** à altura do volume esperado; sem ele, não há garantia de enfileiramento nem de reprocessamento.
-- **Operação:** convém **acompanhar** saúde da aplicação, profundidade da fila e indisponibilidades do MOP (por exemplo via *health checks* e métricas), e tratar o modelo como **pelo-menos-uma-vez** — o identificador de correlação deve ser **único por intenção de negócio** para o lado receptor poder deduplicar, se necessário.
-- **DLQ:** após esgotar as tentativas de replay (`mop.client.retry.dlq.max-attempts`), o evento vai para a fila **`mop.client.retry.dlq`**; o **reprocessamento a partir da DLQ é responsabilidade do participante**.
-
----
-
 ---
 
 ## Versões da release note
+- [1.0.5 (2026-07-03)](#v1-0-5)
 - [1.0.4 (2026-06-02)](#v1-0-4)
 - [1.0.3 (2026-06-02)](#v1-0-3)
 - [1.0.2 (2026-05-19)](#v1-0-2)
@@ -35,6 +26,26 @@ flowchart LR
 ---
 ---
 
+<a id="v1-0-5"></a>
+
+## 1.0.5
+
+### New features
+
+- **Promoção da branch de produção (`main`)**: a release **1.0.5** consolida o que está na branch **`main`** — linha oficial de produção do repositório, distinta da **`develop`** (homologação/sandbox). O pipeline publica a imagem Docker no GHCR com tag **`main`** (e `main-<sha>`), pronta para deploy nos ambientes produtivos dos participantes (03/07/2026).
+- **URL de produção (MOP Server):** https://mop-server-entrypoint.opinbrasil.com.br/
+
+### Enhancements
+
+- **Scan Trivy (Aqua Security / `tenable/trivy`)**: imagens de container republicadas após varredura de vulnerabilidades (**Critical** e **High**) sem achados pendentes na imagem de release. Escopo de severidade, relatórios e evidências: [Wiki técnico — Varreduras de vulnerabilidade](https://github.com/br-openinsurance/opin-mop-gateway-pub/wiki/Wiki#varreduras-de-vulnerabilidade).
+- **Guia `validations` na resposta HTTP**: documentação do objeto **`validations`** (`status`, `total`, `pending`) devolvido em **`200`**/`202`, para a participante analisar aderência à spec Open Insurance na própria resposta — **`validations.status: ERROR` não bloqueia** o envio ao MOP quando a requisição foi aceita.
+- **Guia dos headers `origin`, `httpType` e `statusCode`**: documentação das combinações aceitas — `client`+`Request` (valida **requestBody**) e `server`+`Response`+`statusCode` (valida **response body**; ex.: POST consents v3 sucesso = **`201`**). Combinações inconsistentes → HTTP **400**. Detalhes: [`PATH_MOP_HEADER.md`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/PATH_MOP_HEADER.md) · cenários de teste: [`CENARIOS_TESTE_QA.md`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/CENARIOS_TESTE_QA.md).
+
+### Bug fixes
+
+- Não reportados nesta versão.
+
+---
 <a id="v1-0-4"></a>
 
 ## 1.0.4
@@ -50,7 +61,7 @@ flowchart LR
 - **Acoplamento `origin` / `httpType` / `statusCode`**: apenas `client`+`Request` (valida requestBody) ou `server`+`Response`+`statusCode` (valida response body da spec). Combinações inconsistentes retornam HTTP 400.
 - **`request.header` na resposta**: eco dos headers HTTP recebidos no objeto `request` das respostas 200/202.
 - **Pré-carga de specs OpenAPI no startup**: log `[OPENAPI]` e verificação da rota consents v3 no boot.
-- **Documentação**: README, `PATH_MOP_HEADER.md`, cenários QA e especificação do gateway alinhados ao contrato `origin`/`httpType`/`statusCode` e ao path MOP completo.
+- **Documentação**: README, [`PATH_MOP_HEADER.md`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/PATH_MOP_HEADER.md), [`CENARIOS_TESTE_QA.md`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/CENARIOS_TESTE_QA.md) e especificação do gateway alinhados ao contrato `origin`/`httpType`/`statusCode` e ao path MOP completo.
 
 ### Bug fixes
 

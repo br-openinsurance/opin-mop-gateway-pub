@@ -34,7 +34,7 @@ import java.util.Map;
  * <ul>
  *   <li>{@code clientSSId}, {@code serverASId}: identificadores das partes quando informados</li>
  *   <li>{@code traceOrigin}: origem do evento de trace quando informada</li>
- *   <li>{@code mopReportid}: MOP report identifier for distributed tracing (optional)</li>
+ *   <li>{@code mopReportId}: MOP report identifier for distributed tracing (optional)</li>
  *   <li>{@code timestamp}: Timestamp of the request (optional, can be auto-generated)</li>
  *   <li>{@code headers}: Map of additional custom headers (optional)</li>
  * </ul>
@@ -46,7 +46,7 @@ import java.util.Map;
  *     .origin("client")
  *     .path("/open-insurance/consents/v2/consents")
  *     .operation("POST")
- *     .mopReportid(UUID.randomUUID().toString())
+ *     .mopReportId(UUID.randomUUID().toString())
  *     .timestamp(Instant.now().toString())
  *     .headers(Map.of("x-custom-header", "custom-value"))
  *     .build();
@@ -134,8 +134,8 @@ public class RequestHeadersDTO {
     /**
      * MOP report identifier for distributed tracing (internal/legacy).
      */
-    @JsonProperty("mopReportid")
-    private String mopReportid;
+    @JsonProperty("mopReportId")
+    private String mopReportId;
 
     /**
      * Timestamp of the request.

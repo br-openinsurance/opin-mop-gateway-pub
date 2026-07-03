@@ -165,7 +165,7 @@ class HeaderValidatorTest {
                 null, null, CLIENT_SS_ID, SERVER_AS_ID);
         assertFalse(result.isValid());
         assertEquals(
-                "Header 'httpType' must be one of the following values: Request, Response. Received: ''",
+                "Header 'httpType' must be one of the following values: request, response. Received: ''",
                 result.getErrorMessage());
 
         result = validate(
@@ -173,7 +173,7 @@ class HeaderValidatorTest {
                 "", null, CLIENT_SS_ID, SERVER_AS_ID);
         assertFalse(result.isValid());
         assertEquals(
-                "Header 'httpType' must be one of the following values: Request, Response. Received: ''",
+                "Header 'httpType' must be one of the following values: request, response. Received: ''",
                 result.getErrorMessage());
     }
 
@@ -212,7 +212,7 @@ class HeaderValidatorTest {
                 VALID_CORRELATION_ID, VALID_ORIGIN, "/open-insurance/consents/v3/consents", "POST",
                 HTTP_TYPE_RESPONSE, STATUS_CODE_OK, CLIENT_SS_ID, SERVER_AS_ID);
         assertFalse(result.isValid());
-        assertEquals("Header 'httpType' must be 'Request' when 'origin' is 'client'", result.getErrorMessage());
+        assertEquals("Header 'httpType' must be 'request' when 'origin' is 'client'", result.getErrorMessage());
     }
 
     @Test
@@ -222,7 +222,7 @@ class HeaderValidatorTest {
                 VALID_CORRELATION_ID, "server", "/open-insurance/consents/v3/consents", "POST",
                 HTTP_TYPE_REQUEST, null, CLIENT_SS_ID, SERVER_AS_ID);
         assertFalse(result.isValid());
-        assertEquals("Header 'httpType' must be 'Response' when 'origin' is 'server'", result.getErrorMessage());
+        assertEquals("Header 'httpType' must be 'response' when 'origin' is 'server'", result.getErrorMessage());
     }
 
     @Test
@@ -232,7 +232,7 @@ class HeaderValidatorTest {
                 VALID_CORRELATION_ID, "server", "/open-insurance/consents/v3/consents", "POST",
                 HTTP_TYPE_RESPONSE, null, CLIENT_SS_ID, SERVER_AS_ID);
         assertFalse(result.isValid());
-        assertEquals("Header 'statusCode' is required when 'httpType' is 'Response'", result.getErrorMessage());
+        assertEquals("Header 'statusCode' is required when 'httpType' is 'response'", result.getErrorMessage());
     }
 
     @Test

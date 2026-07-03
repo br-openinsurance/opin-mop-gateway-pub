@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
         "message", "timestamp", "context", "request", "response", "validations",
-        "error", "details", "mopReportid"
+        "error", "details", "mopReportId"
 })
 public class ApiResponseDTO {
     
@@ -45,8 +45,8 @@ public class ApiResponseDTO {
     /**
      * MOP report ID for request tracking (internal).
      */
-    @JsonProperty("mopReportid")
-    private String mopReportid;
+    @JsonProperty("mopReportId")
+    private String mopReportId;
     
     /**
      * Timestamp when the request was processed (ISO-8601 format).

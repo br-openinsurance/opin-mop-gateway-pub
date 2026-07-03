@@ -103,7 +103,7 @@ public class ClientRetryEnqueueService {
                 .httpType(h.getHttpType())
                 .statusCode(h.getStatusCode())
                 .correlationId(h.getCorrelationId())
-                .mopReportid(h.getMopReportid())
+                .mopReportId(h.getMopReportId())
                 .timestamp(h.getTimestamp())
                 .headers(headersCopy)
                 .traceOrigin(h.getTraceOrigin())
