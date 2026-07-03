@@ -2,6 +2,13 @@
 
 Para implantar o **MOP Client** em ambiente **Kubernetes**, a forma recomendada é o **Helm Chart** publicado no **GitHub Container Registry (GHCR)**. O chart provisiona os recursos necessários (Deployment, Service, Ingress conforme `values`, secrets de pull, etc.) sem exigir montagem manual do manifesto da aplicação.
 
+> [!NOTE]
+> **Versão estável de produção:** a branch **`main`** publica releases versionadas no GHCR — linha oficial para ambientes produtivos. **A versão mais recente em produção é sempre identificada por tag semver** (ex.: **`v1.0.5`**), e não pelo nome da branch. A branch **`develop`** permanece agora somente dedicada a homologação/sandbox (tag `develop`).
+>
+> ```bash
+> docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.5
+> ```
+
 ## Guia oficial
 
 O passo a passo completo — pré-requisitos (Kubernetes 1.24+, Helm 3.8+ com OCI), criação do `values-client.yaml`, `helm install`, `helm upgrade`, verificação pós-instalação e desinstalação — está no repositório de publicação:
@@ -30,7 +37,13 @@ Após o deploy, configure variáveis de ambiente e endpoints MOP conforme [`VARI
 
 ## Outros modos de implantação
 
-- **Desenvolvimento local (Docker):** imagem GHCR + RabbitMQ — ver [README.md](../README.md#início-rápido--rodando-em-até-10-minutos).
+- **Produção (Docker / Kubernetes):** imagem versionada no GHCR:
+
+```bash
+docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.5
+```
+
+- **Desenvolvimento local (Docker):** imagem da branch `develop` + RabbitMQ — ver [README.md](../README.md#início-rápido--rodando-em-até-10-minutos).
 
 ```bash
 docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:develop

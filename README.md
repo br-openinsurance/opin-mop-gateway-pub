@@ -2,6 +2,15 @@
 
 API HTTP **auto-hospedada** que cada participante do **Open Insurance Brasil** instala em seu ambiente para enviar eventos de trace ao **MOP Server**. Em uma única aplicação, executa: validação → anonimização → assinatura JWS → POST ao MOP, com **circuit breaker** e **fila de retry** quando o MOP está indisponível.
 
+> [!NOTE]
+> **Versão estável de produção:** a branch **`main`** publica releases versionadas no GHCR — linha oficial para ambientes produtivos. **A versão mais recente em produção é sempre identificada por tag semver** (ex.: **`v1.0.5`**), e não pelo nome da branch. A branch **`develop`** permanece agora somente dedicada a homologação/sandbox (tag `develop`).
+>
+> ```bash
+> docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.5
+> ```
+>
+> Detalhes: [`docs/release-notes.md`](docs/release-notes.md#v1-0-5).
+
  
 > [!IMPORTANT]
 > Este repositório **substitui** os antigos `mop-client-data-validator-pub` e `opin-mop-client-anonymization-pub`. Não é necessário implantar/configurar aqueles componentes — basta atualizar a imagem deste gateway.
@@ -66,11 +75,13 @@ Em produção, o **MOP Client** pode ser implantado com o **Helm Chart** publica
 - **[Instalação via Helm — `INSTALA_MOP_CLIENT.md`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/feat/mop-client-install/docs/INSTALA_MOP_CLIENT.md)** (branch `feat/mop-client-install`)
 - Resumo e links neste repositório: [`docs/INSTALACAO.md`](docs/INSTALACAO.md)
 
-Imagem Docker (GHCR, branch `develop`):
+Imagem Docker de **produção** (GHCR, release **1.0.5**, branch `main`):
 
 ```bash
-docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:develop
+docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.5
 ```
+
+> Homologação/sandbox: use a tag `develop` — ver [Início rápido](#início-rápido--rodando-em-até-10-minutos).
 
 ---
 
