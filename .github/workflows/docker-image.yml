@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
   workflow_dispatch:
   
 permissions: write-all
@@ -41,9 +43,9 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}/open-insurance-mop-gateway
           tags: |
+            type=semver,pattern=v{{version}}
             type=ref,event=branch
             type=sha,format=short,prefix={{branch}}-
-            type=semver,pattern=v{{version}}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
