@@ -4,6 +4,13 @@ Notas de versão do **MOP Client**, no estilo do ecossistema MOP (New features, 
 
 **Última atualização do documento: 3 de julho de 2026.**
 
+> [!NOTE]
+> **Versão estável de produção:** a branch **`main`** publica releases versionadas no GHCR — linha oficial para ambientes produtivos. **A versão mais recente em produção é sempre identificada por tag semver** (ex.: **`v1.0.5`**), e não pelo nome da branch. A branch **`develop`** permanece agora somente dedicada a homologação/sandbox (tag `develop`).
+>
+> ```bash
+> docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.5
+> ```
+
 ```mermaid
 flowchart LR
     A([Sua aplicação]) --> G[MOP Client]
@@ -33,6 +40,12 @@ flowchart LR
 ### New features
 
 - **Promoção da branch (`main`)**: a release **1.0.5** consiste, essencialmente, na organização do código para a tag adequada. **Não há alteração funcional no gateway**: o que já estava validado na branch **`main`** — linha oficial de produção do repositório, distinta da **`develop`** (homologação/sandbox) — passa a ser publicado com o versionamento correto. O pipeline publica a imagem Docker no **GHCR** com a tag **`main`** (e `main-<sha>`), devidamente identificada e pronta para deploy nos ambientes produtivos dos participantes.
+- **Imagem Docker de produção (GHCR):**
+
+```bash
+docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.5
+```
+
 - **Ressalva**: a atualização para a versão **1.0.5** é altamente recomendada, pois garante o alinhamento com a linha oficial de produção do repositório (**`main`**), assegurando compatibilidade com os artefatos atualmente disponibilizados pelo pipeline e reduzindo riscos de divergências entre ambientes, problemas de suporte e inconsistências em futuras evoluções da solução.
 
 ### Enhancements
