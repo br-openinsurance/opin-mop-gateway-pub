@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - develop
     tags:
       - 'v*'
   workflow_dispatch:
@@ -43,7 +44,7 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}/open-insurance-mop-gateway
           tags: |
-            type=raw,value=v1.0.5
+            type=raw,value=develop
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
