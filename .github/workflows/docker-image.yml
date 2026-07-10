@@ -44,7 +44,7 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}/open-insurance-mop-gateway
           tags: |
-            type=raw,value=develop
+            type=raw,value=1.0.6
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
