@@ -3,10 +3,10 @@
 Visão técnica do **MOP Client** no estado atual do repositório: uma aplicação Spring Boot que expõe HTTP, executa o pipeline interno de processamento e chama o **servidor MOP**; em falhas transitórias, usa **RabbitMQ** apenas como **fila de retry** e **Resilience4j** para circuitos nos clientes HTTP downstream.
 
 > [!NOTE]
-> **Versão estável de produção:** a branch **`main`** publica releases versionadas no GHCR — linha oficial para ambientes produtivos. **A versão mais recente em produção é sempre identificada por tag semver** (ex.: **`v1.0.5`**), e não pelo nome da branch. A branch **`develop`** permanece agora somente dedicada a homologação/sandbox (tag `develop`).
+> **Versão estável de produção:** a branch **`main`** publica releases versionadas no GHCR — linha oficial para ambientes produtivos. **A versão mais recente em produção é sempre identificada por tag semver** (ex.: **`v1.0.6`**), e não pelo nome da branch. A branch **`develop`** permanece agora somente dedicada a homologação/sandbox (tag `develop`).
 >
 > ```bash
-> docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.5
+> docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.6
 > ```
 
 ## Índice
@@ -95,10 +95,10 @@ Implantação em **Kubernetes** via **Helm Chart** (GHCR: `ghcr.io/br-openinsura
 - Guia oficial: [INSTALA_MOP_CLIENT.md](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/feat/mop-client-install/docs/INSTALA_MOP_CLIENT.md) no repositório `opin-mop-gateway-pub` (branch `feat/mop-client-install`).
 - Índice local: [docs/INSTALACAO.md](docs/INSTALACAO.md).
 
-Imagem Docker de **produção** (GHCR, release **1.0.5**, branch `main`):
+Imagem Docker de **produção** (GHCR, release **1.0.6**, branch `main`):
 
 ```bash
-docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.5
+docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.6
 ```
 
 > Homologação/sandbox: tag `develop` — ver secção [Desenvolvimento](#desenvolvimento).

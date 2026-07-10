@@ -14,7 +14,7 @@
 
     <groupId>gateway</groupId>
     <artifactId>gateway</artifactId>
-    <version>1.0.5</version>
+    <version>1.0.6</version>
     <name>openinsurance-gateway</name>
     <description>MOP Client — serviço unificado de validação, anonimização e comunicação com a API externa</description>
 

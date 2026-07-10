@@ -2,13 +2,13 @@
 
 Notas de versão do **MOP Client**, no estilo do ecossistema MOP (New features, Enhancements, Bug fixes).
 
-**Última atualização do documento: 3 de julho de 2026.**
+**Última atualização do documento: 10 de julho de 2026.**
 
 > [!NOTE]
-> **Versão estável de produção:** a branch **`main`** publica releases versionadas no GHCR — linha oficial para ambientes produtivos. **A versão mais recente em produção é sempre identificada por tag semver** (ex.: **`v1.0.5`**), e não pelo nome da branch. A branch **`develop`** permanece agora somente dedicada a homologação/sandbox (tag `develop`).
+> **Versão estável de produção:** a branch **`main`** publica releases versionadas no GHCR — linha oficial para ambientes produtivos. **A versão mais recente em produção é sempre identificada por tag semver** (ex.: **`v1.0.6`**), e não pelo nome da branch. A branch **`develop`** permanece agora somente dedicada a homologação/sandbox (tag `develop`).
 >
 > ```bash
-> docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.5
+> docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.6
 > ```
 
 ```mermaid
@@ -23,6 +23,7 @@ flowchart LR
 ---
 
 ## Versões da release note
+- [1.0.6 (2026-07-10)](#v1-0-6)
 - [1.0.5 (2026-07-03)](#v1-0-5)
 - [1.0.4 (2026-06-02)](#v1-0-4)
 - [1.0.3 (2026-06-02)](#v1-0-3)
@@ -33,6 +34,40 @@ flowchart LR
 ---
 ---
 
+<a id="v1-0-6"></a>
+
+## 1.0.6
+
+### New features
+
+- Não reportadas nesta versão.
+
+### Enhancements
+
+- **Imagem Docker (Alpine 3.24):** runtime atualizado para **Alpine 3.24** (build multi-stage com JRE Temurin 17), com pacotes OS corrigidos na camada base publicada no GHCR.
+
+### Bug fixes
+
+- **Vulnerabilidades (dependências Maven — Dependabot):** atualização de bibliotecas transitivas para versões com correções de segurança, sem alteração funcional no contrato da API:
+  - **Jackson Databind** → `2.21.5` (CVE-2026-54515).
+  - **Apache Tomcat Embed** → `10.1.55`.
+  - **Netty Handler** → `4.1.133.Final`.
+  - **Spring Framework** → `6.2.18`.
+  - **Logback** → `1.5.32` (CVE-2025-11228, CVE-2026-1225).
+
+- **Vulnerabilidades (imagem Docker — Alpine 3.24):** remediação de achados **Critical** e **High** na camada OS da imagem publicada no GHCR:
+  - **sqlite-libs** → `3.53.2-r0` (CVE-2026-11822, CVE-2026-11824).
+  - **libgcrypt** → versão corrigida via Alpine 3.24 (CVE-2026-41989).
+
+- **Ressalva:** a atualização para a versão **1.0.6** é **altamente recomendada** para participantes em produção. **Não há alteração funcional** no contrato da API.
+
+```bash
+docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.6
+```
+
+Evidências: [`docs/vulnerabilities/`](docs/vulnerabilities/) · [Wiki — Varreduras de vulnerabilidade](https://github.com/br-openinsurance/opin-mop-gateway-pub/wiki/Wiki#varreduras-de-vulnerabilidade).
+
+---
 <a id="v1-0-5"></a>
 
 ## 1.0.5
