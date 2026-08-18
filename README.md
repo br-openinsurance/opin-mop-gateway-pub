@@ -2,6 +2,16 @@
 
 API HTTP **auto-hospedada** que cada participante do **Open Insurance Brasil** instala em seu ambiente para enviar eventos de trace ao **MOP Server**. Em uma única aplicação, executa: validação → anonimização → assinatura JWS → POST ao MOP, com **circuit breaker** e **fila de retry** quando o MOP está indisponível.
 
+
+> [!CAUTION]
+> **Alerta — headers da aplicação (FAPI) × headers MOP × validação por produto**
+>
+> Os headers que sua aplicação envia nas **APIs Open Insurance** (`Authorization`, `x-fapi-interaction-id`, …) **não são** os headers exigidos pelo **MOP Client Gateway** (`X-Correlation-Id`, `origin`, `path`, `operation`, `httpType`, …). O endpoint **`POST /data-funil-consents`** (funil PCM) segue contrato **ainda diferente** — sem headers MOP de trace.
+>
+> **Cada produto** (`consents`, `customers`, `insurance-*`, `quote-*`, funil PCM, etc.) possui **path, status HTTP e validação OpenAPI próprios** — não copie exemplos de um produto para outro.
+>
+> **Explicação detalhada:** [`docs/ALERTA_HEADERS_README.md`](docs/ALERTA_HEADERS_README.md)
+
 > [!NOTE]
 > **Versão estável de produção:** a branch **`main`** publica releases versionadas no GHCR — linha oficial para ambientes produtivos. **A versão mais recente em produção é sempre identificada por tag semver** (ex.: **`v1.0.6`**), e não pelo nome da branch. A branch **`develop`** permanece agora somente dedicada a homologação/sandbox (tag `develop`).
 >
