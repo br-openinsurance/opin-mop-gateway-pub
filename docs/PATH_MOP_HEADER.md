@@ -2,6 +2,8 @@
 
 Referência para montar o header **`path`** enviado ao `POST /v1/anonymize/data`, a partir de um arquivo OpenAPI em `src/main/resources/swagger/current/`.
 
+> **Escopo:** o header `path` cobre **somente** operações das APIs Open Insurance indexadas em `swagger/current/` (consents, customers, `insurance-*`, `quote-*`, `products-services`, etc.). **Endpoints OAuth/FAPI não entram no escopo** — veja [Fora do escopo: OAuth e token endpoint](#fora-do-escopo-oauth-e-token-endpoint).
+
 ---
 
 ## Fórmula
@@ -97,6 +99,56 @@ Vários arquivos compartilham `servers.url` = `.../open-insurance/products-servi
 
 ---
 
+## Fora do escopo: OAuth e token endpoint
+
+**Não reporte** ao MOP Client eventos de emissão ou renovação de token OAuth2/FAPI. Eles **não** possuem spec em `swagger/current/` e **não** devem ser enviados no header `path`.
+
+| Evento | Reportar ao MOP? | Motivo |
+|--------|:----------------:|--------|
+| `client_credentials` (obter token) | **Não** | Infraestrutura do Authorization Server (FAPI-BR), fora das specs Open Insurance |
+| `refresh_token` (renovar token) | **Não** | Idem |
+| Resposta com `access_token` / `refresh_token` | **Não** | Credenciais sensíveis; não há schema Open Insurance para validação |
+
+### Paths OAuth (exemplos — **não** usar no header `path`)
+
+Estes paths vêm do **Diretório de Participantes** / perfil FAPI-BR. O gateway **não** os indexa:
+
+```
+/open-insurance/security/v1/{authorisationServerId}/as/token.oauth2
+```
+
+Exemplo que retorna `NOT_FOUND` (comportamento esperado):
+
+```json
+{
+  "violation": "Operation path not found from URL '/open-insurance/security/v1/zurich-santander-seguros/as/token.oauth2'.",
+  "code": "NOT_FOUND"
+}
+```
+
+### O que reportar em vez do token
+
+Reporte a **transação da API Open Insurance** que consome o `access_token`, não a chamada ao token endpoint:
+
+```
+1. POST token (client_credentials)     →  não reporta ao MOP
+2. POST /open-insurance/consents/v3/consents  →  reporta ao MOP
+3. GET  /open-insurance/customers/v2/...      →  reporta ao MOP
+```
+
+Exemplo — criação de consentimento (após obter token via `client_credentials`):
+
+```http
+origin: client
+path: /open-insurance/consents/v3/consents
+operation: POST
+httpType: Request
+```
+
+Outros canais (PCM, Diretório, ingestão de métricas) usam APIs próprias — ver [`SWAGGER_FASES.md`](SWAGGER_FASES.md) (seção *Infraestrutura*).
+
+---
+
 ## Template de requisição MOP
 
 ```http
@@ -181,7 +233,8 @@ Combinações inconsistentes (`client` + `Response`, `server` + `Request`) retor
 
 | Erro | Causa | Correção |
 |------|-------|----------|
-| `path not found from` | path_MOP não existe em nenhum yaml de `swagger/current/` | Confira a fórmula `basePath + operationPath`; use o arquivo correto (v2 vs v3) |
+| `path not found from` … `token.oauth2` | Endpoint **OAuth/FAPI** enviado no `path` | **Não reportar** tokens ao MOP; use o path da **API Open Insurance** (ex.: `/open-insurance/consents/v3/consents`). Ver [Fora do escopo: OAuth](#fora-do-escopo-oauth-e-token-endpoint) |
+| `path not found from` (demais paths) | path_MOP não existe em nenhum yaml de `swagger/current/` | Confira a fórmula `basePath + operationPath`; use o arquivo correto (v2 vs v3) |
 | Path com `{consentId}` literal | Placeholder não substituído | Trocar `{consentId}` pelo URN real |
 | Só `/consents` no header | Faltou o basePath | Aplicar a fórmula completa; gateway rejeita com HTTP 400 se não começar com `/open-insurance/` |
 | `statusCode: 200` em POST consents | Status de sucesso na spec é **201** | Usar `statusCode: 201` com `origin: server` e `httpType: Response` |
