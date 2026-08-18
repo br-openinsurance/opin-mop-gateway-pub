@@ -10,7 +10,7 @@ API HTTP **auto-hospedada** que cada participante do **Open Insurance Brasil** i
 >
 > **Cada produto** (`consents`, `customers`, `insurance-*`, `quote-*`, funil PCM, etc.) possui **path, status HTTP e validação OpenAPI próprios** — não copie exemplos de um produto para outro.
 >
-> **Explicação detalhada:** [`docs/ALERTA_HEADERS_README.md`](docs/ALERTA_HEADERS_README.md.md)
+> **Explicação detalhada:** [`docs/ALERTA_HEADERS_README.md`](docs/ALERTA_HEADERS_README.md)
 
 > [!NOTE]
 > **Versão estável de produção:** a branch **`main`** publica releases versionadas no GHCR — linha oficial para ambientes produtivos. **A versão mais recente em produção é sempre identificada por tag semver** (ex.: **`v1.0.6`**), e não pelo nome da branch. A branch **`develop`** permanece agora somente dedicada a homologação/sandbox (tag `develop`).
