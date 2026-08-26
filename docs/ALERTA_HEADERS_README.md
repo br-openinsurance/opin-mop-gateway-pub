@@ -1,4 +1,4 @@
-# ⚠️ ALERTA — Headers da aplicação × headers do MOP Client × validação por produtos : Fases 1,2,3.
+# ⚠️ ALERTA — Headers da aplicação × headers do MOP Client × validação por produtos : Fases:1,2 e 3
 
 > **Público:** seguradoras, receptores, transmissores e times de integração Open Insurance Brasil.  
 > **Objetivo:** evitar confusão entre headers usados nas **APIs Open Insurance** (aplicação) e headers exigidos pelo **MOP Client Gateway** (rastreio MOP), e deixar claro que **cada produto/API tem contrato e validação próprios**.
@@ -63,7 +63,7 @@ Quando sua aplicação chama **diretamente** uma API Open Insurance de outro par
 
 Endpoint: **`POST {context-path}/data`** (padrão: `POST /v1/anonymize/data`).
 
-### Obrigatórios
+### Obrigatórios para as Fases:1,2 e 3
 
 | Header | Função | Regra resumida |
 |--------|--------|----------------|
