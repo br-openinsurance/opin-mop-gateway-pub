@@ -1,4 +1,4 @@
-# ⚠️ ALERTA — Headers da aplicação × headers do MOP Client × validação por produto
+# ⚠️ ALERTA — Headers da aplicação × headers do MOP Client × validação por produtos : Fases 1,2,3.
 
 > **Público:** seguradoras, receptores, transmissores e times de integração Open Insurance Brasil.  
 > **Objetivo:** evitar confusão entre headers usados nas **APIs Open Insurance** (aplicação) e headers exigidos pelo **MOP Client Gateway** (rastreio MOP), e deixar claro que **cada produto/API tem contrato e validação próprios**.
