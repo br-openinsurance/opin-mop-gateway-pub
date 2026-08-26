@@ -50,7 +50,7 @@ Quando sua aplicação chama **diretamente** uma API Open Insurance de outro par
 | Autenticação | `Authorization: Bearer {access_token}` | Token obtido via OAuth2 (`client_credentials`, etc.) |
 | FAPI | `x-fapi-interaction-id`, `x-fapi-auth-date` | Obrigatórios nas APIs protegidas conforme guia Open Insurance |
 | Idempotência | `x-idempotency-key` | Quando a operação exige (ver spec do produto) |
-| Outros | `x-customer-user-agent`, `x-fapi-customer-ip-address` | Conforme operação de Fases 1,2,3 |
+| Outros | `x-customer-user-agent`, `x-fapi-customer-ip-address` | Conforme as especificações das APIs das Fases:2 e 3 |
 
 > **⚠️ ALERTA:** esses headers **não substituem** os headers MOP do `POST /data`.  
 > O gateway MOP **não valida** se você enviou `Authorization` ou `x-fapi-interaction-id` — ele valida o **JSON do body** contra a spec indicada pelos headers `path`, `operation`, `httpType` e `statusCode`.
