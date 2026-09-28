@@ -85,9 +85,39 @@ class OpenApiCurrentSpecRegistryTest {
         var resolution = registry.resolve(
                 "/open-insurance/insurance-rural/v1/insurance-rural/12345788/policy-info");
         assertTrue(resolution.isPresent());
-        assertEquals("insurance-rural.yaml", resolution.get().sourceFile());
+        assertEquals("insurance-rural_v1.yaml", resolution.get().sourceFile());
         assertEquals("/insurance-rural/{policyId}/policy-info", resolution.get().pathTemplate());
         assertEquals("/insurance-rural/12345788/policy-info", resolution.get().relativePath());
+    }
+
+    @Test
+    @DisplayName("falls back to swagger/version when current has no matching path")
+    void fallsBackToVersionFolderWhenCurrentDoesNotMatch() {
+        OpenApiCurrentSpecRegistry lazyRegistry = new OpenApiCurrentSpecRegistry();
+        var resolution = lazyRegistry.resolve("/open-insurance/customers/v1/personal/identifications");
+        assertTrue(resolution.isPresent(), "customers v1 must resolve from swagger/version/");
+        assertEquals("customers_v1.yaml", resolution.get().sourceFile());
+        assertEquals("/open-insurance/customers/v1", resolution.get().basePath());
+        assertEquals("/personal/identifications", resolution.get().pathTemplate());
+        assertEquals(OpenInsurancePhase.FASE_2, resolution.get().phase());
+        assertEquals(1, lazyRegistry.loadedSpecFileCount());
+    }
+
+    @Test
+    @DisplayName("prefers swagger/current over swagger/version for the same newer path")
+    void prefersCurrentOverVersionFolder() {
+        var resolution = registry.resolve("/open-insurance/consents/v3/consents");
+        assertTrue(resolution.isPresent());
+        assertEquals("consents_v3.yaml", resolution.get().sourceFile());
+    }
+
+    @Test
+    @DisplayName("falls back to consents v1 from swagger/version")
+    void fallsBackToConsentsV1FromVersionFolder() {
+        var resolution = registry.resolve("/open-insurance/consents/v1/consents");
+        assertTrue(resolution.isPresent(), "consents v1 must resolve from swagger/version/");
+        assertEquals("consents_v1.yaml", resolution.get().sourceFile());
+        assertEquals("/open-insurance/consents/v1", resolution.get().basePath());
     }
 
     @Test
@@ -103,7 +133,7 @@ class OpenApiCurrentSpecRegistryTest {
         var resolution = lazyRegistry.resolve(
                 "/open-insurance/insurance-capitalization-title/v1/insurance-capitalization-title/plans");
         assertTrue(resolution.isPresent());
-        assertEquals("insurance-capitalization-title.yaml", resolution.get().sourceFile());
+        assertEquals("insurance-capitalization-title_v1.yaml", resolution.get().sourceFile());
         assertEquals(OpenInsurancePhase.FASE_2, resolution.get().phase());
         assertEquals("/insurance-capitalization-title/plans", resolution.get().pathTemplate());
         assertEquals(1, lazyRegistry.loadedSpecFileCount());
@@ -116,7 +146,7 @@ class OpenApiCurrentSpecRegistryTest {
         var resolution = lazyRegistry.resolve(
                 "/open-insurance/insurance-rural/v1/insurance-rural/12345788/policy-info");
         assertTrue(resolution.isPresent());
-        assertEquals("insurance-rural.yaml", resolution.get().sourceFile());
+        assertEquals("insurance-rural_v1.yaml", resolution.get().sourceFile());
         assertEquals(1, lazyRegistry.loadedSpecFileCount());
     }
 

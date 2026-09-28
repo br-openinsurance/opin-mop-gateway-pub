@@ -67,6 +67,9 @@ mop:
       method: ${MOP_PROCESS_METHOD:POST}
     anonymization-config:
       url: ${EXTERNAL_API_DATA_ANONYMIZATION}
+    consent-funnel-metrics:
+      url: ${MOP_CONSENT_FUNNEL_METRICS_URL:}
+      enabled: ${MOP_CONSENT_FUNNEL_METRICS_ENABLED:true}
   payload-signing:
     enabled: ${MOP_PAYLOAD_SIGNING_ENABLED:true}
     private-key-pem: ${JWS_PRIVATE_KEY}
@@ -108,4 +111,6 @@ resilience4j:
       mopAnonymizationConfig:
         baseConfig: default
       mopProcessEndpoint:
+        baseConfig: default
+      mopConsentFunnelMetrics:
         baseConfig: default

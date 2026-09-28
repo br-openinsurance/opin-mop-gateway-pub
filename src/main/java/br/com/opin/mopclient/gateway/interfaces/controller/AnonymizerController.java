@@ -34,7 +34,7 @@ import java.util.Objects;
  * </ul>
  */
 @RestController
-@RequestMapping("/data")
+@RequestMapping("/anonymize/data")
 public class AnonymizerController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AnonymizerController.class);

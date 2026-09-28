@@ -1,0 +1,170 @@
+# swagger/version
+
+Arquivo oficial de versoes **abaixo** da que ja esta em `swagger/current/`.
+Arquivos na raiz (ex.: `version/customers_v1.yaml`) para facilitar a busca.
+Fonte: https://github.com/br-openinsurance/areadesenvolvedor/tree/main/documentation/source/files/swagger
+Nao e indexado pelo gateway (apenas `swagger/current/` entra na validacao).
+
+## Baixados
+
+- claim-notification_v1.yaml (github claim-notification.yaml, v1 < current v2)
+- consents_v1.yaml (github consents.yaml, v1 < current v3)
+- consents_v2.yaml (github consents_v2.yaml, v2 < current v3)
+- customers_v1.yaml (github customers.yaml, v1 < current v2)
+- endorsement_v1.yaml (github endorsement.yaml, v1 < current v2)
+- insurance-acceptance-and-branches-abroad_v1.yaml (github insurance-acceptance-and-branches-abroad.yaml, v1 < current v2)
+- insurance-financial-risk_v1.yaml (github insurance-financial-risk.yaml, v1 < current v2)
+- insurance-patrimonial_v1.yaml (github insurance-patrimonial.yaml, v1 < current v2)
+- insurance-responsibility_v1.yaml (github insurance-responsibility.yaml, v1 < current v2)
+- quote-acceptance-and-branches-abroad_v1.yaml (github quote-acceptance-and-branches-abroad.yaml, v1 < current v2)
+- quote-financial-risk_v1.yaml (github quote-financial-risk.yaml, v1 < current v2)
+- quote-patrimonial_v1.yaml (github quote-patrimonial.yaml, v1 < current v2)
+- quote-responsibility_v1.yaml (github quote-responsibility.yaml, v1 < current v2)
+- resources_v1.yaml (github resources.yaml, v1 < current v3)
+- resources_v2.yaml (github resources_v2.yaml, v2 < current v3)
+
+## Ignorados
+
+- admin_metrics.yaml | v2 >= current v1
+- assistance-general-assets.yaml | v3 >= current v1
+- auto-extended-warranty.yaml | v3 >= current v1
+- auto-insurance.yaml | v3 >= current v1
+- business.yaml | v3 >= current v1
+- capitalization-title.yaml | v3 >= current v1
+- condominium.yaml | v3 >= current v1
+- consent-funnel-ingestion-v1.0.3.yaml | no /vN in servers
+- consent-funnel-ingestion.yaml | no /vN in servers
+- consent-group.yaml | API not in current
+- cyber-risk.yaml | v3 >= current v1
+- data_channels.yaml | v3 >= current v1
+- dcr-dcm-swagger.yaml | no /vN in servers
+- directors-officers-liability.yaml | v3 >= current v1
+- discovery.yaml | v2 >= current v1
+- domestic-credit.yaml | v3 >= current v1
+- dynamic-fields.yaml | v2 >= current v2
+- embedded-data.yaml | API not in current
+- engineering.yaml | v3 >= current v1
+- environmental-liability.yaml | v3 >= current v1
+- equipment-breakdown.yaml | v3 >= current v1
+- errors-omissions-liability.yaml | v3 >= current v1
+- export-credit.yaml | v3 >= current v1
+- extended-warranty.yaml | v3 >= current v1
+- financial-risk.yaml | v3 >= current v1
+- general-liability.yaml | v3 >= current v1
+- global-banking.yaml | v1 >= current v1
+- home-insurance.yaml | v3 >= current v1
+- housing.yaml | v3 >= current v1
+- ingestion-v1.0.7.yaml | API not in current
+- ingestion.yaml | API not in current
+- insurance-auto.yaml | v2 >= current v2
+- insurance-aviation.yaml | API not in current
+- insurance-capitalization-title.yaml | v2 >= current v2
+- insurance-financial-assistance.yaml | v2 >= current v2
+- insurance-housing.yaml | v2 >= current v2
+- insurance-life-pension.yaml | v2 >= current v2
+- insurance-nautical.yaml | API not in current
+- insurance-nuclear.yaml | API not in current
+- insurance-pension-plan.yaml | v2 >= current v2
+- insurance-person.yaml | v2 >= current v2
+- insurance-petroleum.yaml | API not in current
+- insurance-rural.yaml | v2 >= current v2
+- insurance-transport.yaml | v2 >= current v2
+- intermediary.yaml | v3 >= current v2
+- life-pension.yaml | v3 >= current v1
+- lost-profit.yaml | v3 >= current v1
+- named-operational-risks.yaml | v1 >= current v1
+- notifications.yaml | v1 >= current v1
+- openapi_opin.yaml | no /vN in servers
+- others-scopes.yaml | API not in current
+- pension-plan.yaml | v3 >= current v2
+- person.yaml | v3 >= current v1
+- private-guarantee.yaml | v3 >= current v1
+- public-guarantee.yaml | v3 >= current v1
+- quote-auto.yaml | v2 >= current v2
+- quote-capitalization-title.yaml | v2 >= current v2
+- quote-housing.yaml | v2 >= current v2
+- quote-life-pension-withdrawal.yaml | v2 >= current v2
+- quote-life-pension.yaml | v2 >= current v2
+- quote-person.yaml | v2 >= current v2
+- quote-rural.yaml | v2 >= current v2
+- quote-transport.yaml | v2 >= current v2
+- quotes.yaml | API not in current
+- referenced-network.yaml | v3 >= current v1
+- rent-guarantee.yaml | v3 >= current v1
+- rural.yaml | v3 >= current v1
+- stop-loss.yaml | v3 >= current v1
+- transport.yaml | v3 >= current v1
+- webhook.yaml | v2 >= current v1
+
+## Versao corrente em current/
+
+- admin_metrics: v1
+- assistance-general-assets: v1
+- auto-extended-warranty: v1
+- auto-insurance: v1
+- business: v1
+- capitalization-title: v1
+- claim-notification: v2
+- condominium: v1
+- consent-funnel-ingestion: v1
+- consents: v3
+- customers: v2
+- cyber-risk: v1
+- data_channels: v1
+- directors-officers-liability: v1
+- discovery: v1
+- domestic-credit: v1
+- dynamic-fields: v2
+- endorsement: v2
+- engineering: v1
+- environmental-liability: v1
+- equipment-breakdown: v1
+- errors-omissions-liability: v1
+- export-credit: v1
+- extended-warranty: v1
+- financial-risk: v1
+- general-liability: v1
+- global-banking: v1
+- home-insurance: v1
+- housing: v1
+- insurance-acceptance-and-branches-abroad: v2
+- insurance-auto: v2
+- insurance-capitalization-title: v2
+- insurance-financial-assistance: v2
+- insurance-financial-risk: v2
+- insurance-housing: v2
+- insurance-life-pension: v2
+- insurance-patrimonial: v2
+- insurance-pension-plan: v2
+- insurance-person: v2
+- insurance-responsibility: v2
+- insurance-rural: v2
+- insurance-transport: v2
+- intermediary: v2
+- life-pension: v1
+- lost-profit: v1
+- named-operational-risks: v1
+- notifications: v1
+- pension-plan: v2
+- person: v1
+- private-guarantee: v1
+- public-guarantee: v1
+- quote-acceptance-and-branches-abroad: v2
+- quote-auto: v2
+- quote-capitalization-title: v2
+- quote-financial-risk: v2
+- quote-housing: v2
+- quote-life-pension: v2
+- quote-life-pension-withdrawal: v2
+- quote-patrimonial: v2
+- quote-person: v2
+- quote-responsibility: v2
+- quote-rural: v2
+- quote-transport: v2
+- referenced-network: v1
+- rent-guarantee: v1
+- resources: v3
+- rural: v1
+- stop-loss: v1
+- transport: v1
+- webhook: v1

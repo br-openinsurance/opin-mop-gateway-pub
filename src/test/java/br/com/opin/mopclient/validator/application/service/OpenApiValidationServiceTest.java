@@ -116,6 +116,70 @@ class OpenApiValidationServiceTest {
     }
 
     @Test
+    @DisplayName("validates request received by transmissora (httpType Request) against requestBody")
+    void validatesRequestReceivedByTransmissora() {
+        String payload = """
+                {
+                  "data": {
+                    "permissions": ["RESOURCES_READ"],
+                    "loggedUser": {
+                      "document": {
+                        "identification": "11111111111",
+                        "rel": "CPF"
+                      }
+                    },
+                    "expirationDateTime": "2026-12-31T23:59:59Z"
+                  }
+                }
+                """;
+        var response = validationService.validate(
+                payload,
+                new HttpHeaders(),
+                "/open-insurance/consents/v3/consents",
+                "POST",
+                "Request",
+                null);
+
+        var result = response.getValidationResult();
+        assertNotNull(result);
+        assertTrue(result.getValidations() == null || result.getValidations().isEmpty(),
+                "CreateConsent received by server must validate as requestBody");
+    }
+
+    @Test
+    @DisplayName("validates response received by receptora (httpType Response) against response schema")
+    void validatesResponseReceivedByReceptora() {
+        String payload = """
+                {
+                  "data": {
+                    "consentId": "urn:bancoex:C1DD33123",
+                    "creationDateTime": "2021-05-21T08:30:00Z",
+                    "status": "AWAITING_AUTHORISATION",
+                    "statusUpdateDateTime": "2021-05-21T08:30:00Z",
+                    "permissions": ["RESOURCES_READ"],
+                    "expirationDateTime": "2021-05-21T08:30:00Z"
+                  },
+                  "links": {
+                    "self": "https://api.organizacao.com.br/open-insurance/consents/v3/consents/urn:bancoex:C1DD33123"
+                  },
+                  "meta": { "totalRecords": 1, "totalPages": 1 }
+                }
+                """;
+        var response = validationService.validate(
+                payload,
+                new HttpHeaders(),
+                "/open-insurance/consents/v3/consents",
+                "POST",
+                "Response",
+                "201");
+
+        var result = response.getValidationResult();
+        assertNotNull(result);
+        assertTrue(result.getValidations() == null || result.getValidations().isEmpty(),
+                "ResponseConsent received by client must validate as response 201");
+    }
+
+    @Test
     @DisplayName("validates consents v3 POST request body schema")
     void validatesConsentsV3PostRequest() {
         var response = validationService.validate(
@@ -169,6 +233,26 @@ class OpenApiValidationServiceTest {
         assertNotNull(result);
         assertTrue(result.getValidations() == null || result.getValidations().isEmpty(),
                 "lazy-loaded consents v3 route should validate successfully");
+    }
+
+    @Test
+    @DisplayName("resolves PCM consent funnel POST client-event")
+    void resolvesPcmConsentFunnelClientEvent() {
+        var response = validationService.validate(
+                "{}",
+                new HttpHeaders(),
+                "/event-api/v1/client-event",
+                "POST",
+                "Request",
+                null);
+
+        var result = response.getValidationResult();
+        assertNotNull(result);
+        assertNotNull(result.getValidations());
+        assertFalse(result.getValidations().isEmpty());
+        assertTrue(result.getValidations().stream()
+                .noneMatch(v -> v.getMessage() != null
+                        && v.getMessage().contains("Operation path not found")));
     }
 
     @Test

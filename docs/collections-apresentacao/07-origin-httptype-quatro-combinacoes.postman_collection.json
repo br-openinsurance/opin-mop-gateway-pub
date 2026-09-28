@@ -1,0 +1,114 @@
+{
+  "info": {
+    "_postman_id": "11111111-0007-4000-8000-000000000007",
+    "name": "07 — origin + httpType (quatro combinações)",
+    "description": "Rastreio MOP da **mesma transação real** de consentimento Open Insurance — `POST /open-insurance/consents/v3/consents` — em **quatro eventos**.\n\n**Endpoint:** `POST {{baseUrl}}/data`\n\nO body é o JSON da spec `consents_v3.yaml`:\n- `httpType=Request` → schema **CreateConsent** (pedido PF + auto, Fase 2)\n- `httpType=Response` + `statusCode=201` → schema **ResponseConsent** (`urn:prudential:C1DD93123`, status `AWAITING_AUTHORISATION`)\n\nUse o **mesmo** `X-Correlation-Id`, `path` e `operation` nos quatro requests. A validação OpenAPI segue só o `httpType` (não altera `origin` nem `httpType`).\n\n| # | origin | httpType | statusCode | Quem reporta | Schema |\n|---|---|---|---|---|---|\n| 1 | client | Request | — | Receptora **enviou** o pedido | CreateConsent |\n| 2 | server | Request | — | Transmissora **recebeu** o pedido | CreateConsent |\n| 3 | server | Response | 201 | Transmissora **enviou** a resposta | ResponseConsent |\n| 4 | client | Response | 201 | Receptora **recebeu** a resposta | ResponseConsent |\n\nFluxo: 1 → 2 → 3 → 4.\n\nEsperado: HTTP 200 ou 202; `validations.status = SUCCESS`. Response sem `statusCode` → HTTP 400.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080/v1/anonymize" },
+    { "key": "correlationId", "value": "577869e5-4c63-4b19-9235-a18d22c80986" },
+    { "key": "clientSSId", "value": "RECEPTORA-A" },
+    { "key": "serverASId", "value": "TRANSMISSORA-B" }
+  ],
+  "item": [
+    {
+      "name": "1. client + Request — receptora enviou",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Correlation-Id", "value": "{{correlationId}}", "description": "Mesmo ID nos quatro eventos." },
+          { "key": "origin", "value": "client", "description": "Receptora reporta." },
+          { "key": "path", "value": "/open-insurance/consents/v3/consents" },
+          { "key": "operation", "value": "POST" },
+          { "key": "httpType", "value": "Request", "description": "Valida requestBody (CreateConsent)." },
+          { "key": "clientSSId", "value": "{{clientSSId}}" },
+          { "key": "serverASId", "value": "{{serverASId}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"data\": {\n    \"permissions\": [\n      \"RESOURCES_READ\",\n      \"CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ\",\n      \"CUSTOMERS_PERSONAL_QUALIFICATION_READ\",\n      \"CUSTOMERS_PERSONAL_ADDITIONALINFO_READ\",\n      \"DAMAGES_AND_PEOPLE_AUTO_READ\",\n      \"DAMAGES_AND_PEOPLE_AUTO_POLICYINFO_READ\",\n      \"DAMAGES_AND_PEOPLE_AUTO_PREMIUM_READ\",\n      \"DAMAGES_AND_PEOPLE_AUTO_CLAIM_READ\"\n    ],\n    \"loggedUser\": {\n      \"document\": {\n        \"identification\": \"11111111111\",\n        \"rel\": \"CPF\"\n      }\n    },\n    \"expirationDateTime\": \"2026-12-31T23:59:59Z\"\n  }\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/data",
+        "description": "Requisição **enviada** pela receptora. Body real `CreateConsent` (consents v3): PF + bloco auto Fase 2."
+      },
+      "response": []
+    },
+    {
+      "name": "2. server + Request — transmissora recebeu",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Correlation-Id", "value": "{{correlationId}}", "description": "Mesmo ID dos demais eventos." },
+          { "key": "origin", "value": "server", "description": "Transmissora reporta o request que chegou nela." },
+          { "key": "path", "value": "/open-insurance/consents/v3/consents" },
+          { "key": "operation", "value": "POST" },
+          { "key": "httpType", "value": "Request", "description": "Valida o mesmo requestBody (CreateConsent)." },
+          { "key": "clientSSId", "value": "{{clientSSId}}" },
+          { "key": "serverASId", "value": "{{serverASId}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"data\": {\n    \"permissions\": [\n      \"RESOURCES_READ\",\n      \"CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ\",\n      \"CUSTOMERS_PERSONAL_QUALIFICATION_READ\",\n      \"CUSTOMERS_PERSONAL_ADDITIONALINFO_READ\",\n      \"DAMAGES_AND_PEOPLE_AUTO_READ\",\n      \"DAMAGES_AND_PEOPLE_AUTO_POLICYINFO_READ\",\n      \"DAMAGES_AND_PEOPLE_AUTO_PREMIUM_READ\",\n      \"DAMAGES_AND_PEOPLE_AUTO_CLAIM_READ\"\n    ],\n    \"loggedUser\": {\n      \"document\": {\n        \"identification\": \"11111111111\",\n        \"rel\": \"CPF\"\n      }\n    },\n    \"expirationDateTime\": \"2026-12-31T23:59:59Z\"\n  }\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/data",
+        "description": "Requisição **recebida** pela transmissora. Mesmo `CreateConsent` do passo 1."
+      },
+      "response": []
+    },
+    {
+      "name": "3. server + Response — transmissora enviou",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Correlation-Id", "value": "{{correlationId}}", "description": "Mesmo ID dos demais eventos." },
+          { "key": "origin", "value": "server", "description": "Transmissora reporta a resposta que devolveu." },
+          { "key": "path", "value": "/open-insurance/consents/v3/consents" },
+          { "key": "operation", "value": "POST" },
+          { "key": "httpType", "value": "Response", "description": "Valida response body do statusCode." },
+          { "key": "statusCode", "value": "201", "description": "POST consents v3 sucesso = 201." },
+          { "key": "clientSSId", "value": "{{clientSSId}}" },
+          { "key": "serverASId", "value": "{{serverASId}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"data\": {\n    \"consentId\": \"urn:prudential:C1DD93123\",\n    \"creationDateTime\": \"2026-09-02T14:30:00Z\",\n    \"status\": \"AWAITING_AUTHORISATION\",\n    \"statusUpdateDateTime\": \"2026-09-02T14:30:00Z\",\n    \"permissions\": [\n      \"RESOURCES_READ\",\n      \"CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ\",\n      \"CUSTOMERS_PERSONAL_QUALIFICATION_READ\",\n      \"CUSTOMERS_PERSONAL_ADDITIONALINFO_READ\",\n      \"DAMAGES_AND_PEOPLE_AUTO_READ\",\n      \"DAMAGES_AND_PEOPLE_AUTO_POLICYINFO_READ\",\n      \"DAMAGES_AND_PEOPLE_AUTO_PREMIUM_READ\",\n      \"DAMAGES_AND_PEOPLE_AUTO_CLAIM_READ\"\n    ],\n    \"expirationDateTime\": \"2026-12-31T23:59:59Z\"\n  },\n  \"links\": {\n    \"self\": \"https://api.organizacao.com.br/open-insurance/consents/v3/consents/urn:prudential:C1DD93123\"\n  },\n  \"meta\": {\n    \"totalRecords\": 1,\n    \"totalPages\": 1\n  }\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/data",
+        "description": "Resposta **enviada** pela transmissora. Body real `ResponseConsent` 201 (`urn:prudential:C1DD93123`)."
+      },
+      "response": []
+    },
+    {
+      "name": "4. client + Response — receptora recebeu",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Correlation-Id", "value": "{{correlationId}}", "description": "Mesmo ID dos demais eventos." },
+          { "key": "origin", "value": "client", "description": "Receptora reporta a resposta que recebeu da transmissora." },
+          { "key": "path", "value": "/open-insurance/consents/v3/consents" },
+          { "key": "operation", "value": "POST" },
+          { "key": "httpType", "value": "Response", "description": "Valida o mesmo response body (201)." },
+          { "key": "statusCode", "value": "201", "description": "Obrigatório em Response." },
+          { "key": "clientSSId", "value": "{{clientSSId}}" },
+          { "key": "serverASId", "value": "{{serverASId}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"data\": {\n    \"consentId\": \"urn:prudential:C1DD93123\",\n    \"creationDateTime\": \"2026-09-02T14:30:00Z\",\n    \"status\": \"AWAITING_AUTHORISATION\",\n    \"statusUpdateDateTime\": \"2026-09-02T14:30:00Z\",\n    \"permissions\": [\n      \"RESOURCES_READ\",\n      \"CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ\",\n      \"CUSTOMERS_PERSONAL_QUALIFICATION_READ\",\n      \"CUSTOMERS_PERSONAL_ADDITIONALINFO_READ\",\n      \"DAMAGES_AND_PEOPLE_AUTO_READ\",\n      \"DAMAGES_AND_PEOPLE_AUTO_POLICYINFO_READ\",\n      \"DAMAGES_AND_PEOPLE_AUTO_PREMIUM_READ\",\n      \"DAMAGES_AND_PEOPLE_AUTO_CLAIM_READ\"\n    ],\n    \"expirationDateTime\": \"2026-12-31T23:59:59Z\"\n  },\n  \"links\": {\n    \"self\": \"https://api.organizacao.com.br/open-insurance/consents/v3/consents/urn:prudential:C1DD93123\"\n  },\n  \"meta\": {\n    \"totalRecords\": 1,\n    \"totalPages\": 1\n  }\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/data",
+        "description": "Resposta **recebida** pela receptora. Mesmo `ResponseConsent` do passo 3."
+      },
+      "response": []
+    }
+  ]
+}

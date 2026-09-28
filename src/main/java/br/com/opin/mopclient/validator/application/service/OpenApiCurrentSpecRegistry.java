@@ -20,11 +20,10 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * Resolves modular Open Insurance specs from {@code swagger/current/}.
+ * Resolves modular Open Insurance specs from {@code swagger/current/}, then {@code swagger/version/}.
  * <p>
- * A lightweight path index ({@code basePath + pathTemplate → file}) is built once from YAML metadata.
- * Only the matching spec file is fully parsed (openapi4j) on demand; templates with {@code {param}} are
- * supported via {@link OpenApiPathMatcher#pathTemplateMatches(String, String)}.
+ * Newest specs in {@code current/} are tried first. If the MOP path does not match
+ * ({@code Operation path not found}), older official specs in {@code version/} are used as fallback.
  */
 @Component
 public class OpenApiCurrentSpecRegistry {
@@ -34,15 +33,20 @@ public class OpenApiCurrentSpecRegistry {
      * {@code classpath*:} scans every classpath root (required for Spring Boot fat JARs).
      */
     private static final String CURRENT_SPECS_PATTERN = "classpath*:swagger/current/*.yaml";
+    private static final String VERSION_SPECS_PATTERN = "classpath*:swagger/version/*.yaml";
+    private static final String CURRENT_LOAD_PREFIX = "current:";
+    private static final String VERSION_LOAD_PREFIX = "version:";
 
     private final Object loadLock = new Object();
     private final List<RegisteredRoute> routes = new ArrayList<>();
     private final List<String> failedSpecFiles = new ArrayList<>();
-    private final Set<String> loadedSpecFileNames = new HashSet<>();
-    private final Set<String> failedSpecFileNames = new HashSet<>();
+    private final Set<String> loadedSpecKeys = new HashSet<>();
+    private final Set<String> failedSpecKeys = new HashSet<>();
 
-    private Resource[] specResources;
-    private OpenApiSpecPathIndex pathIndex;
+    private Resource[] currentSpecResources;
+    private Resource[] versionSpecResources;
+    private OpenApiSpecPathIndex currentPathIndex;
+    private OpenApiSpecPathIndex versionPathIndex;
     private volatile boolean pathIndexBuilt;
 
     /**
@@ -63,11 +67,25 @@ public class OpenApiCurrentSpecRegistry {
             if (match.isPresent()) {
                 return match;
             }
-            Optional<OpenApiSpecPathIndex.IndexedRoute> indexed = pathIndex.findBestMatch(normalizedMopPath);
-            if (indexed.isEmpty()) {
+            Optional<OpenApiSpecPathIndex.IndexedRoute> currentIndexed = currentPathIndex.findBestMatch(normalizedMopPath);
+            if (currentIndexed.isPresent()) {
+                currentPathIndex.resourceFor(currentIndexed.get().sourceFile())
+                        .ifPresent(resource -> loadSpecFileIfNeeded(resource, CURRENT_LOAD_PREFIX));
+                match = findMatch(normalizedMopPath);
+                if (match.isPresent()) {
+                    return match;
+                }
+            }
+            Optional<OpenApiSpecPathIndex.IndexedRoute> versionIndexed = versionPathIndex.findBestMatch(normalizedMopPath);
+            if (versionIndexed.isEmpty()) {
                 return Optional.empty();
             }
-            pathIndex.resourceFor(indexed.get().sourceFile()).ifPresent(this::loadSpecFileIfNeeded);
+            logger.info(
+                    "OpenAPI path not found in swagger/current/; falling back to swagger/version/ | mopPath={} | spec={}",
+                    normalizedMopPath,
+                    versionIndexed.get().sourceFile());
+            versionPathIndex.resourceFor(versionIndexed.get().sourceFile())
+                    .ifPresent(resource -> loadSpecFileIfNeeded(resource, VERSION_LOAD_PREFIX));
             return findMatch(normalizedMopPath);
         }
     }
@@ -79,8 +97,11 @@ public class OpenApiCurrentSpecRegistry {
     public void loadAllSpecs() {
         synchronized (loadLock) {
             ensurePathIndexBuilt();
-            for (Resource resource : specResources) {
-                loadSpecFileIfNeeded(resource);
+            for (Resource resource : currentSpecResources) {
+                loadSpecFileIfNeeded(resource, CURRENT_LOAD_PREFIX);
+            }
+            for (Resource resource : versionSpecResources) {
+                loadSpecFileIfNeeded(resource, VERSION_LOAD_PREFIX);
             }
             logger.info(
                     "Modular OpenAPI registry fully loaded: {} spec file(s), {} route(s), {} failure(s)",
@@ -98,14 +119,14 @@ public class OpenApiCurrentSpecRegistry {
 
     public int loadedSpecFileCount() {
         synchronized (loadLock) {
-            return loadedSpecFileNames.size();
+            return loadedSpecKeys.size();
         }
     }
 
     public int discoveredSpecFileCount() {
         synchronized (loadLock) {
             ensureResourcesDiscovered();
-            return specResources.length;
+            return currentSpecResources.length + versionSpecResources.length;
         }
     }
 
@@ -115,7 +136,7 @@ public class OpenApiCurrentSpecRegistry {
     public int indexedRouteCount() {
         synchronized (loadLock) {
             ensurePathIndexBuilt();
-            return pathIndex.routeCount();
+            return currentPathIndex.routeCount() + versionPathIndex.routeCount();
         }
     }
 
@@ -130,7 +151,9 @@ public class OpenApiCurrentSpecRegistry {
      */
     public OpenInsurancePhase phaseForPath(String mopPath) {
         ensurePathIndexBuilt();
-        return pathIndex.findBestMatch(OpenApiPathMatcher.normalizePath(mopPath))
+        String normalized = OpenApiPathMatcher.normalizePath(mopPath);
+        return currentPathIndex.findBestMatch(normalized)
+                .or(() -> versionPathIndex.findBestMatch(normalized))
                 .map(OpenApiSpecPathIndex.IndexedRoute::phase)
                 .orElseGet(() -> OpenApiSpecPhaseCatalog.phaseForMopPath(mopPath));
     }
@@ -144,32 +167,45 @@ public class OpenApiCurrentSpecRegistry {
             if (pathIndexBuilt) {
                 return;
             }
-            pathIndex = new OpenApiSpecPathIndex();
-            pathIndex.build(specResources);
+            currentPathIndex = new OpenApiSpecPathIndex();
+            currentPathIndex.build(currentSpecResources);
+            versionPathIndex = new OpenApiSpecPathIndex();
+            versionPathIndex.build(versionSpecResources);
             pathIndexBuilt = true;
         }
     }
 
     private void ensureResourcesDiscovered() {
-        if (specResources != null) {
+        if (currentSpecResources != null) {
             return;
         }
         synchronized (loadLock) {
-            if (specResources != null) {
+            if (currentSpecResources != null) {
                 return;
             }
             PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
             try {
-                specResources = resolver.getResources(CURRENT_SPECS_PATTERN);
-                if (specResources.length == 0) {
+                currentSpecResources = resolver.getResources(CURRENT_SPECS_PATTERN);
+                if (currentSpecResources.length == 0) {
                     throw new IllegalStateException(
                             "No OpenAPI specs found at " + CURRENT_SPECS_PATTERN + " — check swagger/current/ on the classpath");
                 }
-                logger.debug("Discovered {} OpenAPI spec file(s) at {}", specResources.length, CURRENT_SPECS_PATTERN);
+                try {
+                    versionSpecResources = resolver.getResources(VERSION_SPECS_PATTERN);
+                } catch (Exception versionScan) {
+                    logger.warn("Failed to scan swagger/version/ — older-spec fallback disabled", versionScan);
+                    versionSpecResources = new Resource[0];
+                }
+                logger.debug(
+                        "Discovered {} OpenAPI spec file(s) at {} and {} older spec file(s) at {}",
+                        currentSpecResources.length,
+                        CURRENT_SPECS_PATTERN,
+                        versionSpecResources.length,
+                        VERSION_SPECS_PATTERN);
             } catch (IllegalStateException e) {
                 throw e;
             } catch (Exception e) {
-                throw new IllegalStateException("Failed to scan swagger/current/ specs", e);
+                throw new IllegalStateException("Failed to scan swagger/current/ or swagger/version/ specs", e);
             }
         }
     }
@@ -205,26 +241,30 @@ public class OpenApiCurrentSpecRegistry {
                 OpenApiSpecPhaseCatalog.phaseForFile(bestMatch.sourceFile())));
     }
 
-    private void loadSpecFileIfNeeded(Resource resource) {
+    private void loadSpecFileIfNeeded(Resource resource, String loadPrefix) {
         String fileName = resource.getFilename();
-        if (fileName == null
-                || OpenApiSpecPhaseCatalog.excludedFromOpenInsuranceValidation(fileName)
-                || loadedSpecFileNames.contains(fileName)
-                || failedSpecFileNames.contains(fileName)) {
+        if (fileName == null) {
             return;
         }
-        loadSpecFile(resource);
+        String loadKey = loadPrefix + fileName;
+        if (OpenApiSpecPhaseCatalog.excludedFromOpenInsuranceValidation(fileName)
+                || loadedSpecKeys.contains(loadKey)
+                || failedSpecKeys.contains(loadKey)) {
+            return;
+        }
+        loadSpecFile(resource, loadKey);
     }
 
-    private void loadSpecFile(Resource resource) {
+    private void loadSpecFile(Resource resource, String loadKey) {
         String fileName = resource.getFilename() != null ? resource.getFilename() : "unknown.yaml";
         try (InputStream inputStream = resource.getInputStream()) {
             OpenApi3 openApi = new OpenApi3Parser().parse(FileUtils.inputStreamToFile(inputStream, fileName), false);
             OpenApiSpecCompatibilityPatcher.patch(openApi);
-            String basePath = extractBasePathFromSpec(openApi);
+            OpenApiSpecFileVersion.applyToParsedSpec(openApi, fileName);
+            String basePath = OpenApiSpecFileVersion.applyToBasePath(fileName, extractBasePathFromSpec(openApi));
             var paths = openApi.getPaths();
             if (paths == null || paths.isEmpty()) {
-                failedSpecFileNames.add(fileName);
+                failedSpecKeys.add(loadKey);
                 failedSpecFiles.add(fileName + " (no paths)");
                 logger.warn("OpenAPI spec {} has no paths section", fileName);
                 return;
@@ -234,10 +274,10 @@ public class OpenApiCurrentSpecRegistry {
                     routes.add(new RegisteredRoute(basePath, pathTemplate, fileName, openApi));
                 }
             }
-            loadedSpecFileNames.add(fileName);
+            loadedSpecKeys.add(loadKey);
             logger.debug("Loaded spec {} with basePath={} and {} path(s)", fileName, basePath, paths.size());
         } catch (Exception e) {
-            failedSpecFileNames.add(fileName);
+            failedSpecKeys.add(loadKey);
             failedSpecFiles.add(fileName + " (" + e.getMessage() + ")");
             logger.warn("Failed to load OpenAPI spec {} — skipping", fileName, e);
         }

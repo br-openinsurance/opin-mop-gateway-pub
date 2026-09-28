@@ -9,10 +9,10 @@ spring:
     active: ${SPRING_PROFILES_ACTIVE:default}
 
   rabbitmq:
-    host: ${RABBITMQ_VALIDATOR_HOST}
-    port: ${RABBITMQ_VALIDATOR_PORT}
-    username: ${RABBITMQ_USERNAME}
-    password: ${RABBITMQ_PASSWORD}
+    host: RABBITMQ_VALIDATOR_HOST
+    port: RABBITMQ_VALIDATOR_PORT
+    username: RABBITMQ_USERNAME
+    password: RABBITMQ_PASSWORD
 
   # Cache configuration
   cache:
@@ -24,9 +24,9 @@ spring:
 # Server Configuration
 # ============================================================================
 server:
-  port: 8080
+  port: 8081
   servlet:
-    context-path: /v1/anonymize
+    context-path: /v1
 
 # ============================================================================
 # Cache Configuration
@@ -70,6 +70,9 @@ mop:
       method: ${MOP_PROCESS_METHOD:POST}
     anonymization-config:
       url: ${EXTERNAL_API_DATA_ANONYMIZATION}
+    consent-funnel-metrics:
+      url: ${MOP_CONSENT_FUNNEL_METRICS_URL:}
+      enabled: ${MOP_CONSENT_FUNNEL_METRICS_ENABLED:true}
   payload-signing:
     enabled: ${MOP_PAYLOAD_SIGNING_ENABLED:true}
     private-key-pem: ${JWS_PRIVATE_KEY}
@@ -111,4 +114,6 @@ resilience4j:
       mopAnonymizationConfig:
         baseConfig: default
       mopProcessEndpoint:
+        baseConfig: default
+      mopConsentFunnelMetrics:
         baseConfig: default

@@ -27,7 +27,7 @@ public class HeaderValidator {
      * correlationId is independent and mandatory (informed by the user in header X-Correlation-Id).
      *
      * @param correlationId  Correlation ID from header X-Correlation-Id (required, non-empty, min 1 character)
-     * @param origin         Origin header value (must be "client" or "server"; must match httpType)
+     * @param origin         Origin header value (must be "client" or "server"; independent of httpType)
      * @param path           Path header value
      * @param operation      Operation header value (must be a valid HTTP method)
      * @param httpType         HTTP message type (required: Request or Response)
@@ -82,10 +82,6 @@ public class HeaderValidator {
             return ValidationResult.error(
                     String.format("Header 'httpType' must be one of the following values: %s. Received: '%s'",
                             HttpType.getValidValues(), received));
-        }
-        ValidationResult originHttpTypeResult = validateOriginHttpTypeConsistency(origin, httpType);
-        if (!originHttpTypeResult.isValid()) {
-            return originHttpTypeResult;
         }
         if (HttpType.isResponse(httpType)) {
             if (!StringUtils.hasText(statusCode)) {
@@ -147,21 +143,6 @@ public class HeaderValidator {
                         + "(e.g. /open-insurance/consents/v3/consents). "
                         + "Do not send only the operation segment such as /consents. "
                         + "Effective path after normalization: '" + effective + "'");
-    }
-
-    /**
-     * {@code origin=client} exige {@code httpType=Request}; {@code origin=server} exige {@code httpType=Response}.
-     */
-    private static ValidationResult validateOriginHttpTypeConsistency(String origin, String httpType) {
-        if (CLIENT.equalsIgnoreCase(origin) && HttpType.isResponse(httpType)) {
-            return ValidationResult.error(
-                    "Header 'httpType' must be 'request' when 'origin' is 'client'");
-        }
-        if (SERVER.equalsIgnoreCase(origin) && !HttpType.isResponse(httpType)) {
-            return ValidationResult.error(
-                    "Header 'httpType' must be 'response' when 'origin' is 'server'");
-        }
-        return ValidationResult.success();
     }
 
     private static boolean isValidStatusCode(String statusCode) {

@@ -17,6 +17,16 @@ class OpenApiPathMatcherTest {
     }
 
     @Test
+    @DisplayName("toRelativePath when basePath is root (PCM ingestion server URL)")
+    void toRelativePathWhenBasePathIsRoot() {
+        assertEquals(
+                "/event-api/v1/client-event",
+                OpenApiPathMatcher.toRelativePath(
+                        "/event-api/v1/client-event",
+                        "/"));
+    }
+
+    @Test
     @DisplayName("toRelativePath after basePath")
     void toRelativePathAfterBase() {
         assertEquals(

@@ -4,6 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("OpenApiSpecPhaseCatalog")
 class OpenApiSpecPhaseCatalogTest {
@@ -41,6 +42,17 @@ class OpenApiSpecPhaseCatalogTest {
         assertEquals(
                 OpenInsurancePhase.FASE_2_AND_3,
                 registry.phaseForPath("/open-insurance/consents/v3/consents"));
+    }
+
+    @Test
+    @DisplayName("resolve PCM consent funnel client-event path")
+    void resolvePcmConsentFunnelClientEvent() {
+        registry.loadAllSpecs();
+        var resolution = registry.resolve("/event-api/v1/client-event");
+        assertTrue(resolution.isPresent(), "consent-funnel-ingestion.yaml must be indexed");
+        assertEquals(
+                OpenApiSpecPhaseCatalog.CONSENT_FUNNEL_INGESTION_SPEC,
+                resolution.orElseThrow().sourceFile());
     }
 
     @Test

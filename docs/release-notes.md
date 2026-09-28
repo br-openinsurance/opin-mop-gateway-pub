@@ -2,13 +2,13 @@
 
 Notas de versão do **MOP Client**, no estilo do ecossistema MOP (New features, Enhancements, Bug fixes).
 
-**Última atualização do documento: 10 de julho de 2026.**
+**Última atualização do documento: 24 de setembro de 2026.**
 
 > [!NOTE]
-> **Versão estável de produção:** a branch **`main`** publica releases versionadas no GHCR — linha oficial para ambientes produtivos. **A versão mais recente em produção é sempre identificada por tag semver** (ex.: **`v1.0.6`**), e não pelo nome da branch. A branch **`develop`** permanece agora somente dedicada a homologação/sandbox (tag `develop`).
+> **Versão estável de produção:** a branch **`main`** publica releases versionadas no GHCR — linha oficial para ambientes produtivos. **A versão mais recente em produção é sempre identificada por tag semver** (ex.: **`v1.0.7`**), e não pelo nome da branch. A branch **`develop`** permanece agora somente dedicada a homologação/sandbox (tag `develop`).
 >
 > ```bash
-> docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.6
+> docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.7
 > ```
 
 ```mermaid
@@ -23,6 +23,7 @@ flowchart LR
 ---
 
 ## Versões da release note
+- [1.0.7 (2026-09-24)](#v1-0-7)
 - [1.0.6 (2026-07-10)](#v1-0-6)
 - [1.0.5 (2026-07-03)](#v1-0-5)
 - [1.0.4 (2026-06-02)](#v1-0-4)
@@ -34,6 +35,46 @@ flowchart LR
 ---
 ---
 
+<a id="v1-0-7"></a>
+
+## 1.0.7
+
+### New features
+
+- **Funil de consentimentos (PCM):** o participante passa a reportar as etapas do consentimento (criação, autenticação, autorização, uso do recurso, revogação etc.) em um canal próprio, separado do rastreio das APIs Open Insurance.
+  - Endpoint: **`POST /v1/data-funil-consents`**. Não usa `/anonymize` nem os headers de trace do MOP.
+  - O gateway confere se o evento está completo e coerente com a etapa informada, aceita o envio e encaminha a métrica ao ambiente central.
+  - **HTTP 202** quando o evento é aceito; **400** quando o conteúdo está inválido; **502** quando não foi possível entregar a métrica.
+- **Health no context-path `/v1`:** `GET /v1/actuator/health` (não usar `/v1/anonymize/actuator/health` neste contrato de deploy).
+- **Norma de `origin` e `httpType`:** a mesma transação Open Insurance é reportada em até **quatro eventos**. `origin` identifica quem reporta (`client` = receptora, `server` = transmissora). `httpType` identifica se o JSON é o pedido ou a resposta. Os quatro eventos usam o **mesmo** `X-Correlation-Id`, `path` e `operation`. A validação do JSON segue **somente** o `httpType` — o gateway não altera esses headers.
+
+  | `origin` | `httpType` | `statusCode` | Schema validado | Quem reporta |
+  |---|---|---|---|---|
+  | `client` | `Request` | opcional | pedido (`requestBody`) | Receptora **enviou** |
+  | `server` | `Request` | opcional | pedido (`requestBody`) | Transmissora **recebeu** |
+  | `server` | `Response` | **obrigatório** | resposta do status | Transmissora **enviou** |
+  | `client` | `Response` | **obrigatório** | resposta do status | Receptora **recebeu** |
+
+  - `httpType=Response` sem `statusCode` → **HTTP 400**.
+  - Exemplo normativo: `POST /open-insurance/consents/v3/consents` — pedido `CreateConsent`; resposta **201** `ResponseConsent`.
+  - Collection: [`docs/collections-apresentacao/07-origin-httptype-quatro-combinacoes.postman_collection.json`](collections-apresentacao/07-origin-httptype-quatro-combinacoes.postman_collection.json).
+
+### Enhancements
+
+- **Imagem Docker:** Alpine **3.24** (JRE Temurin 17), com camada OS sem achados Critical/High no Trivy.
+
+### Bug fixes
+
+- **Validação x mensagem de sucesso:** o gateway podia devolver HTTP 200 com *"Request processed successfully. Your data has been received and forwarded to the server."* mesmo quando a validação apontava `Operation path not found`. A mensagem de sucesso refere-se ao **encaminhamento do evento ao MOP**; o erro de rota aparece em `validations` e **não impede** o envio.
+- **Compartilhamento de rotas:** o gateway passa a reconhecer a versão da rota (v1, v2 e v3, quando existir) e mantém a compatibilidade com **todas** as APIs — não só as atuais — que antes geravam *Operation path not found*.
+
+```bash
+docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.7
+```
+
+Evidências: [`docs/vulnerabilities/`](docs/vulnerabilities/) · [Wiki — Varreduras de vulnerabilidade](https://github.com/br-openinsurance/opin-mop-gateway-pub/wiki/Wiki#varreduras-de-vulnerabilidade) · funil: [`docs/DOCUMENTACAO.md`](DOCUMENTACAO.md) · [`docs/ALERTA_HEADERS_README.md`](ALERTA_HEADERS_README.md).
+
+---
 <a id="v1-0-6"></a>
 
 ## 1.0.6

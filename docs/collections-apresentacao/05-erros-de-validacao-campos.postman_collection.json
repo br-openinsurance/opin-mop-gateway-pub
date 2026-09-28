@@ -1,0 +1,189 @@
+{
+  "info": {
+    "_postman_id": "11111111-0005-4000-8000-000000000005",
+    "name": "05 — Erros de validação (explicar os campos)",
+    "description": "Exemplos **errados de propósito** para a apresentação. Cada request quebra um campo/regra e mostra o que o gateway devolve.\n\n## Headers MOP (`POST /data`)\n| Header | Tipo | Descrição |\n|---|---|---|\n| `X-Correlation-Id` | **Obrigatório** | Sem ele → HTTP 400. |\n| `origin` | **Obrigatório** | `client` só com Request; `server` só com Response. |\n| `path` | **Obrigatório** | Completo `/open-insurance/...`. |\n| `operation` | **Obrigatório** | Verbo da API original. |\n| `httpType` | **Obrigatório** | `Request` ou `Response`. |\n| `statusCode` | **Condicional** | Obrigatório em Response; valor da spec (POST consents = 201). |\n| `clientSSId` / `serverASId` / `traceOrigin` / `X-Mop-Reportid` | Opcional | Não geram 400 se ausentes. |\n\n## Headers da aplicação — Consents v3 POST (não substituem o MOP)\n| Header | Tipo | Descrição |\n|---|---|---|\n| `Authorization` | **Obrigatório no parceiro** | Se enviar **só** este no MOP → 400. |\n| `x-fapi-interaction-id` | **Obrigatório no parceiro** | Idem. |\n| `x-idempotency-key` | **Obrigatório no parceiro** (POST criar) | Idem. |\n\n## Como ler o resultado\n| Onde errou | HTTP do gateway | O que olhar |\n|---|---|---|\n| Header MOP (ausente/inválido) | **400** | `error` / `details` |\n| Body fora da spec OpenAPI | **200 ou 202** | `validations.status = ERROR` e `pending[].message` |\n\nUse na sequência: campos do body → formato → enum → `statusCode` → `path` → FAPI no lugar do MOP.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080/v1/anonymize" }
+  ],
+  "item": [
+    {
+      "name": "1. [OpenAPI] CreateConsent sem campos obrigatórios",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "description": "[MOP — Obrigatório] Corpo JSON." },
+          { "key": "X-Correlation-Id", "value": "{{$guid}}", "description": "[MOP — Obrigatório] ID da intenção lógica." },
+          { "key": "origin", "value": "client", "description": "[MOP — Obrigatório] client exige httpType=Request." },
+          { "key": "path", "value": "/open-insurance/consents/v3/consents", "description": "[MOP — Obrigatório] Path completo." },
+          { "key": "operation", "value": "POST", "description": "[MOP — Obrigatório] Verbo da API original." },
+          { "key": "httpType", "value": "Request", "description": "[MOP — Obrigatório] Request valida o body." }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"data\": {}\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/data",
+        "description": "**Objetivo:** `validations.pending` lista os campos obrigatórios do `CreateConsent`.\n\nO objeto `data` existe, mas está vazio. A spec exige:\n- `data.permissions` (array, minItems 1)\n- `data.loggedUser` (com `document.identification` e `document.rel`)\n- `data.expirationDateTime`\n\n**Esperado:** `validations.status = ERROR`, mensagens apontando esses três campos."
+      },
+      "response": []
+    },
+    {
+      "name": "2. [OpenAPI] CPF e rel com formato inválido",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "description": "[MOP — Obrigatório] Corpo JSON." },
+          { "key": "X-Correlation-Id", "value": "{{$guid}}", "description": "[MOP — Obrigatório] ID da intenção lógica." },
+          { "key": "origin", "value": "client", "description": "[MOP — Obrigatório] client exige httpType=Request." },
+          { "key": "path", "value": "/open-insurance/consents/v3/consents", "description": "[MOP — Obrigatório] Path completo." },
+          { "key": "operation", "value": "POST", "description": "[MOP — Obrigatório] Verbo da API original." },
+          { "key": "httpType", "value": "Request", "description": "[MOP — Obrigatório] Request valida o body." }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"data\": {\n    \"permissions\": [\"RESOURCES_READ\", \"CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ\"],\n    \"loggedUser\": {\n      \"document\": {\n        \"identification\": \"123\",\n        \"rel\": \"cpf\"\n      }\n    },\n    \"expirationDateTime\": \"2026-12-31T23:59:59Z\"\n  }\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/data",
+        "description": "**Objetivo:** mostrar *pattern* dos campos de documento.\n\n| Campo | Valor errado | Regra da spec |\n|---|---|---|\n| `loggedUser.document.identification` | `123` | `^\\d{11}$` (CPF com 11 dígitos) |\n| `loggedUser.document.rel` | `cpf` | `^[A-Z]{3}$` → precisa ser `CPF` maiúsculo |\n\n**Esperado:** `validations.pending` citando `identification` e `rel`."
+      },
+      "response": []
+    },
+    {
+      "name": "3. [OpenAPI] permission fora do enum",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "description": "[MOP — Obrigatório] Corpo JSON." },
+          { "key": "X-Correlation-Id", "value": "{{$guid}}", "description": "[MOP — Obrigatório] ID da intenção lógica." },
+          { "key": "origin", "value": "client", "description": "[MOP — Obrigatório] client exige httpType=Request." },
+          { "key": "path", "value": "/open-insurance/consents/v3/consents", "description": "[MOP — Obrigatório] Path completo." },
+          { "key": "operation", "value": "POST", "description": "[MOP — Obrigatório] Verbo da API original." },
+          { "key": "httpType", "value": "Request", "description": "[MOP — Obrigatório] Request valida o body." }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"data\": {\n    \"permissions\": [\"RESOURCES_READ\", \"PERMISSION_QUE_NAO_EXISTE\"],\n    \"loggedUser\": {\n      \"document\": {\n        \"identification\": \"11111111111\",\n        \"rel\": \"CPF\"\n      }\n    },\n    \"expirationDateTime\": \"2026-12-31T23:59:59Z\"\n  }\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/data",
+        "description": "**Objetivo:** `permissions` é um **enum** da spec Consents v3.\n\n`PERMISSION_QUE_NAO_EXISTE` não está na lista (ex. `CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ`, `QUOTE_AUTO_LEAD_CREATE`).\n\n**Esperado:** `validations.pending` em `data.permissions` com mensagem de enum / value not in list."
+      },
+      "response": []
+    },
+    {
+      "name": "4. [OpenAPI] campo extra (additionalProperties=false)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "description": "[MOP — Obrigatório] Corpo JSON." },
+          { "key": "X-Correlation-Id", "value": "{{$guid}}", "description": "[MOP — Obrigatório] ID da intenção lógica." },
+          { "key": "origin", "value": "client", "description": "[MOP — Obrigatório] client exige httpType=Request." },
+          { "key": "path", "value": "/open-insurance/consents/v3/consents", "description": "[MOP — Obrigatório] Path completo." },
+          { "key": "operation", "value": "POST", "description": "[MOP — Obrigatório] Verbo da API original." },
+          { "key": "httpType", "value": "Request", "description": "[MOP — Obrigatório] Request valida o body." }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"data\": {\n    \"permissions\": [\"RESOURCES_READ\", \"CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ\"],\n    \"loggedUser\": {\n      \"document\": {\n        \"identification\": \"11111111111\",\n        \"rel\": \"CPF\"\n      }\n    },\n    \"expirationDateTime\": \"2026-12-31T23:59:59Z\",\n    \"campoQueNaoExisteNaSpec\": true\n  }\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/data",
+        "description": "**Objetivo:** `CreateConsent.data` tem `additionalProperties: false`.\n\nQualquer campo fora da spec (`campoQueNaoExisteNaSpec`) gera pendência.\n\nUse para explicar: o MOP valida o JSON **contra o YAML do produto**, não um schema genérico."
+      },
+      "response": []
+    },
+    {
+      "name": "5. [OpenAPI] statusCode 200 no lugar de 201",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "description": "[MOP — Obrigatório] Corpo JSON." },
+          { "key": "X-Correlation-Id", "value": "{{$guid}}", "description": "[MOP — Obrigatório] ID da intenção lógica." },
+          { "key": "origin", "value": "server", "description": "[MOP — Obrigatório] server exige httpType=Response." },
+          { "key": "path", "value": "/open-insurance/consents/v3/consents", "description": "[MOP — Obrigatório] Path completo." },
+          { "key": "operation", "value": "POST", "description": "[MOP — Obrigatório] Verbo da API original." },
+          { "key": "httpType", "value": "Response", "description": "[MOP — Obrigatório] Response valida o schema do statusCode." },
+          { "key": "statusCode", "value": "200", "description": "[MOP — Condicional / ERRADO neste exemplo] Obrigatório em Response, mas o valor 200 está errado. POST consents sucesso = 201." }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"data\": {\n    \"consentId\": \"urn:prudential:C1DD93123\",\n    \"creationDateTime\": \"2026-09-02T14:30:00Z\",\n    \"status\": \"AWAITING_AUTHORISATION\",\n    \"statusUpdateDateTime\": \"2026-09-02T14:30:00Z\",\n    \"permissions\": [\"RESOURCES_READ\"],\n    \"expirationDateTime\": \"2026-12-31T23:59:59Z\"\n  },\n  \"links\": {\n    \"self\": \"https://api.organizacao.com.br/open-insurance/consents/v3/consents/urn:prudential:C1DD93123\"\n  },\n  \"meta\": {\n    \"totalRecords\": 1,\n    \"totalPages\": 1\n  }\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/data",
+        "description": "**Objetivo:** o header `statusCode` escolhe **qual schema de response** validar.\n\nPOST consents v3 sucesso = **201** (`ResponseConsent` com `data`/`links`/`meta`).\nCom `statusCode: 200`, o validador aplica o schema daquele status (em geral `ResponseError` com array `errors`). O body de sucesso “não encaixa”.\n\n**Correção:** `statusCode: 201` (veja collection 01, request 2)."
+      },
+      "response": []
+    },
+    {
+      "name": "6. [Header] path incompleto (/consents)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "description": "[MOP — Obrigatório] Corpo JSON." },
+          { "key": "X-Correlation-Id", "value": "{{$guid}}", "description": "[MOP — Obrigatório] ID da intenção lógica." },
+          { "key": "origin", "value": "client", "description": "[MOP — Obrigatório] client exige httpType=Request." },
+          { "key": "path", "value": "/consents", "description": "[MOP — Obrigatório, valor ERRADO] Path incompleto. Correto: /open-insurance/consents/v3/consents" },
+          { "key": "operation", "value": "POST", "description": "[MOP — Obrigatório] Verbo da API original." },
+          { "key": "httpType", "value": "Request", "description": "[MOP — Obrigatório] Request valida o body." }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"data\": {\n    \"permissions\": [\"RESOURCES_READ\"],\n    \"loggedUser\": {\n      \"document\": {\n        \"identification\": \"11111111111\",\n        \"rel\": \"CPF\"\n      }\n    },\n    \"expirationDateTime\": \"2026-12-31T23:59:59Z\"\n  }\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/data",
+        "description": "**Objetivo:** o header `path` escolhe a spec. Path curto não é indexado.\n\n**Esperado:** `Operation path not found from URL '/consents'` (código `NOT_FOUND`).\n\n**Correção:** `/open-insurance/consents/v3/consents`."
+      },
+      "response": []
+    },
+    {
+      "name": "7. [Header] FAPI no lugar dos headers MOP",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "description": "[MOP — Obrigatório] Corpo JSON." },
+          { "key": "Authorization", "value": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.exemplo", "description": "[Aplicação Consents — Obrigatório no PARCEIRO] Não substitui headers MOP. Sozinho no gateway → HTTP 400." },
+          { "key": "x-fapi-interaction-id", "value": "550e8400-e29b-41d4-a716-446655440000", "description": "[Aplicação Consents — Obrigatório no PARCEIRO] UUID FAPI. O MOP não valida este header." },
+          { "key": "x-idempotency-key", "value": "idem-consents-apresentacao-001", "description": "[Aplicação Consents — Obrigatório no PARCEIRO] Só no POST de criação. O MOP não valida este header." }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"data\": {\n    \"permissions\": [\"RESOURCES_READ\"],\n    \"loggedUser\": {\n      \"document\": {\n        \"identification\": \"11111111111\",\n        \"rel\": \"CPF\"\n      }\n    },\n    \"expirationDateTime\": \"2026-12-31T23:59:59Z\"\n  }\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/data",
+        "description": "**Objetivo:** headers da **aplicação** (FAPI) não substituem headers do **MOP**.\n\nFaltam: `X-Correlation-Id`, `origin`, `path`, `operation`, `httpType`.\n\n**Esperado:** HTTP **400** — `Missing required header: ...`\n\nNa apresentação: crachá do parceiro ≠ ficha de ocorrência do gateway."
+      },
+      "response": []
+    },
+    {
+      "name": "8. [Header] origin=client com httpType=Response",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "description": "[MOP — Obrigatório] Corpo JSON." },
+          { "key": "X-Correlation-Id", "value": "{{$guid}}", "description": "[MOP — Obrigatório] ID da intenção lógica." },
+          { "key": "origin", "value": "client", "description": "[MOP — Obrigatório, valor ERRADO neste par] client só combina com Request, não com Response." },
+          { "key": "path", "value": "/open-insurance/consents/v3/consents", "description": "[MOP — Obrigatório] Path completo." },
+          { "key": "operation", "value": "POST", "description": "[MOP — Obrigatório] Verbo da API original." },
+          { "key": "httpType", "value": "Response", "description": "[MOP — Obrigatório] Inconsistente com origin=client." },
+          { "key": "statusCode", "value": "201", "description": "[MOP — Condicional] Obrigatório em Response; aqui o par origin/httpType já está inválido." }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/data",
+        "description": "**Objetivo:** só duas combinações válidas de `origin` + `httpType`:\n\n| origin | httpType | statusCode | O que valida |\n|---|---|---|---|\n| `client` | `Request` | opcional | requestBody |\n| `server` | `Response` | obrigatório | response body daquele status |\n\n**Esperado:** HTTP **400** — header inválido.\n\n**Correção:** `origin: server` + `httpType: Response` + `statusCode: 201`."
+      },
+      "response": []
+    }
+  ]
+}

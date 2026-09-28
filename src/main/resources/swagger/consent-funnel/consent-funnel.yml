@@ -1,0 +1,124 @@
+openapi: 3.0.3
+info:
+  title: Funil de consentimentos (PCM)
+  version: 1.0.0
+  description: >
+    Evento do funil de consentimentos aceito em POST /data-funil-consents.
+    Schema ConsentCreated — todos os campos de raiz são obrigatórios;
+    apenas as chaves de additionalInfo são opcionais.
+paths:
+  /data-funil-consents:
+    post:
+      summary: Recebe evento do funil de consentimentos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsentCreated'
+      responses:
+        '202':
+          description: Evento aceito
+components:
+  schemas:
+    ConsentCreated:
+      type: object
+
+      required:
+        - consentId
+        - step
+        - origin
+        - correlationId
+        - timestamp
+        - clientOrgId
+        - clientSSId
+        - serverOrgId
+        - serverASId
+        - permissions
+
+      properties:
+        consentId:
+          type: string
+          example: "urn:bancoex:C1DD33123"
+
+        step:
+          type: string
+          example: "consent-created"
+
+        origin:
+          type: string
+          description: Quem reporta o evento (receptora ou transmissora).
+          enum:
+            - CLIENT
+            - SERVER
+          example: "CLIENT"
+
+        correlationId:
+          type: string
+          format: uuid
+          example: "577869e5-4c63-4b19-9235-a18d22c80986"
+
+        additionalInfo:
+          type: object
+          description: Objeto opcional. Todas as chaves internas são opcionais.
+          properties:
+            consent-user:
+              type: string
+              example: "invalid-credentials"
+
+            authentication-failure-reason:
+              type: string
+              example: "invalid-credentials"
+
+            user-redirected-back-status:
+              type: string
+              example: "success"
+
+            token-kind:
+              type: string
+              example: "consent-token"
+
+            rejected-by:
+              type: string
+              example: "user"
+
+            revoked-by:
+              type: string
+              example: "user"
+
+            expired-by:
+              type: string
+              example: "authorization-timeout"
+
+        timestamp:
+          type: string
+          format: date-time
+          example: "2022-11-07T17:26:32Z"
+
+        clientOrgId:
+          type: string
+          format: uuid
+          example: "1fb79963-4bff-4204-9370-93aceb8a2f0d"
+
+        clientSSId:
+          type: string
+          format: uuid
+          example: "2a59c2a3-529f-41c6-97e3-77395e9951ca"
+
+        serverOrgId:
+          type: string
+          format: uuid
+          example: "ff66b95a-d817-4fbe-949a-c5912e240189"
+
+        serverASId:
+          type: string
+          format: uuid
+          example: "f8cd7b48-197d-419b-8680-f42226111b6f"
+
+        permissions:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          example:
+            - "CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ"

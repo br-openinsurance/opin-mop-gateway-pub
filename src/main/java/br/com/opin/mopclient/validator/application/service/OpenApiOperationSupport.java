@@ -12,7 +12,7 @@ import org.openapi4j.schema.validator.ValidationData;
 /**
  * Resolves OpenAPI operations from path + HTTP method and validates responses via {@link OperationValidator}.
  */
-final class OpenApiOperationSupport {
+public final class OpenApiOperationSupport {
 
     private OpenApiOperationSupport() {
     }
@@ -62,7 +62,7 @@ final class OpenApiOperationSupport {
      * @param validationPath path key used in the OpenAPI spec (relative or full)
      * @param mopPath        full MOP path shown in validation messages
      */
-    static void ensureOperationExists(
+    public static void ensureOperationExists(
             OpenApi3 openApi,
             String validationPath,
             String relativePath,

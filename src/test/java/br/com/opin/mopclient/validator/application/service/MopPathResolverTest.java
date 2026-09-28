@@ -30,7 +30,7 @@ class MopPathResolverTest {
         assertEquals(
                 "/open-insurance/insurance-auto/v1/insurance-auto/abc-123/policy-info",
                 resolution.mopPath());
-        assertEquals("insurance-auto.yaml", resolution.sourceFile());
+        assertEquals("insurance-auto_v1.yaml", resolution.sourceFile());
         assertEquals("/insurance-auto/{policyId}/policy-info", resolution.pathTemplate());
         assertEquals("/insurance-auto/abc-123/policy-info", resolution.relativePath());
     }
@@ -60,7 +60,7 @@ class MopPathResolverTest {
         assertEquals(
                 "/open-insurance/insurance-rural/v1/insurance-rural/12345788/policy-info",
                 resolution.mopPath());
-        assertEquals("insurance-rural.yaml", resolution.sourceFile());
+        assertEquals("insurance-rural_v1.yaml", resolution.sourceFile());
         assertEquals("/insurance-rural/{policyId}/policy-info", resolution.pathTemplate());
         assertEquals("/insurance-rural/12345788/policy-info", resolution.relativePath());
     }

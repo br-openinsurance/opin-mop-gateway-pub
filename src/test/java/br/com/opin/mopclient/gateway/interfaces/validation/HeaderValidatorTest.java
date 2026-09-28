@@ -96,7 +96,7 @@ class HeaderValidatorTest {
     }
 
     @Test
-    @DisplayName("Accepts client and server origins when httpType matches (case-insensitive)")
+    @DisplayName("Accepts client and server origins with any Request/Response httpType (case-insensitive)")
     void shouldAcceptValidOrigins() {
         assertTrue(validate(
                 VALID_CORRELATION_ID, "client", "/open-insurance/consents/v3/consents", "POST",
@@ -110,6 +110,12 @@ class HeaderValidatorTest {
         assertTrue(validate(
                 VALID_CORRELATION_ID, "SERVER", "/open-insurance/consents/v3/consents", "POST",
                 "response", "201", CLIENT_SS_ID, SERVER_AS_ID).isValid());
+        assertTrue(validate(
+                VALID_CORRELATION_ID, "server", "/open-insurance/consents/v3/consents", "POST",
+                HTTP_TYPE_REQUEST, null, CLIENT_SS_ID, SERVER_AS_ID).isValid());
+        assertTrue(validate(
+                VALID_CORRELATION_ID, "client", "/open-insurance/consents/v3/consents", "POST",
+                HTTP_TYPE_RESPONSE, STATUS_CODE_OK, CLIENT_SS_ID, SERVER_AS_ID).isValid());
     }
 
     @Test
@@ -206,23 +212,21 @@ class HeaderValidatorTest {
     }
 
     @Test
-    @DisplayName("Returns error when origin is client and httpType is Response")
-    void shouldReturnErrorWhenClientOriginHasResponseHttpType() {
+    @DisplayName("Accepts origin client with httpType Response when statusCode is present")
+    void shouldAcceptClientOriginWithResponseHttpType() {
         HeaderValidator.ValidationResult result = validate(
                 VALID_CORRELATION_ID, VALID_ORIGIN, "/open-insurance/consents/v3/consents", "POST",
                 HTTP_TYPE_RESPONSE, STATUS_CODE_OK, CLIENT_SS_ID, SERVER_AS_ID);
-        assertFalse(result.isValid());
-        assertEquals("Header 'httpType' must be 'request' when 'origin' is 'client'", result.getErrorMessage());
+        assertTrue(result.isValid());
     }
 
     @Test
-    @DisplayName("Returns error when origin is server and httpType is Request")
-    void shouldReturnErrorWhenServerOriginHasRequestHttpType() {
+    @DisplayName("Accepts origin server with httpType Request")
+    void shouldAcceptServerOriginWithRequestHttpType() {
         HeaderValidator.ValidationResult result = validate(
                 VALID_CORRELATION_ID, "server", "/open-insurance/consents/v3/consents", "POST",
                 HTTP_TYPE_REQUEST, null, CLIENT_SS_ID, SERVER_AS_ID);
-        assertFalse(result.isValid());
-        assertEquals("Header 'httpType' must be 'response' when 'origin' is 'server'", result.getErrorMessage());
+        assertTrue(result.isValid());
     }
 
     @Test

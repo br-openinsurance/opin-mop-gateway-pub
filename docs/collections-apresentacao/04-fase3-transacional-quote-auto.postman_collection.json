@@ -1,0 +1,74 @@
+{
+  "info": {
+    "_postman_id": "11111111-0004-4000-8000-000000000004",
+    "name": "04 — Fase 3 Transacional (Quote Auto Lead)",
+    "description": "Exemplo de API **Fase 3 — Iniciação de serviços** (cotação/contratação).\n\n**Produto:** `quote-auto.yaml` → `POST /open-insurance/quote-auto/v2/lead/request`\n\n## Headers MOP (`POST /data`)\n| Header | Tipo | Descrição |\n|---|---|---|\n| `X-Correlation-Id` | **Obrigatório** | ID da intenção lógica. |\n| `origin` | **Obrigatório** | `client` + Request ou `server` + Response. |\n| `path` | **Obrigatório** | `/open-insurance/quote-auto/v2/lead/request` |\n| `operation` | **Obrigatório** | `POST`. |\n| `httpType` | **Obrigatório** | `Request` ou `Response`. |\n| `statusCode` | **Condicional** | Obrigatório em Response. POST lead sucesso = **201**. |\n| `clientSSId` | Opcional | Receptora/iniciadora (SS). Relevante na Fase 3. |\n| `serverASId` | Opcional | Transmissora (AS). |\n| `traceOrigin` | Opcional | Ex.: `CLIENT`. |\n| `X-Mop-Reportid` | Opcional | Se omitido, o gateway gera. |\n\n## Headers da aplicação — Quote Auto POST `/lead/request` (spec `quote-auto.yaml`)\n| Header | Tipo | Descrição |\n|---|---|---|\n| `Authorization` | **Obrigatório** | Bearer, scope `quote-auto-lead`. |\n| `x-fapi-interaction-id` | **Obrigatório** | UUID da interação; o transmissor ecoa na resposta. |\n| `x-idempotency-key` | **Obrigatório** | Idempotência do POST de criação (1–40 caracteres). |\n| `x-fapi-auth-date` | Opcional | Último login (RFC7231). |\n| `x-fapi-customer-ip-address` | Opcional | IP do usuário. |\n| `x-customer-user-agent` | Opcional | User-agent do cliente. |\n\nDiferença vs Consents: o POST de cotação **também** exige `x-idempotency-key`. GET Fase 2 **não** exige.\n\nNa aba Headers, FAPI aparece **desmarcado** (não enviar ao MOP).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080/v1/anonymize" },
+    { "key": "clientSSId", "value": "RECEPTORA-A" },
+    { "key": "serverASId", "value": "TRANSMISSORA-B" }
+  ],
+  "item": [
+    {
+      "name": "1. Request — POST cotação Auto Lead",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "description": "[MOP — Obrigatório] Corpo JSON do evento." },
+          { "key": "X-Correlation-Id", "value": "{{$guid}}", "description": "[MOP — Obrigatório] ID da intenção lógica." },
+          { "key": "origin", "value": "client", "description": "[MOP — Obrigatório] client exige httpType=Request." },
+          { "key": "path", "value": "/open-insurance/quote-auto/v2/lead/request", "description": "[MOP — Obrigatório] Fase 3. Spec: quote-auto.yaml." },
+          { "key": "operation", "value": "POST", "description": "[MOP — Obrigatório] Verbo da API original." },
+          { "key": "httpType", "value": "Request", "description": "[MOP — Obrigatório] Request valida QuoteRequestAutoLead." },
+          { "key": "statusCode", "value": "201", "disabled": true, "description": "[MOP — Condicional] Opcional em Request. Obrigatório só em Response." },
+          { "key": "clientSSId", "value": "{{clientSSId}}", "description": "[MOP — Opcional] Receptora/iniciadora (SS). Relevante na Fase 3." },
+          { "key": "serverASId", "value": "{{serverASId}}", "description": "[MOP — Opcional] Transmissora (AS)." },
+          { "key": "traceOrigin", "value": "CLIENT", "description": "[MOP — Opcional] Origem do trace." },
+          { "key": "Authorization", "value": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.exemplo-token-quote-auto", "disabled": true, "description": "[Aplicação Quote Auto — Obrigatório] Bearer scope quote-auto-lead. Vai ao PARCEIRO." },
+          { "key": "x-fapi-interaction-id", "value": "73cac523-d3ae-2289-b106-330a6218710d", "disabled": true, "description": "[Aplicação Quote Auto — Obrigatório] UUID da interação FAPI." },
+          { "key": "x-idempotency-key", "value": "idem-quote-auto-2026-09-02-001", "disabled": true, "description": "[Aplicação Quote Auto — Obrigatório] Idempotência do POST /lead/request (1–40 caracteres)." },
+          { "key": "x-fapi-auth-date", "value": "Tue, 02 Sep 2026 14:30:00 UTC", "disabled": true, "description": "[Aplicação Quote Auto — Opcional] Último login (RFC7231)." },
+          { "key": "x-fapi-customer-ip-address", "value": "220.146.215.155", "disabled": true, "description": "[Aplicação Quote Auto — Opcional] IP do usuário." },
+          { "key": "x-customer-user-agent", "value": "OpenInsuranceApp/1.0", "disabled": true, "description": "[Aplicação Quote Auto — Opcional] User-agent do cliente." }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"data\": {\n    \"consentId\": \"urn:initiator:C1DD93123\",\n    \"expirationDateTime\": \"2026-09-02T23:59:59Z\",\n    \"quoteCustomer\": {},\n    \"quoteData\": {\n      \"coverages\": [\n        {\n          \"branch\": \"0111\",\n          \"code\": \"CASCO_COMPREENSIVA\"\n        }\n      ]\n    }\n  }\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/data",
+        "description": "**Headers MOP obrigatórios:** `X-Correlation-Id`, `origin`, `path`, `operation`, `httpType`.\n**Headers da aplicação obrigatórios no parceiro (desmarcados):** `Authorization`, `x-fapi-interaction-id`, `x-idempotency-key`.\n\nPermission: `QUOTE_AUTO_LEAD_CREATE`."
+      },
+      "response": []
+    },
+    {
+      "name": "2. Response 201 — cotação Auto Lead recebida",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "description": "[MOP — Obrigatório] Corpo JSON do evento." },
+          { "key": "X-Correlation-Id", "value": "{{$guid}}", "description": "[MOP — Obrigatório] Outro UUID (evento distinto)." },
+          { "key": "origin", "value": "server", "description": "[MOP — Obrigatório] server exige httpType=Response." },
+          { "key": "path", "value": "/open-insurance/quote-auto/v2/lead/request", "description": "[MOP — Obrigatório] Mesmo path da operação original." },
+          { "key": "operation", "value": "POST", "description": "[MOP — Obrigatório] Verbo da API original." },
+          { "key": "httpType", "value": "Response", "description": "[MOP — Obrigatório] Response valida o schema do statusCode." },
+          { "key": "statusCode", "value": "201", "description": "[MOP — Condicional / obrigatório em Response] POST lead sucesso = 201." },
+          { "key": "clientSSId", "value": "{{clientSSId}}", "description": "[MOP — Opcional] Receptora/iniciadora (SS)." },
+          { "key": "serverASId", "value": "{{serverASId}}", "description": "[MOP — Opcional] Transmissora (AS)." },
+          { "key": "Authorization", "value": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.exemplo-token-quote-auto", "disabled": true, "description": "[Aplicação Quote Auto — Obrigatório] Token da chamada ao parceiro. Não enviar ao MOP." },
+          { "key": "x-fapi-interaction-id", "value": "73cac523-d3ae-2289-b106-330a6218710d", "disabled": true, "description": "[Aplicação Quote Auto — Obrigatório] Ecoado pelo transmissor na resposta ao parceiro." }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"data\": {\n    \"status\": \"RCVD\",\n    \"statusUpdateDateTime\": \"2026-09-02T14:00:00Z\"\n  },\n  \"meta\": {\n    \"totalRecords\": 1,\n    \"totalPages\": 1\n  }\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/data",
+        "description": "**Headers MOP obrigatórios:** `X-Correlation-Id`, `origin=server`, `path`, `operation`, `httpType=Response`.\n**Header MOP condicional (obrigatório aqui):** `statusCode=201`."
+      },
+      "response": []
+    }
+  ]
+}

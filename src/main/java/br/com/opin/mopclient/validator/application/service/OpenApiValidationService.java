@@ -31,7 +31,7 @@ import java.util.Optional;
  * Validates payloads against Open Insurance OpenAPI specifications in {@code swagger/current/}
  * via {@link OpenApiCurrentSpecRegistry} (MOP path = {@code servers.url} path + {@code paths} key).
  * Uses HTTP {@code operation} header and {@code httpType} (Request=request body, Response=response body).
- * {@code origin} must be consistent with {@code httpType} (enforced by {@link br.com.opin.mopclient.gateway.interfaces.validation.HeaderValidator}).
+ * {@code origin} ({@code client}/{@code server}) identifies who reports the event; it does not change the schema.
  */
 @Service
 public class OpenApiValidationService {

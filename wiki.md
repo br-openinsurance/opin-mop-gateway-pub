@@ -81,7 +81,16 @@ Documentação dedicada: [docs/REPROCESSAMENTO.md](docs/REPROCESSAMENTO.md).
 - Header condicional: `statusCode` — opcional com `httpType=Request`; **obrigatório** com `httpType=Response` (100–599).
 - Opcionais: `traceOrigin`, `clientSSId`, `serverASId`, `X-Mop-Reportid`.
 - **`path`:** enviar o path **concreto** da transação (path MOP completo, começando com `/open-insurance/`; com URN/ID reais); não usar `{consentId}` nem só `/consents`. Ver [`docs/PATH_MOP_HEADER.md`](docs/PATH_MOP_HEADER.md).
-- **`origin` + `httpType` + `statusCode`:** combinação fixa — `client`+`Request` (valida requestBody) ou `server`+`Response`+`statusCode` (valida response body). Ver tabela em [`README.md`](README.md#contrato-da-api) e [`docs/PATH_MOP_HEADER.md`](docs/PATH_MOP_HEADER.md).
+- **`origin` + `httpType` + `statusCode`:** quatro combinações. Mesmo `X-Correlation-Id`, `path` e `operation`. Schema segue só o `httpType`.
+
+  | `origin` | `httpType` | `statusCode` | Schema | Quem reporta |
+  |---|---|---|---|---|
+  | `client` | `Request` | opcional | **requestBody** | Receptora enviou |
+  | `server` | `Request` | opcional | **requestBody** | Transmissora recebeu |
+  | `server` | `Response` | **obrigatório** | **response** do status | Transmissora enviou |
+  | `client` | `Response` | **obrigatório** | **response** do status | Receptora recebeu |
+
+  Ver [`README.md`](README.md#contrato-da-api) e [`docs/PATH_MOP_HEADER.md`](docs/PATH_MOP_HEADER.md).
 - Resposta HTTP: `context`, `request` (com `path`, `operation`, `header`), `validations` (`status`, `total`, `pending`); `response` quando entrega síncrona ao MOP.
 
 Contrato resumido: [README.md](README.md).

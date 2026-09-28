@@ -129,6 +129,10 @@ public final class OpenApiPathMatcher {
         if (normalizedMop.equals(normalizedBase)) {
             return "/";
         }
+        // PCM / ingestion specs use server URL without path → basePath "/"
+        if ("/".equals(normalizedBase)) {
+            return normalizedMop;
+        }
         if (!normalizedMop.startsWith(normalizedBase + "/")) {
             return null;
         }

@@ -1,0 +1,75 @@
+{
+  "info": {
+    "_postman_id": "11111111-0003-4000-8000-000000000003",
+    "name": "03 — Fase 2 Transacional (Insurance Auto)",
+    "description": "Exemplo de API **Fase 2 — Dados transacionais** (compartilhamento com consentimento).\n\n**Produto:** `insurance-auto.yaml` → `GET /open-insurance/insurance-auto/v2/insurance-auto`\n\n## Headers MOP (`POST /data`)\n| Header | Tipo | Descrição |\n|---|---|---|\n| `X-Correlation-Id` | **Obrigatório** | ID da intenção lógica. |\n| `origin` | **Obrigatório** | `client` + Request ou `server` + Response. |\n| `path` | **Obrigatório** | Path concreto, sem `{policyId}`. |\n| `operation` | **Obrigatório** | `GET`. |\n| `httpType` | **Obrigatório** | `Request` ou `Response`. |\n| `statusCode` | **Condicional** | Obrigatório em Response. GET lista sucesso = **200**. |\n| `clientSSId` | Opcional | Receptora (SS). Relevante na Fase 2. |\n| `serverASId` | Opcional | Transmissora (AS). |\n| `traceOrigin` | Opcional | Ex.: `CLIENT`. |\n| `X-Mop-Reportid` | Opcional | Se omitido, o gateway gera. |\n\n## Headers da aplicação — Insurance Auto GET `/insurance-auto` (spec `insurance-auto.yaml`)\n| Header | Tipo | Descrição |\n|---|---|---|\n| `Authorization` | **Obrigatório** | Bearer com `consent:consentId` + scope `insurance-auto`. |\n| `x-fapi-interaction-id` | **Obrigatório** | UUID da interação; o transmissor ecoa na resposta. |\n| `x-fapi-auth-date` | Opcional | Último login (RFC7231). |\n| `x-fapi-customer-ip-address` | Opcional | IP do usuário. |\n| `x-customer-user-agent` | Opcional | User-agent do cliente. |\n| `x-v` | Opcional | Versão do endpoint. |\n| `x-min-v` | Opcional | Versão mínima. |\n| `x-idempotency-key` | **Não se aplica** | GET não usa idempotência. |\n\nNa aba Headers, FAPI aparece **desmarcado** (não enviar ao MOP).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080/v1/anonymize" },
+    { "key": "clientSSId", "value": "RECEPTORA-A" },
+    { "key": "serverASId", "value": "TRANSMISSORA-B" }
+  ],
+  "item": [
+    {
+      "name": "1. Request — GET lista de apólices auto",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "description": "[MOP — Obrigatório] GET sem requestBody → {}." },
+          { "key": "X-Correlation-Id", "value": "{{$guid}}", "description": "[MOP — Obrigatório] ID da intenção lógica." },
+          { "key": "origin", "value": "client", "description": "[MOP — Obrigatório] client exige httpType=Request." },
+          { "key": "path", "value": "/open-insurance/insurance-auto/v2/insurance-auto", "description": "[MOP — Obrigatório] Fase 2. IDs reais, sem {policyId}." },
+          { "key": "operation", "value": "GET", "description": "[MOP — Obrigatório] Verbo da API original." },
+          { "key": "httpType", "value": "Request", "description": "[MOP — Obrigatório] Request valida requestBody (aqui vazio)." },
+          { "key": "statusCode", "value": "200", "disabled": true, "description": "[MOP — Condicional] Opcional em Request." },
+          { "key": "clientSSId", "value": "{{clientSSId}}", "description": "[MOP — Opcional] Receptora (SS). Relevante na Fase 2." },
+          { "key": "serverASId", "value": "{{serverASId}}", "description": "[MOP — Opcional] Transmissora (AS)." },
+          { "key": "traceOrigin", "value": "CLIENT", "description": "[MOP — Opcional] Origem do trace." },
+          { "key": "Authorization", "value": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.exemplo-token-insurance-auto", "disabled": true, "description": "[Aplicação Insurance Auto — Obrigatório] Bearer consent:consentId + scope insurance-auto. Vai ao PARCEIRO." },
+          { "key": "x-fapi-interaction-id", "value": "73cac523-d3ae-2289-b106-330a6218710d", "disabled": true, "description": "[Aplicação Insurance Auto — Obrigatório] UUID da interação FAPI." },
+          { "key": "x-fapi-auth-date", "value": "Tue, 02 Sep 2026 14:30:00 UTC", "disabled": true, "description": "[Aplicação Insurance Auto — Opcional] Último login (RFC7231)." },
+          { "key": "x-fapi-customer-ip-address", "value": "220.146.215.155", "disabled": true, "description": "[Aplicação Insurance Auto — Opcional] IP do usuário." },
+          { "key": "x-customer-user-agent", "value": "OpenInsuranceApp/1.0", "disabled": true, "description": "[Aplicação Insurance Auto — Opcional] User-agent do cliente." },
+          { "key": "x-v", "value": "2.0.0", "disabled": true, "description": "[Aplicação Insurance Auto — Opcional] Versão do endpoint." },
+          { "key": "x-min-v", "value": "2.0.0", "disabled": true, "description": "[Aplicação Insurance Auto — Opcional] Versão mínima." }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/data",
+        "description": "**Headers MOP obrigatórios:** `X-Correlation-Id`, `origin`, `path`, `operation`, `httpType`.\n**Headers da aplicação obrigatórios no parceiro (desmarcados):** `Authorization`, `x-fapi-interaction-id`.\nGET **não** usa `x-idempotency-key`.\n\nPermission no consentimento: `DAMAGES_AND_PEOPLE_AUTO_READ`."
+      },
+      "response": []
+    },
+    {
+      "name": "2. Response 200 — lista de apólices auto",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "description": "[MOP — Obrigatório] Corpo JSON do evento." },
+          { "key": "X-Correlation-Id", "value": "{{$guid}}", "description": "[MOP — Obrigatório] Outro UUID (evento distinto)." },
+          { "key": "origin", "value": "server", "description": "[MOP — Obrigatório] server exige httpType=Response." },
+          { "key": "path", "value": "/open-insurance/insurance-auto/v2/insurance-auto", "description": "[MOP — Obrigatório] Mesmo path da operação original." },
+          { "key": "operation", "value": "GET", "description": "[MOP — Obrigatório] Verbo da API original." },
+          { "key": "httpType", "value": "Response", "description": "[MOP — Obrigatório] Response valida o schema do statusCode." },
+          { "key": "statusCode", "value": "200", "description": "[MOP — Condicional / obrigatório em Response] GET lista sucesso = 200." },
+          { "key": "clientSSId", "value": "{{clientSSId}}", "description": "[MOP — Opcional] Receptora (SS)." },
+          { "key": "serverASId", "value": "{{serverASId}}", "description": "[MOP — Opcional] Transmissora (AS)." },
+          { "key": "Authorization", "value": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.exemplo-token-insurance-auto", "disabled": true, "description": "[Aplicação Insurance Auto — Obrigatório] Token da chamada ao parceiro. Não enviar ao MOP." },
+          { "key": "x-fapi-interaction-id", "value": "73cac523-d3ae-2289-b106-330a6218710d", "disabled": true, "description": "[Aplicação Insurance Auto — Obrigatório] Ecoado pelo transmissor na resposta ao parceiro." }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"data\": [\n    {\n      \"brand\": \"Organizacao AZ\",\n      \"companies\": [\n        {\n          \"companyName\": \"Seguradora Auto S.A.\",\n          \"cnpjNumber\": \"12345678901234\",\n          \"policies\": [\n            {\n              \"policyId\": \"APOLICE-AUTO-42\",\n              \"productName\": \"Seguro Auto Completo\"\n            }\n          ]\n        }\n      ]\n    }\n  ],\n  \"links\": {\n    \"self\": \"https://api.organizacao.com.br/open-insurance/insurance-auto/v2/insurance-auto\"\n  },\n  \"meta\": {\n    \"totalRecords\": 1,\n    \"totalPages\": 1\n  }\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/data",
+        "description": "**Headers MOP obrigatórios:** `X-Correlation-Id`, `origin=server`, `path`, `operation`, `httpType=Response`.\n**Header MOP condicional (obrigatório aqui):** `statusCode=200`.\n\n`data` nesta API é **array**. Em Consents, `data` é **objeto**."
+      },
+      "response": []
+    }
+  ]
+}

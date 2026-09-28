@@ -34,7 +34,7 @@ final class OpenApiSpecMetadataReader {
             if (!(loaded instanceof Map<?, ?> root)) {
                 return Optional.empty();
             }
-            String basePath = extractBasePath(root);
+            String basePath = OpenApiSpecFileVersion.applyToBasePath(fileName, extractBasePath(root));
             Set<String> pathTemplates = extractPathTemplates(root);
             if (pathTemplates.isEmpty()) {
                 return Optional.empty();

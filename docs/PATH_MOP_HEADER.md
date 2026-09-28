@@ -2,6 +2,8 @@
 
 Referência para montar o header **`path`** enviado ao `POST /v1/anonymize/data`, a partir de um arquivo OpenAPI em `src/main/resources/swagger/current/`.
 
+> **Escopo:** o header `path` cobre **somente** operações das APIs Open Insurance indexadas em `swagger/current/` (consents, customers, `insurance-*`, `quote-*`, `products-services`, etc.). **Endpoints OAuth/FAPI não entram no escopo** — veja [Fora do escopo: OAuth e token endpoint](#fora-do-escopo-oauth-e-token-endpoint).
+
 ---
 
 ## Fórmula
@@ -97,6 +99,56 @@ Vários arquivos compartilham `servers.url` = `.../open-insurance/products-servi
 
 ---
 
+## Fora do escopo: OAuth e token endpoint
+
+**Não reporte** ao MOP Client eventos de emissão ou renovação de token OAuth2/FAPI. Eles **não** possuem spec em `swagger/current/` e **não** devem ser enviados no header `path`.
+
+| Evento | Reportar ao MOP? | Motivo |
+|--------|:----------------:|--------|
+| `client_credentials` (obter token) | **Não** | Infraestrutura do Authorization Server (FAPI-BR), fora das specs Open Insurance |
+| `refresh_token` (renovar token) | **Não** | Idem |
+| Resposta com `access_token` / `refresh_token` | **Não** | Credenciais sensíveis; não há schema Open Insurance para validação |
+
+### Paths OAuth (exemplos — **não** usar no header `path`)
+
+Estes paths vêm do **Diretório de Participantes** / perfil FAPI-BR. O gateway **não** os indexa:
+
+```
+/open-insurance/security/v1/{authorisationServerId}/as/token.oauth2
+```
+
+Exemplo que retorna `NOT_FOUND` (comportamento esperado):
+
+```json
+{
+  "violation": "Operation path not found from URL '/open-insurance/security/v1/zurich-santander-seguros/as/token.oauth2'.",
+  "code": "NOT_FOUND"
+}
+```
+
+### O que reportar em vez do token
+
+Reporte a **transação da API Open Insurance** que consome o `access_token`, não a chamada ao token endpoint:
+
+```
+1. POST token (client_credentials)     →  não reporta ao MOP
+2. POST /open-insurance/consents/v3/consents  →  reporta ao MOP
+3. GET  /open-insurance/customers/v2/...      →  reporta ao MOP
+```
+
+Exemplo — criação de consentimento (após obter token via `client_credentials`):
+
+```http
+origin: client
+path: /open-insurance/consents/v3/consents
+operation: POST
+httpType: Request
+```
+
+Outros canais (PCM, Diretório, ingestão de métricas) usam APIs próprias — ver [`SWAGGER_FASES.md`](SWAGGER_FASES.md) (seção *Infraestrutura*).
+
+---
+
 ## Template de requisição MOP
 
 ```http
@@ -122,9 +174,13 @@ O gateway valida o body JSON conforme a **mensagem HTTP original** da transaçã
 | `origin` | `httpType` | `statusCode` | Schema OpenAPI validado | Quem envia o evento |
 |----------|------------|--------------|-------------------------|---------------------|
 | `client` | `Request` | opcional (100–599) | **requestBody** de `path` + `operation` | Receptora reportando o que **enviou** |
+| `server` | `Request` | opcional (100–599) | **requestBody** de `path` + `operation` | Transmissora reportando o que **recebeu** |
 | `server` | `Response` | **obrigatório** (100–599) | **response body** do status na spec | Transmissora reportando o que **respondeu** |
+| `client` | `Response` | **obrigatório** (100–599) | **response body** do status na spec | Receptora reportando o que **recebeu** |
 
-**Únicas combinações aceitas.** Demais pares (`client`+`Response`, `server`+`Request`, `server`+`Response` sem `statusCode`) → **HTTP 400**.
+A mesma transação correlaciona os quatro eventos pelo mesmo `X-Correlation-Id`, `path` e `operation`. A validação usa só o `httpType` (não gera outro `origin`/`httpType`).
+
+`httpType=Response` sem `statusCode` → **HTTP 400**.
 
 #### `statusCode` com `httpType=Response`
 
@@ -145,6 +201,17 @@ operation: POST
 
 Body: schema `CreateConsent`.
 
+**Request recebido pela transmissora:**
+
+```http
+origin: server
+httpType: Request
+path: /open-insurance/consents/v3/consents
+operation: POST
+```
+
+Body: o mesmo schema `CreateConsent` (o JSON que chegou nela).
+
 **Response (servidor confirma criação):**
 
 ```http
@@ -156,6 +223,18 @@ operation: POST
 ```
 
 Body: schema `ResponseConsent` (resposta `201`).
+
+**Response recebido pela receptora:**
+
+```http
+origin: client
+httpType: Response
+statusCode: 201
+path: /open-insurance/consents/v3/consents
+operation: POST
+```
+
+Body: o mesmo schema `ResponseConsent` (o JSON que ela recebeu de volta).
 
 ### Regras dos headers `httpType` e `statusCode`
 
@@ -170,10 +249,10 @@ Body: schema `ResponseConsent` (resposta `201`).
 
 | `origin` | `httpType` obrigatório | Validação OpenAPI do body |
 |----------|------------------------|---------------------------|
-| `client` | `Request` | **requestBody** da operação (`operation` + `path`) |
-| `server` | `Response` | **response body** da operação (`statusCode` + `operation` + `path`) |
+| `client` ou `server` | `Request` | **requestBody** da operação (`operation` + `path`) |
+| `client` ou `server` | `Response` | **response body** da operação (`statusCode` + `operation` + `path`) |
 
-Combinações inconsistentes (`client` + `Response`, `server` + `Request`) retornam **HTTP 400** pelo `HeaderValidator`.
+`origin` identifica quem reporta (receptora ou transmissora). Não restringe o `httpType`.
 
 ---
 
@@ -181,10 +260,11 @@ Combinações inconsistentes (`client` + `Response`, `server` + `Request`) retor
 
 | Erro | Causa | Correção |
 |------|-------|----------|
-| `path not found from` | path_MOP não existe em nenhum yaml de `swagger/current/` | Confira a fórmula `basePath + operationPath`; use o arquivo correto (v2 vs v3) |
+| `path not found from` … `token.oauth2` | Endpoint **OAuth/FAPI** enviado no `path` | **Não reportar** tokens ao MOP; use o path da **API Open Insurance** (ex.: `/open-insurance/consents/v3/consents`). Ver [Fora do escopo: OAuth](#fora-do-escopo-oauth-e-token-endpoint) |
+| `path not found from` (demais paths) | path_MOP não existe em nenhum yaml de `swagger/current/` | Confira a fórmula `basePath + operationPath`; use o arquivo correto (v2 vs v3) |
 | Path com `{consentId}` literal | Placeholder não substituído | Trocar `{consentId}` pelo URN real |
 | Só `/consents` no header | Faltou o basePath | Aplicar a fórmula completa; gateway rejeita com HTTP 400 se não começar com `/open-insurance/` |
-| `statusCode: 200` em POST consents | Status de sucesso na spec é **201** | Usar `statusCode: 201` com `origin: server` e `httpType: Response` |
+| `statusCode: 200` em POST consents | Status de sucesso na spec é **201** | Usar `statusCode: 201` com `httpType: Response` (`origin` `client` ou `server`) |
 | Body com `data`/`links` e erro pedindo `errors` | `statusCode` não casa com schema de sucesso | Conferir `responses` da operação no YAML |
 | URL completa no header | Host incluído | Enviar **somente** o path: `/open-insurance/...` |
 | Barra final | `/consents/` | Remover barra final (gateway normaliza, mas prefira sem) |
@@ -204,9 +284,9 @@ Combinações inconsistentes (`client` + `Response`, `server` + `Request`) retor
 1. No **startup**, `ApplicationStartupListener` chama `loadAllSpecs()` e registra log `[OPENAPI]`; verifica se `/open-insurance/consents/v3/consents` resolve no registry.
 2. Resolve `path` MOP → spec em `swagger/current/` via `OpenApiCurrentSpecRegistry` (fórmula `basePath + operationPath`).
 3. Usa header **`operation`** (`GET`, `POST`, `PUT`, `DELETE`, …) na validação openapi4j.
-4. Usa header **`httpType`** (deve casar com **`origin`**):
-   - `origin=client` + `httpType=Request` → valida **requestBody**
-   - `origin=server` + `httpType=Response` → valida **response body** (usa `statusCode` do header)
+4. Usa header **`httpType`** (independente de **`origin`**):
+   - `httpType=Request` → valida **requestBody**
+   - `httpType=Response` → valida **response body** (usa `statusCode` do header)
 5. O **RequestValidator** do openapi4j recebe o **path MOP completo** (ex.: `/open-insurance/consents/v3/consents`), não apenas o segmento relativo do YAML (`/consents`).
 6. Campos `type: string` com `format: double|float|int32|int64` (ex.: `shareholding`) são ajustados no carregamento da spec (`OpenApiSpecCompatibilityPatcher`) para validar como **string** via `pattern`, conforme a spec Open Insurance.
 7. Se nenhum spec modular casar, retorna `NOT_FOUND` (`Operation path not found from URL '...'`).

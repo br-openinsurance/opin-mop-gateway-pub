@@ -1,0 +1,63 @@
+{
+  "info": {
+    "_postman_id": "11111111-0002-4000-8000-000000000002",
+    "name": "02 — Fase 1 Dados Abertos (Channels)",
+    "description": "Exemplo de API **Fase 1 — Dados Abertos**. Não exige consentimento do cliente.\n\n**Produto:** `data_channels.yaml` → `GET /open-insurance/channels/v1/branches`\n\n## Headers MOP (`POST /data`)\n| Header | Tipo | Descrição |\n|---|---|---|\n| `X-Correlation-Id` | **Obrigatório** | ID da intenção lógica. |\n| `origin` | **Obrigatório** | `client` + Request ou `server` + Response. |\n| `path` | **Obrigatório** | `/open-insurance/channels/v1/branches` |\n| `operation` | **Obrigatório** | `GET` (verbo da API original). |\n| `httpType` | **Obrigatório** | `Request` ou `Response`. |\n| `statusCode` | **Condicional** | Obrigatório em Response. GET branches sucesso = **200**. |\n| `clientSSId` | Opcional | Em geral **não se aplica** na Fase 1. |\n| `serverASId` | Opcional | Em geral **não se aplica** na Fase 1. |\n| `traceOrigin` | Opcional | Ex.: `CLIENT`. |\n| `X-Mop-Reportid` | Opcional | Se omitido, o gateway gera. |\n\n## Headers da aplicação — Channels GET `/branches` (spec `data_channels.yaml`)\n| Header / parâmetro | Tipo | Descrição |\n|---|---|---|\n| `Authorization` | **Não se aplica** | Dados abertos: sem OAuth/FAPI nesta spec. |\n| `x-fapi-interaction-id` | **Não se aplica** | Não existe na spec de channels. |\n| `page` | Opcional (query) | Página (default 1). Vai na URL da API original, não no MOP. |\n| `page-size` | Opcional (query) | Tamanho da página (default 25). |\n\nNa aba Headers, o que for FAPI/Authorization aparece desmarcado para mostrar que **este produto não exige** esses headers.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080/v1/anonymize" }
+  ],
+  "item": [
+    {
+      "name": "1. Request — GET branches (Fase 1, sem body)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "description": "[MOP — Obrigatório] Corpo JSON. GET sem requestBody → envie {}." },
+          { "key": "X-Correlation-Id", "value": "{{$guid}}", "description": "[MOP — Obrigatório] ID da intenção lógica." },
+          { "key": "origin", "value": "client", "description": "[MOP — Obrigatório] client exige httpType=Request." },
+          { "key": "path", "value": "/open-insurance/channels/v1/branches", "description": "[MOP — Obrigatório] Fase 1. Spec: data_channels.yaml." },
+          { "key": "operation", "value": "GET", "description": "[MOP — Obrigatório] Verbo da API original. O POST desta collection é só o envio ao MOP." },
+          { "key": "httpType", "value": "Request", "description": "[MOP — Obrigatório] Request. GET não tem requestBody." },
+          { "key": "statusCode", "value": "200", "disabled": true, "description": "[MOP — Condicional] Opcional em Request. Obrigatório só em Response." },
+          { "key": "clientSSId", "value": "RECEPTORA-A", "disabled": true, "description": "[MOP — Opcional] Em geral não se aplica na Fase 1 (dados abertos)." },
+          { "key": "serverASId", "value": "TRANSMISSORA-B", "disabled": true, "description": "[MOP — Opcional] Em geral não se aplica na Fase 1." },
+          { "key": "Authorization", "value": "Bearer nao-se-aplica-fase1", "disabled": true, "description": "[Aplicação Channels — Não se aplica] Dados abertos: a spec não exige Authorization." },
+          { "key": "x-fapi-interaction-id", "value": "550e8400-e29b-41d4-a716-446655440000", "disabled": true, "description": "[Aplicação Channels — Não se aplica] FAPI não está na spec data_channels.yaml." }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/data",
+        "description": "**Headers MOP obrigatórios:** `X-Correlation-Id`, `origin`, `path`, `operation=GET`, `httpType=Request`.\n\n**Aplicação:** este produto **não tem** headers FAPI obrigatórios. Query `page` / `page-size` são opcionais na URL original do parceiro."
+      },
+      "response": []
+    },
+    {
+      "name": "2. Response 200 — lista de dependências (branches)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "description": "[MOP — Obrigatório] Corpo JSON do evento." },
+          { "key": "X-Correlation-Id", "value": "{{$guid}}", "description": "[MOP — Obrigatório] Outro UUID (evento distinto do Request)." },
+          { "key": "origin", "value": "server", "description": "[MOP — Obrigatório] server exige httpType=Response." },
+          { "key": "path", "value": "/open-insurance/channels/v1/branches", "description": "[MOP — Obrigatório] Mesmo path da operação original." },
+          { "key": "operation", "value": "GET", "description": "[MOP — Obrigatório] Verbo da API original." },
+          { "key": "httpType", "value": "Response", "description": "[MOP — Obrigatório] Response valida o schema do statusCode." },
+          { "key": "statusCode", "value": "200", "description": "[MOP — Condicional / obrigatório em Response] GET branches sucesso = 200." }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"data\": {\n    \"brand\": {\n      \"name\": \"Organizacao AZ\",\n      \"companies\": [\n        {\n          \"name\": \"Empresa A1\",\n          \"cnpjNumber\": \"12345678901234\",\n          \"branches\": [\n            {\n              \"identification\": {\n                \"type\": \"FILIAL\",\n                \"code\": \"0001\",\n                \"checkDigit\": \"9\",\n                \"name\": \"Dependencia Centro\"\n              },\n              \"postalAddress\": {\n                \"address\": \"Av Paulista 1000\",\n                \"districtName\": \"Bela Vista\",\n                \"townName\": \"Sao Paulo\",\n                \"countrySubDivision\": \"SP\",\n                \"postCode\": \"01310-100\",\n                \"ibgeCode\": \"3550308\"\n              },\n              \"availability\": {\n                \"standards\": [\n                  {\n                    \"weekday\": \"SEGUNDA_FEIRA\",\n                    \"openingTime\": \"09:00:00Z\",\n                    \"closingTime\": \"18:00:00Z\"\n                  }\n                ],\n                \"isPublicAccessAllowed\": true\n              },\n              \"services\": [\n                {\n                  \"name\": \"INFORMACOES_GERAIS_DUVIDAS\",\n                  \"code\": \"07\"\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  },\n  \"links\": {\n    \"self\": \"https://api.organizacao.com.br/open-insurance/channels/v1/branches\"\n  },\n  \"meta\": {\n    \"totalRecords\": 1,\n    \"totalPages\": 1\n  }\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/data",
+        "description": "**Headers MOP obrigatórios:** `X-Correlation-Id`, `origin=server`, `path`, `operation`, `httpType=Response`.\n**Header MOP condicional (obrigatório aqui):** `statusCode=200`."
+      },
+      "response": []
+    }
+  ]
+}

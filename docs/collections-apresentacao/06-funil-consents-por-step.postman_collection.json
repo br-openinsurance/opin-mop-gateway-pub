@@ -1,0 +1,394 @@
+{
+    "info":  {
+                 "_postman_id":  "22222222-0006-4000-8000-000000000006",
+                 "name":  "06 — Funil de consentimentos (um request por step)",
+                 "description":  "Eventos do funil PCM no MOP Client.\n\nEndpoint: POST {{baseUrl}}/data-funil-consents\nAmbiente de desenvolvimento: http://localhost:8080/v1/anonymize/data-funil-consents\n(profile local: porta 8080, context-path /v1/anonymize)\n\nSem headers MOP de rastreio. Um request por step (14). O JSON e o da docs/DOCUMENTACAO.md; so muda o campo step.\n\nHTTP 202 = aceito; 400 = payload/regra de step; 502 = metrica PCM nao entregue.",
+                 "schema":  "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+             },
+    "variable":  [
+                     {
+                         "key":  "baseUrl",
+                         "value":  "http://localhost:8080/v1/anonymize"
+                     }
+                 ],
+    "item":  [
+                 {
+                     "name":  "01. consent-created",
+                     "request":  {
+                                     "method":  "POST",
+                                     "header":  [
+                                                    {
+                                                        "key":  "Content-Type",
+                                                        "value":  "application/json",
+                                                        "description":  "Unico header. Nao enviar origin, path, httpType nem X-Correlation-Id."
+                                                    }
+                                                ],
+                                     "body":  {
+                                                  "mode":  "raw",
+                                                  "raw":  "{\n  \"consentId\": \"urn:bancoex:C1DD33123\",\n  \"step\": \"consent-created\",\n  \"origin\": \"CLIENT\",\n  \"correlationId\": \"577869e5-4c63-4b19-9235-a18d22c80986\",\n  \"additionalInfo\": {\n    \"consent-user\": \"invalid-credentials\",\n    \"authentication-failure-reason\": \"invalid-credentials\",\n    \"user-redirected-back-status\": \"success\",\n    \"token-kind\": \"consent-token\",\n    \"rejected-by\": \"user\",\n    \"revoked-by\": \"user\",\n    \"expired-by\": \"authorization-timeout\"\n  },\n  \"timestamp\": \"2022-11-07T17:26:32Z\",\n  \"clientOrgId\": \"1fb79963-4bff-4204-9370-93aceb8a2f0d\",\n  \"clientSSId\": \"2a59c2a3-529f-41c6-97e3-77395e9951ca\",\n  \"serverOrgId\": \"ff66b95a-d817-4fbe-949a-c5912e240189\",\n  \"serverASId\": \"f8cd7b48-197d-419b-8680-f42226111b6f\",\n  \"permissions\": [\n    \"CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ\"\n  ]\n}",
+                                                  "options":  {
+                                                                  "raw":  {
+                                                                              "language":  "json"
+                                                                          }
+                                                              }
+                                              },
+                                     "url":  "{{baseUrl}}/data-funil-consents",
+                                     "description":  "POST /v1/data-funil-consents — step consent-created. Reporta: Cliente e servidor. Exige additionalInfo.consent-user. Mesmo JSON da DOCUMENTACAO.md; so o campo step muda. Esperado: HTTP 202 se o payload passar na spec PCM e a metrica for entregue; 400 se validacao falhar; 502 se o PCM estiver indisponivel."
+                                 },
+                     "response":  [
+
+                                  ]
+                 },
+                 {
+                     "name":  "02. user-redirected",
+                     "request":  {
+                                     "method":  "POST",
+                                     "header":  [
+                                                    {
+                                                        "key":  "Content-Type",
+                                                        "value":  "application/json",
+                                                        "description":  "Unico header. Nao enviar origin, path, httpType nem X-Correlation-Id."
+                                                    }
+                                                ],
+                                     "body":  {
+                                                  "mode":  "raw",
+                                                  "raw":  "{\n  \"consentId\": \"urn:bancoex:C1DD33123\",\n  \"step\": \"user-redirected\",\n  \"origin\": \"CLIENT\",\n  \"correlationId\": \"577869e5-4c63-4b19-9235-a18d22c80986\",\n  \"additionalInfo\": {\n    \"consent-user\": \"invalid-credentials\",\n    \"authentication-failure-reason\": \"invalid-credentials\",\n    \"user-redirected-back-status\": \"success\",\n    \"token-kind\": \"consent-token\",\n    \"rejected-by\": \"user\",\n    \"revoked-by\": \"user\",\n    \"expired-by\": \"authorization-timeout\"\n  },\n  \"timestamp\": \"2022-11-07T17:26:32Z\",\n  \"clientOrgId\": \"1fb79963-4bff-4204-9370-93aceb8a2f0d\",\n  \"clientSSId\": \"2a59c2a3-529f-41c6-97e3-77395e9951ca\",\n  \"serverOrgId\": \"ff66b95a-d817-4fbe-949a-c5912e240189\",\n  \"serverASId\": \"f8cd7b48-197d-419b-8680-f42226111b6f\",\n  \"permissions\": [\n    \"CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ\"\n  ]\n}",
+                                                  "options":  {
+                                                                  "raw":  {
+                                                                              "language":  "json"
+                                                                          }
+                                                              }
+                                              },
+                                     "url":  "{{baseUrl}}/data-funil-consents",
+                                     "description":  "POST /v1/data-funil-consents — step user-redirected. Reporta: Cliente e servidor. Sem chave extra obrigatoria de additionalInfo. Mesmo JSON da DOCUMENTACAO.md; so o campo step muda. Esperado: HTTP 202 se o payload passar na spec PCM e a metrica for entregue; 400 se validacao falhar; 502 se o PCM estiver indisponivel."
+                                 },
+                     "response":  [
+
+                                  ]
+                 },
+                 {
+                     "name":  "03. user-authentication-failed",
+                     "request":  {
+                                     "method":  "POST",
+                                     "header":  [
+                                                    {
+                                                        "key":  "Content-Type",
+                                                        "value":  "application/json",
+                                                        "description":  "Unico header. Nao enviar origin, path, httpType nem X-Correlation-Id."
+                                                    }
+                                                ],
+                                     "body":  {
+                                                  "mode":  "raw",
+                                                  "raw":  "{\n  \"consentId\": \"urn:bancoex:C1DD33123\",\n  \"step\": \"user-authentication-failed\",\n  \"origin\": \"CLIENT\",\n  \"correlationId\": \"577869e5-4c63-4b19-9235-a18d22c80986\",\n  \"additionalInfo\": {\n    \"consent-user\": \"invalid-credentials\",\n    \"authentication-failure-reason\": \"invalid-credentials\",\n    \"user-redirected-back-status\": \"success\",\n    \"token-kind\": \"consent-token\",\n    \"rejected-by\": \"user\",\n    \"revoked-by\": \"user\",\n    \"expired-by\": \"authorization-timeout\"\n  },\n  \"timestamp\": \"2022-11-07T17:26:32Z\",\n  \"clientOrgId\": \"1fb79963-4bff-4204-9370-93aceb8a2f0d\",\n  \"clientSSId\": \"2a59c2a3-529f-41c6-97e3-77395e9951ca\",\n  \"serverOrgId\": \"ff66b95a-d817-4fbe-949a-c5912e240189\",\n  \"serverASId\": \"f8cd7b48-197d-419b-8680-f42226111b6f\",\n  \"permissions\": [\n    \"CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ\"\n  ]\n}",
+                                                  "options":  {
+                                                                  "raw":  {
+                                                                              "language":  "json"
+                                                                          }
+                                                              }
+                                              },
+                                     "url":  "{{baseUrl}}/data-funil-consents",
+                                     "description":  "POST /v1/data-funil-consents — step user-authentication-failed. Reporta: Servidor. Exige additionalInfo.authentication-failure-reason. Mesmo JSON da DOCUMENTACAO.md; so o campo step muda. Esperado: HTTP 202 se o payload passar na spec PCM e a metrica for entregue; 400 se validacao falhar; 502 se o PCM estiver indisponivel."
+                                 },
+                     "response":  [
+
+                                  ]
+                 },
+                 {
+                     "name":  "04. user-authenticated",
+                     "request":  {
+                                     "method":  "POST",
+                                     "header":  [
+                                                    {
+                                                        "key":  "Content-Type",
+                                                        "value":  "application/json",
+                                                        "description":  "Unico header. Nao enviar origin, path, httpType nem X-Correlation-Id."
+                                                    }
+                                                ],
+                                     "body":  {
+                                                  "mode":  "raw",
+                                                  "raw":  "{\n  \"consentId\": \"urn:bancoex:C1DD33123\",\n  \"step\": \"user-authenticated\",\n  \"origin\": \"CLIENT\",\n  \"correlationId\": \"577869e5-4c63-4b19-9235-a18d22c80986\",\n  \"additionalInfo\": {\n    \"consent-user\": \"invalid-credentials\",\n    \"authentication-failure-reason\": \"invalid-credentials\",\n    \"user-redirected-back-status\": \"success\",\n    \"token-kind\": \"consent-token\",\n    \"rejected-by\": \"user\",\n    \"revoked-by\": \"user\",\n    \"expired-by\": \"authorization-timeout\"\n  },\n  \"timestamp\": \"2022-11-07T17:26:32Z\",\n  \"clientOrgId\": \"1fb79963-4bff-4204-9370-93aceb8a2f0d\",\n  \"clientSSId\": \"2a59c2a3-529f-41c6-97e3-77395e9951ca\",\n  \"serverOrgId\": \"ff66b95a-d817-4fbe-949a-c5912e240189\",\n  \"serverASId\": \"f8cd7b48-197d-419b-8680-f42226111b6f\",\n  \"permissions\": [\n    \"CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ\"\n  ]\n}",
+                                                  "options":  {
+                                                                  "raw":  {
+                                                                              "language":  "json"
+                                                                          }
+                                                              }
+                                              },
+                                     "url":  "{{baseUrl}}/data-funil-consents",
+                                     "description":  "POST /v1/data-funil-consents — step user-authenticated. Reporta: Servidor. Sem chave extra obrigatoria de additionalInfo. Mesmo JSON da DOCUMENTACAO.md; so o campo step muda. Esperado: HTTP 202 se o payload passar na spec PCM e a metrica for entregue; 400 se validacao falhar; 502 se o PCM estiver indisponivel."
+                                 },
+                     "response":  [
+
+                                  ]
+                 },
+                 {
+                     "name":  "05. consent-authorized",
+                     "request":  {
+                                     "method":  "POST",
+                                     "header":  [
+                                                    {
+                                                        "key":  "Content-Type",
+                                                        "value":  "application/json",
+                                                        "description":  "Unico header. Nao enviar origin, path, httpType nem X-Correlation-Id."
+                                                    }
+                                                ],
+                                     "body":  {
+                                                  "mode":  "raw",
+                                                  "raw":  "{\n  \"consentId\": \"urn:bancoex:C1DD33123\",\n  \"step\": \"consent-authorized\",\n  \"origin\": \"CLIENT\",\n  \"correlationId\": \"577869e5-4c63-4b19-9235-a18d22c80986\",\n  \"additionalInfo\": {\n    \"consent-user\": \"invalid-credentials\",\n    \"authentication-failure-reason\": \"invalid-credentials\",\n    \"user-redirected-back-status\": \"success\",\n    \"token-kind\": \"consent-token\",\n    \"rejected-by\": \"user\",\n    \"revoked-by\": \"user\",\n    \"expired-by\": \"authorization-timeout\"\n  },\n  \"timestamp\": \"2022-11-07T17:26:32Z\",\n  \"clientOrgId\": \"1fb79963-4bff-4204-9370-93aceb8a2f0d\",\n  \"clientSSId\": \"2a59c2a3-529f-41c6-97e3-77395e9951ca\",\n  \"serverOrgId\": \"ff66b95a-d817-4fbe-949a-c5912e240189\",\n  \"serverASId\": \"f8cd7b48-197d-419b-8680-f42226111b6f\",\n  \"permissions\": [\n    \"CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ\"\n  ]\n}",
+                                                  "options":  {
+                                                                  "raw":  {
+                                                                              "language":  "json"
+                                                                          }
+                                                              }
+                                              },
+                                     "url":  "{{baseUrl}}/data-funil-consents",
+                                     "description":  "POST /v1/data-funil-consents — step consent-authorized. Reporta: Servidor. Sem chave extra obrigatoria de additionalInfo. Mesmo JSON da DOCUMENTACAO.md; so o campo step muda. Esperado: HTTP 202 se o payload passar na spec PCM e a metrica for entregue; 400 se validacao falhar; 502 se o PCM estiver indisponivel."
+                                 },
+                     "response":  [
+
+                                  ]
+                 },
+                 {
+                     "name":  "06. consent-rejected",
+                     "request":  {
+                                     "method":  "POST",
+                                     "header":  [
+                                                    {
+                                                        "key":  "Content-Type",
+                                                        "value":  "application/json",
+                                                        "description":  "Unico header. Nao enviar origin, path, httpType nem X-Correlation-Id."
+                                                    }
+                                                ],
+                                     "body":  {
+                                                  "mode":  "raw",
+                                                  "raw":  "{\n  \"consentId\": \"urn:bancoex:C1DD33123\",\n  \"step\": \"consent-rejected\",\n  \"origin\": \"CLIENT\",\n  \"correlationId\": \"577869e5-4c63-4b19-9235-a18d22c80986\",\n  \"additionalInfo\": {\n    \"consent-user\": \"invalid-credentials\",\n    \"authentication-failure-reason\": \"invalid-credentials\",\n    \"user-redirected-back-status\": \"success\",\n    \"token-kind\": \"consent-token\",\n    \"rejected-by\": \"user\",\n    \"revoked-by\": \"user\",\n    \"expired-by\": \"authorization-timeout\"\n  },\n  \"timestamp\": \"2022-11-07T17:26:32Z\",\n  \"clientOrgId\": \"1fb79963-4bff-4204-9370-93aceb8a2f0d\",\n  \"clientSSId\": \"2a59c2a3-529f-41c6-97e3-77395e9951ca\",\n  \"serverOrgId\": \"ff66b95a-d817-4fbe-949a-c5912e240189\",\n  \"serverASId\": \"f8cd7b48-197d-419b-8680-f42226111b6f\",\n  \"permissions\": [\n    \"CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ\"\n  ]\n}",
+                                                  "options":  {
+                                                                  "raw":  {
+                                                                              "language":  "json"
+                                                                          }
+                                                              }
+                                              },
+                                     "url":  "{{baseUrl}}/data-funil-consents",
+                                     "description":  "POST /v1/data-funil-consents — step consent-rejected. Reporta: Servidor. Exige additionalInfo.rejected-by. Mesmo JSON da DOCUMENTACAO.md; so o campo step muda. Esperado: HTTP 202 se o payload passar na spec PCM e a metrica for entregue; 400 se validacao falhar; 502 se o PCM estiver indisponivel."
+                                 },
+                     "response":  [
+
+                                  ]
+                 },
+                 {
+                     "name":  "07. authorization-code-created",
+                     "request":  {
+                                     "method":  "POST",
+                                     "header":  [
+                                                    {
+                                                        "key":  "Content-Type",
+                                                        "value":  "application/json",
+                                                        "description":  "Unico header. Nao enviar origin, path, httpType nem X-Correlation-Id."
+                                                    }
+                                                ],
+                                     "body":  {
+                                                  "mode":  "raw",
+                                                  "raw":  "{\n  \"consentId\": \"urn:bancoex:C1DD33123\",\n  \"step\": \"authorization-code-created\",\n  \"origin\": \"CLIENT\",\n  \"correlationId\": \"577869e5-4c63-4b19-9235-a18d22c80986\",\n  \"additionalInfo\": {\n    \"consent-user\": \"invalid-credentials\",\n    \"authentication-failure-reason\": \"invalid-credentials\",\n    \"user-redirected-back-status\": \"success\",\n    \"token-kind\": \"consent-token\",\n    \"rejected-by\": \"user\",\n    \"revoked-by\": \"user\",\n    \"expired-by\": \"authorization-timeout\"\n  },\n  \"timestamp\": \"2022-11-07T17:26:32Z\",\n  \"clientOrgId\": \"1fb79963-4bff-4204-9370-93aceb8a2f0d\",\n  \"clientSSId\": \"2a59c2a3-529f-41c6-97e3-77395e9951ca\",\n  \"serverOrgId\": \"ff66b95a-d817-4fbe-949a-c5912e240189\",\n  \"serverASId\": \"f8cd7b48-197d-419b-8680-f42226111b6f\",\n  \"permissions\": [\n    \"CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ\"\n  ]\n}",
+                                                  "options":  {
+                                                                  "raw":  {
+                                                                              "language":  "json"
+                                                                          }
+                                                              }
+                                              },
+                                     "url":  "{{baseUrl}}/data-funil-consents",
+                                     "description":  "POST /v1/data-funil-consents — step authorization-code-created. Reporta: Servidor. Sem chave extra obrigatoria de additionalInfo. Mesmo JSON da DOCUMENTACAO.md; so o campo step muda. Esperado: HTTP 202 se o payload passar na spec PCM e a metrica for entregue; 400 se validacao falhar; 502 se o PCM estiver indisponivel."
+                                 },
+                     "response":  [
+
+                                  ]
+                 },
+                 {
+                     "name":  "08. user-redirected-back",
+                     "request":  {
+                                     "method":  "POST",
+                                     "header":  [
+                                                    {
+                                                        "key":  "Content-Type",
+                                                        "value":  "application/json",
+                                                        "description":  "Unico header. Nao enviar origin, path, httpType nem X-Correlation-Id."
+                                                    }
+                                                ],
+                                     "body":  {
+                                                  "mode":  "raw",
+                                                  "raw":  "{\n  \"consentId\": \"urn:bancoex:C1DD33123\",\n  \"step\": \"user-redirected-back\",\n  \"origin\": \"CLIENT\",\n  \"correlationId\": \"577869e5-4c63-4b19-9235-a18d22c80986\",\n  \"additionalInfo\": {\n    \"consent-user\": \"invalid-credentials\",\n    \"authentication-failure-reason\": \"invalid-credentials\",\n    \"user-redirected-back-status\": \"success\",\n    \"token-kind\": \"consent-token\",\n    \"rejected-by\": \"user\",\n    \"revoked-by\": \"user\",\n    \"expired-by\": \"authorization-timeout\"\n  },\n  \"timestamp\": \"2022-11-07T17:26:32Z\",\n  \"clientOrgId\": \"1fb79963-4bff-4204-9370-93aceb8a2f0d\",\n  \"clientSSId\": \"2a59c2a3-529f-41c6-97e3-77395e9951ca\",\n  \"serverOrgId\": \"ff66b95a-d817-4fbe-949a-c5912e240189\",\n  \"serverASId\": \"f8cd7b48-197d-419b-8680-f42226111b6f\",\n  \"permissions\": [\n    \"CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ\"\n  ]\n}",
+                                                  "options":  {
+                                                                  "raw":  {
+                                                                              "language":  "json"
+                                                                          }
+                                                              }
+                                              },
+                                     "url":  "{{baseUrl}}/data-funil-consents",
+                                     "description":  "POST /v1/data-funil-consents — step user-redirected-back. Reporta: Cliente e servidor. Exige additionalInfo.user-redirected-back-status. Mesmo JSON da DOCUMENTACAO.md; so o campo step muda. Esperado: HTTP 202 se o payload passar na spec PCM e a metrica for entregue; 400 se validacao falhar; 502 se o PCM estiver indisponivel."
+                                 },
+                     "response":  [
+
+                                  ]
+                 },
+                 {
+                     "name":  "09. consent-token-generated",
+                     "request":  {
+                                     "method":  "POST",
+                                     "header":  [
+                                                    {
+                                                        "key":  "Content-Type",
+                                                        "value":  "application/json",
+                                                        "description":  "Unico header. Nao enviar origin, path, httpType nem X-Correlation-Id."
+                                                    }
+                                                ],
+                                     "body":  {
+                                                  "mode":  "raw",
+                                                  "raw":  "{\n  \"consentId\": \"urn:bancoex:C1DD33123\",\n  \"step\": \"consent-token-generated\",\n  \"origin\": \"CLIENT\",\n  \"correlationId\": \"577869e5-4c63-4b19-9235-a18d22c80986\",\n  \"additionalInfo\": {\n    \"consent-user\": \"invalid-credentials\",\n    \"authentication-failure-reason\": \"invalid-credentials\",\n    \"user-redirected-back-status\": \"success\",\n    \"token-kind\": \"consent-token\",\n    \"rejected-by\": \"user\",\n    \"revoked-by\": \"user\",\n    \"expired-by\": \"authorization-timeout\"\n  },\n  \"timestamp\": \"2022-11-07T17:26:32Z\",\n  \"clientOrgId\": \"1fb79963-4bff-4204-9370-93aceb8a2f0d\",\n  \"clientSSId\": \"2a59c2a3-529f-41c6-97e3-77395e9951ca\",\n  \"serverOrgId\": \"ff66b95a-d817-4fbe-949a-c5912e240189\",\n  \"serverASId\": \"f8cd7b48-197d-419b-8680-f42226111b6f\",\n  \"permissions\": [\n    \"CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ\"\n  ]\n}",
+                                                  "options":  {
+                                                                  "raw":  {
+                                                                              "language":  "json"
+                                                                          }
+                                                              }
+                                              },
+                                     "url":  "{{baseUrl}}/data-funil-consents",
+                                     "description":  "POST /v1/data-funil-consents — step consent-token-generated. Reporta: Servidor. Sem chave extra obrigatoria de additionalInfo. Mesmo JSON da DOCUMENTACAO.md; so o campo step muda. Esperado: HTTP 202 se o payload passar na spec PCM e a metrica for entregue; 400 se validacao falhar; 502 se o PCM estiver indisponivel."
+                                 },
+                     "response":  [
+
+                                  ]
+                 },
+                 {
+                     "name":  "10. consent-token-received",
+                     "request":  {
+                                     "method":  "POST",
+                                     "header":  [
+                                                    {
+                                                        "key":  "Content-Type",
+                                                        "value":  "application/json",
+                                                        "description":  "Unico header. Nao enviar origin, path, httpType nem X-Correlation-Id."
+                                                    }
+                                                ],
+                                     "body":  {
+                                                  "mode":  "raw",
+                                                  "raw":  "{\n  \"consentId\": \"urn:bancoex:C1DD33123\",\n  \"step\": \"consent-token-received\",\n  \"origin\": \"CLIENT\",\n  \"correlationId\": \"577869e5-4c63-4b19-9235-a18d22c80986\",\n  \"additionalInfo\": {\n    \"consent-user\": \"invalid-credentials\",\n    \"authentication-failure-reason\": \"invalid-credentials\",\n    \"user-redirected-back-status\": \"success\",\n    \"token-kind\": \"consent-token\",\n    \"rejected-by\": \"user\",\n    \"revoked-by\": \"user\",\n    \"expired-by\": \"authorization-timeout\"\n  },\n  \"timestamp\": \"2022-11-07T17:26:32Z\",\n  \"clientOrgId\": \"1fb79963-4bff-4204-9370-93aceb8a2f0d\",\n  \"clientSSId\": \"2a59c2a3-529f-41c6-97e3-77395e9951ca\",\n  \"serverOrgId\": \"ff66b95a-d817-4fbe-949a-c5912e240189\",\n  \"serverASId\": \"f8cd7b48-197d-419b-8680-f42226111b6f\",\n  \"permissions\": [\n    \"CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ\"\n  ]\n}",
+                                                  "options":  {
+                                                                  "raw":  {
+                                                                              "language":  "json"
+                                                                          }
+                                                              }
+                                              },
+                                     "url":  "{{baseUrl}}/data-funil-consents",
+                                     "description":  "POST /v1/data-funil-consents — step consent-token-received. Reporta: Cliente. Sem chave extra obrigatoria de additionalInfo. Mesmo JSON da DOCUMENTACAO.md; so o campo step muda. Esperado: HTTP 202 se o payload passar na spec PCM e a metrica for entregue; 400 se validacao falhar; 502 se o PCM estiver indisponivel."
+                                 },
+                     "response":  [
+
+                                  ]
+                 },
+                 {
+                     "name":  "11. refresh-token-used",
+                     "request":  {
+                                     "method":  "POST",
+                                     "header":  [
+                                                    {
+                                                        "key":  "Content-Type",
+                                                        "value":  "application/json",
+                                                        "description":  "Unico header. Nao enviar origin, path, httpType nem X-Correlation-Id."
+                                                    }
+                                                ],
+                                     "body":  {
+                                                  "mode":  "raw",
+                                                  "raw":  "{\n  \"consentId\": \"urn:bancoex:C1DD33123\",\n  \"step\": \"refresh-token-used\",\n  \"origin\": \"CLIENT\",\n  \"correlationId\": \"577869e5-4c63-4b19-9235-a18d22c80986\",\n  \"additionalInfo\": {\n    \"consent-user\": \"invalid-credentials\",\n    \"authentication-failure-reason\": \"invalid-credentials\",\n    \"user-redirected-back-status\": \"success\",\n    \"token-kind\": \"consent-token\",\n    \"rejected-by\": \"user\",\n    \"revoked-by\": \"user\",\n    \"expired-by\": \"authorization-timeout\"\n  },\n  \"timestamp\": \"2022-11-07T17:26:32Z\",\n  \"clientOrgId\": \"1fb79963-4bff-4204-9370-93aceb8a2f0d\",\n  \"clientSSId\": \"2a59c2a3-529f-41c6-97e3-77395e9951ca\",\n  \"serverOrgId\": \"ff66b95a-d817-4fbe-949a-c5912e240189\",\n  \"serverASId\": \"f8cd7b48-197d-419b-8680-f42226111b6f\",\n  \"permissions\": [\n    \"CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ\"\n  ]\n}",
+                                                  "options":  {
+                                                                  "raw":  {
+                                                                              "language":  "json"
+                                                                          }
+                                                              }
+                                              },
+                                     "url":  "{{baseUrl}}/data-funil-consents",
+                                     "description":  "POST /v1/data-funil-consents — step refresh-token-used. Reporta: Cliente e servidor. Sem chave extra obrigatoria de additionalInfo. Mesmo JSON da DOCUMENTACAO.md; so o campo step muda. Esperado: HTTP 202 se o payload passar na spec PCM e a metrica for entregue; 400 se validacao falhar; 502 se o PCM estiver indisponivel."
+                                 },
+                     "response":  [
+
+                                  ]
+                 },
+                 {
+                     "name":  "12. resource-accessed",
+                     "request":  {
+                                     "method":  "POST",
+                                     "header":  [
+                                                    {
+                                                        "key":  "Content-Type",
+                                                        "value":  "application/json",
+                                                        "description":  "Unico header. Nao enviar origin, path, httpType nem X-Correlation-Id."
+                                                    }
+                                                ],
+                                     "body":  {
+                                                  "mode":  "raw",
+                                                  "raw":  "{\n  \"consentId\": \"urn:bancoex:C1DD33123\",\n  \"step\": \"resource-accessed\",\n  \"origin\": \"CLIENT\",\n  \"correlationId\": \"577869e5-4c63-4b19-9235-a18d22c80986\",\n  \"additionalInfo\": {\n    \"consent-user\": \"invalid-credentials\",\n    \"authentication-failure-reason\": \"invalid-credentials\",\n    \"user-redirected-back-status\": \"success\",\n    \"token-kind\": \"consent-token\",\n    \"rejected-by\": \"user\",\n    \"revoked-by\": \"user\",\n    \"expired-by\": \"authorization-timeout\"\n  },\n  \"timestamp\": \"2022-11-07T17:26:32Z\",\n  \"clientOrgId\": \"1fb79963-4bff-4204-9370-93aceb8a2f0d\",\n  \"clientSSId\": \"2a59c2a3-529f-41c6-97e3-77395e9951ca\",\n  \"serverOrgId\": \"ff66b95a-d817-4fbe-949a-c5912e240189\",\n  \"serverASId\": \"f8cd7b48-197d-419b-8680-f42226111b6f\",\n  \"permissions\": [\n    \"CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ\"\n  ]\n}",
+                                                  "options":  {
+                                                                  "raw":  {
+                                                                              "language":  "json"
+                                                                          }
+                                                              }
+                                              },
+                                     "url":  "{{baseUrl}}/data-funil-consents",
+                                     "description":  "POST /v1/data-funil-consents — step resource-accessed. Reporta: Cliente e servidor. Exige additionalInfo.token-kind. Mesmo JSON da DOCUMENTACAO.md; so o campo step muda. Esperado: HTTP 202 se o payload passar na spec PCM e a metrica for entregue; 400 se validacao falhar; 502 se o PCM estiver indisponivel."
+                                 },
+                     "response":  [
+
+                                  ]
+                 },
+                 {
+                     "name":  "13. consent-revoked",
+                     "request":  {
+                                     "method":  "POST",
+                                     "header":  [
+                                                    {
+                                                        "key":  "Content-Type",
+                                                        "value":  "application/json",
+                                                        "description":  "Unico header. Nao enviar origin, path, httpType nem X-Correlation-Id."
+                                                    }
+                                                ],
+                                     "body":  {
+                                                  "mode":  "raw",
+                                                  "raw":  "{\n  \"consentId\": \"urn:bancoex:C1DD33123\",\n  \"step\": \"consent-revoked\",\n  \"origin\": \"CLIENT\",\n  \"correlationId\": \"577869e5-4c63-4b19-9235-a18d22c80986\",\n  \"additionalInfo\": {\n    \"consent-user\": \"invalid-credentials\",\n    \"authentication-failure-reason\": \"invalid-credentials\",\n    \"user-redirected-back-status\": \"success\",\n    \"token-kind\": \"consent-token\",\n    \"rejected-by\": \"user\",\n    \"revoked-by\": \"user\",\n    \"expired-by\": \"authorization-timeout\"\n  },\n  \"timestamp\": \"2022-11-07T17:26:32Z\",\n  \"clientOrgId\": \"1fb79963-4bff-4204-9370-93aceb8a2f0d\",\n  \"clientSSId\": \"2a59c2a3-529f-41c6-97e3-77395e9951ca\",\n  \"serverOrgId\": \"ff66b95a-d817-4fbe-949a-c5912e240189\",\n  \"serverASId\": \"f8cd7b48-197d-419b-8680-f42226111b6f\",\n  \"permissions\": [\n    \"CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ\"\n  ]\n}",
+                                                  "options":  {
+                                                                  "raw":  {
+                                                                              "language":  "json"
+                                                                          }
+                                                              }
+                                              },
+                                     "url":  "{{baseUrl}}/data-funil-consents",
+                                     "description":  "POST /v1/data-funil-consents — step consent-revoked. Reporta: Cliente e servidor. Exige additionalInfo.revoked-by. Mesmo JSON da DOCUMENTACAO.md; so o campo step muda. Esperado: HTTP 202 se o payload passar na spec PCM e a metrica for entregue; 400 se validacao falhar; 502 se o PCM estiver indisponivel."
+                                 },
+                     "response":  [
+
+                                  ]
+                 },
+                 {
+                     "name":  "14. consent-expired",
+                     "request":  {
+                                     "method":  "POST",
+                                     "header":  [
+                                                    {
+                                                        "key":  "Content-Type",
+                                                        "value":  "application/json",
+                                                        "description":  "Unico header. Nao enviar origin, path, httpType nem X-Correlation-Id."
+                                                    }
+                                                ],
+                                     "body":  {
+                                                  "mode":  "raw",
+                                                  "raw":  "{\n  \"consentId\": \"urn:bancoex:C1DD33123\",\n  \"step\": \"consent-expired\",\n  \"origin\": \"CLIENT\",\n  \"correlationId\": \"577869e5-4c63-4b19-9235-a18d22c80986\",\n  \"additionalInfo\": {\n    \"consent-user\": \"invalid-credentials\",\n    \"authentication-failure-reason\": \"invalid-credentials\",\n    \"user-redirected-back-status\": \"success\",\n    \"token-kind\": \"consent-token\",\n    \"rejected-by\": \"user\",\n    \"revoked-by\": \"user\",\n    \"expired-by\": \"authorization-timeout\"\n  },\n  \"timestamp\": \"2022-11-07T17:26:32Z\",\n  \"clientOrgId\": \"1fb79963-4bff-4204-9370-93aceb8a2f0d\",\n  \"clientSSId\": \"2a59c2a3-529f-41c6-97e3-77395e9951ca\",\n  \"serverOrgId\": \"ff66b95a-d817-4fbe-949a-c5912e240189\",\n  \"serverASId\": \"f8cd7b48-197d-419b-8680-f42226111b6f\",\n  \"permissions\": [\n    \"CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ\"\n  ]\n}",
+                                                  "options":  {
+                                                                  "raw":  {
+                                                                              "language":  "json"
+                                                                          }
+                                                              }
+                                              },
+                                     "url":  "{{baseUrl}}/data-funil-consents",
+                                     "description":  "POST /v1/data-funil-consents — step consent-expired. Reporta: Cliente e servidor. Exige additionalInfo.expired-by. Mesmo JSON da DOCUMENTACAO.md; so o campo step muda. Esperado: HTTP 202 se o payload passar na spec PCM e a metrica for entregue; 400 se validacao falhar; 502 se o PCM estiver indisponivel."
+                                 },
+                     "response":  [
+
+                                  ]
+                 }
+             ]
+}

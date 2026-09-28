@@ -12,6 +12,8 @@ import java.util.Optional;
  */
 final class OpenApiSpecPhaseCatalog {
 
+    static final String CONSENT_FUNNEL_INGESTION_SPEC = "consent-funnel-ingestion.yaml";
+
     private static final Map<String, OpenInsurancePhase> BY_FILE = buildFileIndex();
 
     private OpenApiSpecPhaseCatalog() {
@@ -21,10 +23,25 @@ final class OpenApiSpecPhaseCatalog {
         if (fileName == null) {
             return OpenInsurancePhase.INTERNAL;
         }
-        return BY_FILE.getOrDefault(fileName, phaseForFileNameHeuristic(fileName));
+        OpenInsurancePhase mapped = BY_FILE.get(fileName);
+        if (mapped != null) {
+            return mapped;
+        }
+        Optional<String> canonical = OpenApiSpecFileVersion.canonicalFileName(fileName);
+        if (canonical.isPresent()) {
+            OpenInsurancePhase fromCanonical = BY_FILE.get(canonical.get());
+            if (fromCanonical != null) {
+                return fromCanonical;
+            }
+        }
+        return phaseForFileNameHeuristic(fileName);
     }
 
     static boolean excludedFromOpenInsuranceValidation(String fileName) {
+        if (CONSENT_FUNNEL_INGESTION_SPEC.equals(fileName)) {
+            // Indexada para validação do ingresso PCM (`POST /data-funil-consents`), fora do header path MOP.
+            return false;
+        }
         return phaseForFile(fileName) == OpenInsurancePhase.INTERNAL;
     }
 
@@ -40,7 +57,9 @@ final class OpenApiSpecPhaseCatalog {
             return OpenInsurancePhase.FASE_2_AND_3;
         }
         if (normalized.startsWith("/open-insurance/products-services/")
-                || normalized.startsWith("/open-insurance/channels/")) {
+                || normalized.startsWith("/open-insurance/channels/")
+                || normalized.startsWith("/open-insurance/discovery/")
+                || normalized.startsWith("/open-insurance/admin/")) {
             return OpenInsurancePhase.FASE_1;
         }
         if (normalized.startsWith("/open-insurance/customers/")) {
@@ -181,9 +200,12 @@ final class OpenApiSpecPhaseCatalog {
                 "quote-transport.yaml",
                 "webhook.yaml");
 
-        // Infraestrutura / fora das fases MOP (não indexados para validação Open Insurance)
+        // Infraestrutura PCM (ingresso próprio, fora do header path MOP)
         register(index, OpenInsurancePhase.INTERNAL,
-                "consent-funnel-ingestion.yaml",
+                "consent-funnel-ingestion.yaml");
+
+        // Discovery e métricas administrativas (Diretório) — validadas no header path
+        registerFase1(index,
                 "discovery.yaml",
                 "admin_metrics.yaml");
 

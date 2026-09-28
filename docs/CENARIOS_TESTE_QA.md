@@ -29,7 +29,7 @@ Todos os headers abaixo são enviados na requisição `POST /v1/anonymize/data`.
 | Header | Obrigatório | Descrição | Regras de validação | Exemplo |
 |--------|:-----------:|-----------|---------------------|---------|
 | `X-Correlation-Id` | **Sim** | ID da intenção lógica / correlação (fornecido pelo cliente). | Não nulo; não vazio após trim; ≥ 1 caractere. Recomendado UUID v4. | `f47ac10b-58cc-4372-a567-0e02b2c3d479` |
-| `origin` | **Sim** | Origem da chamada no fluxo MOP. | `client` exige `httpType=Request`; `server` exige `httpType=Response` (case-insensitive). | `client` |
+| `origin` | **Sim** | Quem reporta o evento. | `client` (receptora) ou `server` (transmissora), independente de `httpType`. | `client` |
 | `path` | **Sim** | Rota **concreta** do recurso Open Insurance (`path_MOP` completo). | Não vazio; deve começar com `/open-insurance/`; **não** usar `{consentId}` literal nem só `/consents`. Ver `PATH_MOP_HEADER.md`. | `/open-insurance/consents/v3/consents` |
 | `operation` | **Sim** | Verbo HTTP da operação de negócio original. | Um de: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, `OPTIONS`, `TRACE` (case-insensitive). | `POST` |
 | `httpType` | **Sim** | Tipo da mensagem HTTP no fluxo MOP. | Apenas `Request` ou `Response` (case-insensitive). | `Request` |
@@ -50,14 +50,16 @@ Todos os headers abaixo são enviados na requisição `POST /v1/anonymize/data`.
 | `traceOrigin` | **Não** | Origem do evento de trace (ex.: `CLIENT`, `SERVER`). | Campo `trace.traceOrigin` vazio no `MessageDTO` enviado ao MOP; fluxo segue normalmente. Repassado na fila de retry se informado. | `CLIENT` |
 | `X-Mop-Reportid` | **Não** | ID de rastreio MOP (legado/interno). | Gateway **gera** um identificador (`TraceabilityService`). | `mop-report-7f3c9a2b` |
 
-> **`origin` + `httpType` + `statusCode`:** apenas duas combinações válidas para validação OpenAPI:
->
-> | `origin` | `httpType` | `statusCode` | Valida |
-> |----------|------------|--------------|--------|
-> | `client` | `Request` | opcional | **requestBody** |
-> | `server` | `Response` | **obrigatório** | **response body** do status na spec |
->
-> `statusCode` deve ser o status **da API Open Insurance** (ex.: POST consents v3 sucesso = **201**). Detalhes: [`PATH_MOP_HEADER.md`](PATH_MOP_HEADER.md).
+**`origin` + `httpType` + `statusCode`:** quatro combinações. Schema OpenAPI segue o `httpType`. Mesmo `X-Correlation-Id`, `path` e `operation` na mesma transação.
+
+| `origin` | `httpType` | `statusCode` | Valida | Quem reporta |
+|----------|------------|--------------|--------|--------------|
+| `client` | `Request` | opcional | **requestBody** | Receptora enviou |
+| `server` | `Request` | opcional | **requestBody** | Transmissora recebeu |
+| `server` | `Response` | **obrigatório** | **response body** | Transmissora enviou |
+| `client` | `Response` | **obrigatório** | **response body** | Receptora recebeu |
+
+`statusCode` deve ser o status **da API Open Insurance** (ex.: POST consents v3 sucesso = **201**). Detalhes: [`PATH_MOP_HEADER.md`](PATH_MOP_HEADER.md).
 
 > **`httpType` e `statusCode`:** `httpType` é sempre obrigatório. `statusCode` só é obrigatório quando `httpType=Response`; com `httpType=Request`, pode ser omitido ou informado (se informado, deve ser 100–599).
 
@@ -329,15 +331,17 @@ Headers **opcionais** (`traceOrigin`, `X-Mop-Reportid`) não devem ser enviados 
 
 ---
 
-### Cenário 3.12 — `origin` / `httpType` inconsistentes (P0)
+### Cenário 3.12 — request recebido pela transmissora e response recebido pela receptora (P0)
 
 **Passos**
-1. Enviar `origin: client` com `httpType: Response`.
-2. Enviar `origin: server` com `httpType: Request`.
+1. Enviar `origin: server` com `httpType: Request`, `path`/`operation` de POST consents v3, body `CreateConsent` válido (request que a transmissora **recebeu**).
+2. Enviar `origin: client` com `httpType: Response`, `statusCode: 201`, mesmo `path`/`operation`, body `ResponseConsent` válido (response que a receptora **recebeu**).
+3. Usar o mesmo `X-Correlation-Id` nos dois envios.
 
 **Resultado esperado**
-- HTTP **400** em ambos.
-- `details` exige `Request` para `client` ou `Response` para `server`.
+- HTTP **200** ou **202** em ambos (headers aceitos).
+- `validations.status`: `"SUCCESS"` — passo 1 valida **requestBody**; passo 2 valida **response 201**.
+- `origin` e `httpType` permanecem os enviados (a validação não altera esses headers).
 
 ---
 

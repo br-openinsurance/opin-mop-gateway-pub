@@ -8,6 +8,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 
@@ -45,6 +46,19 @@ public class GlobalExceptionHandler {
                 "Details: " + ex.getMessage()
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
+    }
+
+    /**
+     * Unknown URL: Spring would otherwise wrap {@link NoResourceFoundException} as HTTP 500.
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<List<String>> handleNoResourceFound(NoResourceFoundException ex) {
+        logger.warn("Endpoint not found: {}", ex.getMessage());
+        List<String> errors = List.of(
+                "Endpoint not found.",
+                "Details: " + ex.getHttpMethod() + " " + ex.getResourcePath()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errors);
     }
 
     /**

@@ -24,10 +24,10 @@ info:
 
     **Header `path`:** envie o **path concreto** da transação Open Insurance (`basePath + operationPath` com parâmetros substituídos). **Não** envie placeholders `{consentId}`. Ver `docs/PATH_MOP_HEADER.md`.
 
-    **Headers `origin`, `httpType` e `statusCode`:** apenas duas combinações válidas para validação OpenAPI:
-    - `origin=client` + `httpType=Request` → valida **requestBody** (`statusCode` opcional).
-    - `origin=server` + `httpType=Response` + `statusCode` obrigatório → valida **response body** do status informado (deve existir em `responses` da spec; ex.: POST consents v3 sucesso = **201**, não 200).
-    Combinações inconsistentes retornam HTTP 400. Ver `docs/PATH_MOP_HEADER.md`.
+    **Headers `origin`, `httpType` e `statusCode`:** quatro combinações válidas. O schema OpenAPI segue o `httpType` (não o `origin`):
+    - `httpType=Request` → valida **requestBody** (`statusCode` opcional). Quem reporta: `client` (receptora enviou) ou `server` (transmissora recebeu).
+    - `httpType=Response` + `statusCode` obrigatório → valida **response body** do status. Quem reporta: `server` (transmissora enviou) ou `client` (receptora recebeu).
+    `statusCode` omitido em Response → HTTP 400. Ver `docs/PATH_MOP_HEADER.md`.
 
   contact:
     name: MOP Team
@@ -244,9 +244,10 @@ components:
       name: "origin"
       in: "header"
       description: |
-        Origem da chamada: `client` ou `server` (**comparação case-insensitive** em `HeaderValidator`).
-        Deve ser **consistente** com `httpType`: `client` → `Request`; `server` → `Response`.
-        Usado para rastreio no `MessageDTO` (`trace.origin`) e define qual schema OpenAPI é validado (via `httpType` acoplado).
+        Origem de quem reporta o evento: `client` (receptora) ou `server` (transmissora)
+        (**comparação case-insensitive** em `HeaderValidator`).
+        Independente de `httpType`. Os quatro pares são aceitos.
+        Usado para rastreio no `MessageDTO` (`trace.origin`). O schema OpenAPI é escolhido só pelo `httpType`.
       required: true
       schema:
         type: string
@@ -298,7 +299,7 @@ components:
       in: "header"
       description: |
         Tipo da mensagem HTTP no fluxo MOP. **Obrigatório.** Aceita (**case-insensitive**): `Request`, `Response`.
-        Deve ser **consistente** com `origin`: `client` exige `Request`; `server` exige `Response` (e `statusCode` obrigatório).
+        Independente de `origin`. `Request` valida o **requestBody**; `Response` valida o **response body** e exige `statusCode`.
       required: true
       schema:
         type: string

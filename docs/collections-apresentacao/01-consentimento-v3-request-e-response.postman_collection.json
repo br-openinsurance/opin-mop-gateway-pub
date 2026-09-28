@@ -1,0 +1,77 @@
+{
+  "info": {
+    "_postman_id": "11111111-0001-4000-8000-000000000001",
+    "name": "01 — Consentimento v3 (Request e Response)",
+    "description": "Reportar ao MOP Client a criação de consentimento Open Insurance (API Consents v3 — transversal Fases 2 e 3).\n\n**Endpoint do gateway:** `POST {{baseUrl}}/data`\n\nSão **dois eventos** distintos (dois `X-Correlation-Id`):\n1. Request — body `CreateConsent`\n2. Response — body `ResponseConsent` com `statusCode: 201`\n\nOs headers da **aplicação** (FAPI) vão na chamada **ao parceiro**. Os headers **MOP** vão no `POST /data`. O gateway **não valida** FAPI.\n\n## Headers MOP (`POST /data`)\n| Header | Tipo | Descrição |\n|---|---|---|\n| `X-Correlation-Id` | **Obrigatório** | ID da intenção lógica (UUID). Um por evento. |\n| `origin` | **Obrigatório** | `client` (receptora) ou `server` (transmissora). Independente de `httpType`. As quatro combinações estão na collection 07. |\n| `path` | **Obrigatório** | Path completo, ex. `/open-insurance/consents/v3/consents`. |\n| `operation` | **Obrigatório** | Verbo da API original: `POST`. |\n| `httpType` | **Obrigatório** | `Request` ou `Response`. |\n| `statusCode` | **Condicional** | Obrigatório só em Response. POST consents sucesso = **201**. |\n| `clientSSId` | Opcional | Identificador da receptora (SS). |\n| `serverASId` | Opcional | Identificador da transmissora (AS). |\n| `traceOrigin` | Opcional | Ex.: `CLIENT`. |\n| `X-Mop-Reportid` | Opcional | Se omitido, o gateway gera. |\n\n## Headers da aplicação — Consents v3 POST `/consents` (spec `consents_v3.yaml`)\n| Header | Tipo | Descrição |\n|---|---|---|\n| `Authorization` | **Obrigatório** | Bearer token `client_credentials`, scope `consents`. |\n| `x-fapi-interaction-id` | **Obrigatório** | UUID da interação; o transmissor ecoa na resposta. |\n| `x-idempotency-key` | **Obrigatório** | Idempotência (1–40 caracteres). Só no POST de criação. |\n| `x-fapi-auth-date` | Opcional | Último login do usuário (RFC7231). |\n| `x-fapi-customer-ip-address` | Opcional | IP do usuário logado. |\n| `x-customer-user-agent` | Opcional | User-agent do cliente. |\n| `x-v` | Opcional | Versão do endpoint pedida. |\n| `x-min-v` | Opcional | Versão mínima aceita. |\n\nNa aba Headers, FAPI aparece **desmarcado** (não enviar ao MOP). Marque só se for simular a chamada ao parceiro.\n\nNa resposta do gateway: `validations.status = SUCCESS` e `pending = []`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080/v1/anonymize" },
+    { "key": "clientSSId", "value": "RECEPTORA-A" },
+    { "key": "serverASId", "value": "TRANSMISSORA-B" }
+  ],
+  "item": [
+    {
+      "name": "1. Request — criar consentimento (CreateConsent)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "description": "[MOP — Obrigatório] Corpo JSON do evento." },
+          { "key": "X-Correlation-Id", "value": "{{$guid}}", "description": "[MOP — Obrigatório] ID da intenção lógica. Um UUID por evento." },
+          { "key": "origin", "value": "client", "description": "[MOP — Obrigatório] Quem reporta. client = receptora. Independente de httpType." },
+          { "key": "path", "value": "/open-insurance/consents/v3/consents", "description": "[MOP — Obrigatório] Path completo Open Insurance (não use só /consents)." },
+          { "key": "operation", "value": "POST", "description": "[MOP — Obrigatório] Verbo HTTP da chamada original ao parceiro." },
+          { "key": "httpType", "value": "Request", "description": "[MOP — Obrigatório] Request valida o requestBody (CreateConsent)." },
+          { "key": "statusCode", "value": "201", "disabled": true, "description": "[MOP — Condicional] Opcional em Request. Obrigatório só quando httpType=Response." },
+          { "key": "clientSSId", "value": "{{clientSSId}}", "description": "[MOP — Opcional] Identificador da receptora (SS). Relevante nas Fases 2 e 3." },
+          { "key": "serverASId", "value": "{{serverASId}}", "description": "[MOP — Opcional] Identificador da transmissora (AS)." },
+          { "key": "traceOrigin", "value": "CLIENT", "description": "[MOP — Opcional] Origem do trace." },
+          { "key": "X-Mop-Reportid", "value": "mop-report-consents-001", "disabled": true, "description": "[MOP — Opcional] Se omitido, o gateway gera." },
+          { "key": "Authorization", "value": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.exemplo-token-consents", "disabled": true, "description": "[Aplicação Consents — Obrigatório] Bearer client_credentials, scope consents. Vai ao PARCEIRO, não ao MOP." },
+          { "key": "x-fapi-interaction-id", "value": "550e8400-e29b-41d4-a716-446655440000", "disabled": true, "description": "[Aplicação Consents — Obrigatório] UUID da interação FAPI. O transmissor ecoa na resposta." },
+          { "key": "x-idempotency-key", "value": "idem-consents-2026-09-02-001", "disabled": true, "description": "[Aplicação Consents — Obrigatório] Idempotência do POST /consents (1–40 caracteres)." },
+          { "key": "x-fapi-auth-date", "value": "Tue, 02 Sep 2026 14:30:00 UTC", "disabled": true, "description": "[Aplicação Consents — Opcional] Último login do usuário (RFC7231, 29 caracteres)." },
+          { "key": "x-fapi-customer-ip-address", "value": "220.146.215.155", "disabled": true, "description": "[Aplicação Consents — Opcional] IP do usuário logado na receptora." },
+          { "key": "x-customer-user-agent", "value": "OpenInsuranceApp/1.0", "disabled": true, "description": "[Aplicação Consents — Opcional] User-agent do cliente final." },
+          { "key": "x-v", "value": "3.0.0", "disabled": true, "description": "[Aplicação Consents — Opcional] Versão do endpoint pedida." },
+          { "key": "x-min-v", "value": "3.0.0", "disabled": true, "description": "[Aplicação Consents — Opcional] Versão mínima aceita." }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"data\": {\n    \"permissions\": [\n      \"RESOURCES_READ\",\n      \"CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ\",\n      \"CUSTOMERS_PERSONAL_QUALIFICATION_READ\",\n      \"CUSTOMERS_PERSONAL_ADDITIONALINFO_READ\",\n      \"DAMAGES_AND_PEOPLE_AUTO_READ\",\n      \"DAMAGES_AND_PEOPLE_AUTO_POLICYINFO_READ\",\n      \"DAMAGES_AND_PEOPLE_AUTO_PREMIUM_READ\",\n      \"DAMAGES_AND_PEOPLE_AUTO_CLAIM_READ\"\n    ],\n    \"loggedUser\": {\n      \"document\": {\n        \"identification\": \"11111111111\",\n        \"rel\": \"CPF\"\n      }\n    },\n    \"expirationDateTime\": \"2026-12-31T23:59:59Z\"\n  }\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/data",
+        "description": "Reporta o **pedido** de criação de consentimento (schema `CreateConsent`).\n\n**Headers MOP enviados (obrigatórios):** `X-Correlation-Id`, `origin`, `path`, `operation`, `httpType`.\n**Headers MOP opcionais nesta request:** `clientSSId`, `serverASId`, `traceOrigin`.\n**Headers da aplicação (desmarcados):** `Authorization`, `x-fapi-interaction-id` e `x-idempotency-key` são obrigatórios **no parceiro**; não substituem os headers MOP.\n\n**Esperado no gateway:** HTTP 200 ou 202, `validations.status = SUCCESS`, `pending = []`."
+      },
+      "response": []
+    },
+    {
+      "name": "2. Response 201 — consentimento criado (ResponseConsent)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "description": "[MOP — Obrigatório] Corpo JSON do evento." },
+          { "key": "X-Correlation-Id", "value": "{{$guid}}", "description": "[MOP — Obrigatório] Outro UUID: request e response são eventos diferentes." },
+          { "key": "origin", "value": "server", "description": "[MOP — Obrigatório] Quem reporta. server = transmissora. Independente de httpType." },
+          { "key": "path", "value": "/open-insurance/consents/v3/consents", "description": "[MOP — Obrigatório] Mesmo path da operação original." },
+          { "key": "operation", "value": "POST", "description": "[MOP — Obrigatório] Verbo da operação original." },
+          { "key": "httpType", "value": "Response", "description": "[MOP — Obrigatório] Response valida o schema do statusCode." },
+          { "key": "statusCode", "value": "201", "description": "[MOP — Condicional / obrigatório em Response] POST consents v3 sucesso = 201, não 200." },
+          { "key": "clientSSId", "value": "{{clientSSId}}", "description": "[MOP — Opcional] Identificador da receptora (SS)." },
+          { "key": "serverASId", "value": "{{serverASId}}", "description": "[MOP — Opcional] Identificador da transmissora (AS)." },
+          { "key": "Authorization", "value": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.exemplo-token-consents", "disabled": true, "description": "[Aplicação Consents — Obrigatório] Token da chamada ao parceiro. Não enviar ao MOP." },
+          { "key": "x-fapi-interaction-id", "value": "550e8400-e29b-41d4-a716-446655440000", "disabled": true, "description": "[Aplicação Consents — Obrigatório] Ecoado pelo transmissor na resposta HTTP ao parceiro." }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"data\": {\n    \"consentId\": \"urn:prudential:C1DD93123\",\n    \"creationDateTime\": \"2026-09-02T14:30:00Z\",\n    \"status\": \"AWAITING_AUTHORISATION\",\n    \"statusUpdateDateTime\": \"2026-09-02T14:30:00Z\",\n    \"permissions\": [\n      \"RESOURCES_READ\",\n      \"CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ\",\n      \"CUSTOMERS_PERSONAL_QUALIFICATION_READ\",\n      \"CUSTOMERS_PERSONAL_ADDITIONALINFO_READ\",\n      \"DAMAGES_AND_PEOPLE_AUTO_READ\",\n      \"DAMAGES_AND_PEOPLE_AUTO_POLICYINFO_READ\",\n      \"DAMAGES_AND_PEOPLE_AUTO_PREMIUM_READ\",\n      \"DAMAGES_AND_PEOPLE_AUTO_CLAIM_READ\"\n    ],\n    \"expirationDateTime\": \"2026-12-31T23:59:59Z\"\n  },\n  \"links\": {\n    \"self\": \"https://api.organizacao.com.br/open-insurance/consents/v3/consents/urn:prudential:C1DD93123\"\n  },\n  \"meta\": {\n    \"totalRecords\": 1,\n    \"totalPages\": 1\n  }\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": "{{baseUrl}}/data",
+        "description": "Reporta a **resposta 201** do parceiro (schema `ResponseConsent`).\n\n**Headers MOP obrigatórios:** `X-Correlation-Id`, `origin=server`, `path`, `operation`, `httpType=Response`.\n**Header MOP condicional (obrigatório aqui):** `statusCode=201`.\n\nSe `statusCode` for 200, o validador aplica schema de erro e pede o campo `errors`."
+      },
+      "response": []
+    }
+  ]
+}
