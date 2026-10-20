@@ -48,7 +48,7 @@ flowchart LR
   export MOP_CONSENT_FUNNEL_METRICS_URL=https://mop-server-entrypoint-sandbox.opinbrasil.com.br/metrics
   ```
 
-  Host sandbox: `https://mop-server-entrypoint-sandbox.opinbrasil.com.br/`. Contrato JSON: [`swagger/consent-funnel/consent-funnel.yml`](../src/main/resources/swagger/consent-funnel/consent-funnel.yml). Guia: [`docs/DOCUMENTACAO.md`](DOCUMENTACAO.md).
+  Host sandbox: `https://mop-server-entrypoint-sandbox.opinbrasil.com.br/`. Contrato JSON: [`consent-funnel.yml`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/src/main/resources/swagger/consent-funnel/consent-funnel.yml). Guia: [`docs/DOCUMENTACAO.md`](DOCUMENTACAO.md).
 
 ### Enhancements
 

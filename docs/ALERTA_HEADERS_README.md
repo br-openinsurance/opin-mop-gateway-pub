@@ -345,7 +345,7 @@ curl -i -X POST http://localhost:8080/v1/anonymize/data \
 - [ ] Se Response, mando `statusCode` da **spec**.  
 - [ ] Não espero que headers FAPI “sirvam” no lugar dos headers MOP.
 
-Detalhes: [`README.md` — Contrato da API](../README.md#contrato-da-api) · [`CENARIOS_TESTE_QA.md`](CENARIOS_TESTE_QA.md).
+Detalhes: [`README.md` — Contrato da API](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/README.md#contrato-da-api) · [`CENARIOS_TESTE_QA.md`](CENARIOS_TESTE_QA.md).
 
 ---
 
@@ -551,14 +551,14 @@ Endpoint: **`POST {context-path}/data-funil-consents`** (padrão: `POST /v1/anon
 
 | Documento | Conteúdo |
 |-----------|----------|
-| [`README.md`](../README.md#contrato-da-api) | Contrato HTTP do gateway, headers obrigatórios e exemplos curl |
+| [`README.md`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/README.md#contrato-da-api) | Contrato HTTP do gateway, headers obrigatórios e exemplos curl |
 | [`PATH_MOP_HEADER.md`](PATH_MOP_HEADER.md) | Fórmula do `path`, OAuth fora de escopo, `origin`/`httpType`/`statusCode` |
 | [`SWAGGER_FASES.md`](SWAGGER_FASES.md) | Mapeamento produto × fase Open Insurance |
 | [`CENARIOS_TESTE_QA.md`](CENARIOS_TESTE_QA.md) | Cenários de teste de headers e validação |
 | [`VARIAVEIS_DE_AMBIENTE.md`](VARIAVEIS_DE_AMBIENTE.md) | Variáveis de deploy (URLs MOP, JWS, funil PCM) |
 | [`WORKSHOP_SQUAD_HUB_MOP_CLIENT.md`](WORKSHOP_SQUAD_HUB_MOP_CLIENT.md) | Roteiro da apresentação Squad Hub |
-| [`mop-gateway-api-specification.yml`](../src/main/resources/mop-gateway-api-specification.yml) | OpenAPI do próprio gateway |
-| [`swagger/current/`](../src/main/resources/swagger/current/) | Specs usadas na validação — **uma por produto** |
+| [`mop-gateway-api-specification.yml`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/src/main/resources/mop-gateway-api-specification.yml) | OpenAPI do próprio gateway |
+| [`swagger/current/`](https://github.com/br-openinsurance/opin-mop-gateway-pub/tree/main/src/main/resources/swagger/current) | Specs usadas na validação — **uma por produto** |
 
 ---
 

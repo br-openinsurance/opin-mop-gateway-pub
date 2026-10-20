@@ -66,7 +66,7 @@ Todos os endpoints do MOP usados pelo gateway ficam sob o prefixo `mop.endpoints
 
 | Propriedade | Variável | Padrão (base) | Descrição |
 |---|---|---|---|
-| `mop.endpoints.consent-funnel-metrics.url` | `MOP_CONSENT_FUNNEL_METRICS_URL` | intranet `.../metrics` | URL completa do destino PCM após `POST /v1/data-funil-consents`. **Sandbox:** `https://mop-server-entrypoint-sandbox.opinbrasil.com.br/metrics`. Contrato do JSON: `swagger/consent-funnel/consent-funnel.yml`. |
+| `mop.endpoints.consent-funnel-metrics.url` | `MOP_CONSENT_FUNNEL_METRICS_URL` | intranet `.../metrics` | URL completa do destino PCM após `POST /v1/data-funil-consents`. **Sandbox:** `https://mop-server-entrypoint-sandbox.opinbrasil.com.br/metrics`. Contrato do JSON: [`consent-funnel.yml`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/src/main/resources/swagger/consent-funnel/consent-funnel.yml). |
 | `mop.endpoints.consent-funnel-metrics.enabled` | `MOP_CONSENT_FUNNEL_METRICS_ENABLED` | `true` | Quando `false`, o gateway valida o evento e não envia a métrica. |
 
 ---
