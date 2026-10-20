@@ -1,13 +1,27 @@
 # Funil de consentimentos (PCM) — documentação
 
-> [!WARNING]
-> **Documento apenas para referência e base de desenvolvimento.**
-> O conteúdo descreve o comportamento esperado do canal do funil de consentimentos, mas **não é especificação oficial** nem garante contrato ou disponibilidade em produção. Endpoints, campos e regras podem mudar sem aviso. Antes de integrar, confirme com a equipe responsável pelo MOP.
-
 > **Público:** associadas participantes do Open Insurance Brasil.  
-> **Canal:** `POST /v1/data-funil-consents`  
-> **Spec:** `swagger/consent-funnel/consent-funnel.yml` (schema `ConsentCreated`)  
+> **Canal (ingresso no gateway):** `POST /v1/'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  data-funil-consents`  
+> **Contrato JSON (use este swagger como base):** [`swagger/consent-funnel/consent-funnel.yml`](../src/main/resources/swagger/consent-funnel/consent-funnel.yml) — schema `ConsentCreated`  
 > **Collection:** [`collections-apresentacao/06-funil-consents-por-step.postman_collection.json`](collections-apresentacao/06-funil-consents-por-step.postman_collection.json)
+
+## Ambiente sandbox — destino das métricas
+
+O gateway **não** envia o funil para o `POST /process`. Depois de validar o JSON contra o swagger acima, ele POSTa o JWT em **`MOP_CONSENT_FUNNEL_METRICS_URL`**.
+
+**Host sandbox OPIN:** `https://mop-server-entrypoint-sandbox.opinbrasil.com.br/`
+
+Configure **esta** URL na variável do funil (homologação / sandbox):
+
+```bash
+export MOP_CONSENT_FUNNEL_METRICS_URL=https://mop-server-entrypoint-sandbox.opinbrasil.com.br/metrics
+```
+
+| Ambiente | Host MOP Server | `MOP_CONSENT_FUNNEL_METRICS_URL` |
+|---|---|---|
+| **Sandbox** | `https://mop-server-entrypoint-sandbox.opinbrasil.com.br/` | `https://mop-server-entrypoint-sandbox.opinbrasil.com.br/metrics` |
+
+Credenciais JWS (`JWS_PRIVATE_KEY`, `JWS_KID`, `JWS_ORG_ID`) devem ser as do **mesmo** ambiente (sandbox). Propriedade Spring: `mop.endpoints.consent-funnel-metrics.url`. Liga/desliga: `MOP_CONSENT_FUNNEL_METRICS_ENABLED` (padrão `true`).
 
 Este documento descreve o ingresso de eventos do **funil de consentimentos** no MOP Client. Não usa headers de rastreio (`origin`, `path`, `httpType`). Os identificadores vão **no JSON**.
 
@@ -35,54 +49,6 @@ flowchart LR
     GW -->|JWT PS256| PCM[Métricas PCM]
 ```
 
-### Fluxo de registro de eventos no MOP
-
-Interação Open Insurance entre Receptora e Transmissora, com os quatro pontos de registro no MOP.
-Todas as etapas compartilham o mesmo `fapi_interaction_id` (exemplo: `ABC123`).
-
-```mermaid
-sequenceDiagram
-    participant R as RECEPTORA<br/>(Client)
-    participant M as MOP
-    participant T as TRANSMISSORA<br/>(Server)
-
-    Note over R,T: fapi_interaction_id = ABC123
-
-    R-->>M: 1. Chamada API MOP: REQUEST_CLIENT
-    Note right of M: timestamp = T1
-    R->>T: 2. Chamada real Open Insurance (request)
-    activate T
-    Note right of T: 3. Recebe request
-    T-->>M: 4. Chamada API MOP: REQUEST_SERVER
-    Note left of M: timestamp = T2
-    Note right of T: 5. Processa API
-    T-->>M: 6. Chamada API MOP: RESPONSE_SERVER
-    Note left of M: timestamp = T3
-    T->>R: 7. Response
-    deactivate T
-    Note left of R: 8. Recebe response
-    R-->>M: 9. Chamada API MOP: RESPONSE_CLIENT
-    Note right of M: timestamp = T4
-```
-
-```mermaid
-flowchart LR
-    MOP[MOP] --> MSG[Mensageria] --> PCM[PCM]
-```
-
-#### Eventos registrados no MOP
-
-| Evento | Quem envia | Quando | Timestamp |
-|---|---|---|---|
-| `REQUEST_CLIENT` | Receptora | Antes de enviar a request à Transmissora | T1 |
-| `REQUEST_SERVER` | Transmissora | Ao receber a request, antes de processar | T2 |
-| `RESPONSE_SERVER` | Transmissora | Após processar, antes de devolver a response | T3 |
-| `RESPONSE_CLIENT` | Receptora | Ao receber a response da Transmissora | T4 |
-
-**Legenda:** seta contínua (`->>`) = tráfego real Open Insurance; seta tracejada (`-->>`) = chamada de registro no MOP.
-
-Todos os eventos da mesma interação são correlacionados pelo `fapi_interaction_id` e seguem do MOP para a Mensageria e, depois, para a PCM.
-
 ---
 
 ## 2. Como chamar
@@ -109,7 +75,7 @@ Exemplo de aceite:
   "correlationId": "577869e5-4c63-4b19-9235-a18d22c80986",
   "consentId": "urn:bancoex:C1DD33123",
   "step": "consent-created",
-  "receivedAt": "2026-09-21T12:00:00Z"
+  "receivedAt": "2026-10-14T19:34:38"
 }
 ```
 
@@ -134,10 +100,8 @@ Toda a documentação e a collection usam **este** JSON. Em cada step muda **som
     "revoked-by": "user",
     "expired-by": "authorization-timeout"
   },
-  "timestamp": "2022-11-07T17:26:32Z",
-  "clientOrgId": "1fb79963-4bff-4204-9370-93aceb8a2f0d",
+  "timestamp": "2026-10-14T19:34:38",
   "clientSSId": "2a59c2a3-529f-41c6-97e3-77395e9951ca",
-  "serverOrgId": "ff66b95a-d817-4fbe-949a-c5912e240189",
   "serverASId": "f8cd7b48-197d-419b-8680-f42226111b6f",
   "permissions": [
     "CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ"
@@ -151,13 +115,13 @@ Toda a documentação e a collection usam **este** JSON. Em cada step muda **som
 | `step` | **Sim** | um dos 14 valores da seção 4 |
 | `origin` | **Sim** | `CLIENT` ou `SERVER` |
 | `correlationId` | **Sim** | `577869e5-4c63-4b19-9235-a18d22c80986` |
-| `timestamp` | **Sim** | `2022-11-07T17:26:32Z` |
-| `clientOrgId` / `clientSSId` | **Sim** (UUID) | receptora |
-| `serverOrgId` / `serverASId` | **Sim** (UUID) | transmissora |
+| `timestamp` | **Sim** | `2026-10-14T19:34:38` (`yyyy-MM-dd'T'HH:mm:ss`, sem fração e sem `Z`) |
+| `clientSSId` | **Sim** (UUID) | software da receptora |
+| `serverASId` | **Sim** (UUID) | authorization server da transmissora |
 | `permissions` | **Sim** | `CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ` |
 | `additionalInfo` | Não (chaves internas opcionais) | ver seção 5 |
 
-Nesta spec os campos de `additionalInfo` são string livre. O exemplo acima é aceito como está.
+Só esta estrutura é aceita. `additionalInfo` é **opcional** (pode omitir o objeto ou qualquer chave interna). Qualquer outro campo (`orgId`, `clientOrgId`, `serverOrgId`, `iat`, `exp`, …) gera **HTTP 400**. Campo obrigatório ausente ou vazio gera **400** com a mensagem *The field {name} is required and cannot be empty*. Quando `additionalInfo` vier, ele **é reenviado** ao PCM.
 
 ---
 
@@ -200,7 +164,7 @@ O objeto pode trazer todas as chaves (como no exemplo). Nesta spec **não há en
 | `revoked-by` | `consent-revoked` | `user`, `system` |
 | `expired-by` | `consent-expired` | `authorization-timeout`, `max-date-reached` |
 
-HTTP **400** só se faltar algum dos quatro IDs obrigatórios ou o tipo do campo não casar com a spec.
+HTTP **400** se faltar campo obrigatório, se o tipo não casar com a spec ou se o JSON tiver campo fora desta estrutura. `additionalInfo` é opcional e, quando enviado, segue no PCM.
 
 ---
 
@@ -233,5 +197,5 @@ Este documento é o item **11** do [sumário do README](../README.md#sumário).
 
 - [README — Funil de consentimentos (PCM)](../README.md#funil-de-consentimentos-pcm--documentação)
 - [`ALERTA_HEADERS_README.md`](ALERTA_HEADERS_README.md) — headers FAPI × MOP × funil PCM
-- [`release-notes.md`](release-notes.md#v1-0-7) — novidade na 1.0.7
+- [`release-notes.md`](release-notes.md#v1-0-8) — versão atual **1.0.8** (funil sandbox, contrato fechado, Dependabot)
 - [`06-funil-consents-por-step.postman_collection.json`](collections-apresentacao/06-funil-consents-por-step.postman_collection.json)

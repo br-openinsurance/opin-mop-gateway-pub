@@ -62,6 +62,13 @@ Todos os endpoints do MOP usados pelo gateway ficam sob o prefixo `mop.endpoints
 |---|---|---|---|
 | `mop.endpoints.anonymization-config.url` | `MOP_ANONYMIZATION_CONFIG_URL` | **sem default** ⚠️ | URL completa do `GET` de regras de campos. **Obrigatória** — defina explicitamente em todo ambiente. Ver [sandbox e produção](#referência-rápida--endpoints-mop-sandbox-e-produção). |
 
+### POST — métricas do funil de consentimentos (`/metrics`)
+
+| Propriedade | Variável | Padrão (base) | Descrição |
+|---|---|---|---|
+| `mop.endpoints.consent-funnel-metrics.url` | `MOP_CONSENT_FUNNEL_METRICS_URL` | intranet `.../metrics` | URL completa do destino PCM após `POST /v1/data-funil-consents`. **Sandbox:** `https://mop-server-entrypoint-sandbox.opinbrasil.com.br/metrics`. Contrato do JSON: `swagger/consent-funnel/consent-funnel.yml`. |
+| `mop.endpoints.consent-funnel-metrics.enabled` | `MOP_CONSENT_FUNNEL_METRICS_ENABLED` | `true` | Quando `false`, o gateway valida o evento e não envia a métrica. |
+
 ---
 
 ## Assinatura JWS
@@ -186,12 +193,12 @@ Caffeine local. Ver `application.yml` (`spring.cache` + `cache.*`).
 
 | Propriedade | Variável | Padrão (base) |
 |---|---|---|
-| `management.endpoints.web.exposure.include` | `MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE` | `*` |
-| `management.endpoint.health.show-details` | `MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS` | `always` |
+| `management.endpoints.web.exposure.include` | `MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE` | `health,info,metrics,prometheus` |
+| `management.endpoint.health.show-details` | `MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS` | `never` |
 | `management.metrics.tags.application` | — | `${spring.application.name}` (= `mop-client-gateway`) |
 
 > [!WARNING]
-> O default `*` expõe **todos** os endpoints (incluindo `/env`, `/configprops`, `/loggers`, `/threaddump`) — risco de vazamento de `JWS_PRIVATE_KEY` e demais secrets via `/actuator/env`. **Em produção, restrinja explicitamente:**
+> Não volte o include para `*` em produção: isso expõe `/env`, `/configprops`, `/loggers` e `/threaddump` e pode vazar `JWS_PRIVATE_KEY`. Se precisar de detalhes do health, use `when_authorized` atrás de autenticação:
 >
 > ```bash
 > export MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health,info,metrics,prometheus
@@ -222,6 +229,7 @@ Com `context-path=/v1/anonymize`, todos os endpoints ficam sob `/v1/anonymize/ac
 |----------|----------|-----|
 | **Sandbox** | `EXTERNAL_REQUEST_URL` / `MOP_PROCESS_URL` | `https://mop-server-entrypoint-sandbox.opinbrasil.com.br/process` |
 | **Sandbox** | `EXTERNAL_API_DATA_ANONYMIZATION` / `MOP_ANONYMIZATION_CONFIG_URL` | `https://mop-server-entrypoint-sandbox.opinbrasil.com.br/anonymization-fields?schema=Consent` |
+| **Sandbox** | `MOP_CONSENT_FUNNEL_METRICS_URL` | `https://mop-server-entrypoint-sandbox.opinbrasil.com.br/metrics` |
 | **Produção** | `EXTERNAL_REQUEST_URL` / `MOP_PROCESS_URL` | `https://mop-server-entrypoint.opinbrasil.com.br/process` |
 | **Produção** | `EXTERNAL_API_DATA_ANONYMIZATION` / `MOP_ANONYMIZATION_CONFIG_URL` | `https://mop-server-entrypoint.opinbrasil.com.br/anonymization-fields?schema=Consent` |
 
@@ -235,6 +243,7 @@ export SPRING_PROFILES_ACTIVE=local
 # MOP — sandbox OPIN
 export EXTERNAL_REQUEST_URL=https://mop-server-entrypoint-sandbox.opinbrasil.com.br/process
 export EXTERNAL_API_DATA_ANONYMIZATION=https://mop-server-entrypoint-sandbox.opinbrasil.com.br/anonymization-fields?schema=Consent
+export MOP_CONSENT_FUNNEL_METRICS_URL=https://mop-server-entrypoint-sandbox.opinbrasil.com.br/metrics
 # aliases aceitos pelo Spring (relaxed binding):
 # export MOP_PROCESS_URL=...
 # export MOP_ANONYMIZATION_CONFIG_URL=...

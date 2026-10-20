@@ -1,5 +1,8 @@
 package br.com.opin.mopclient.consentfunnel.interfaces.dto;
 
+import br.com.opin.mopclient.consentfunnel.domain.exception.ConsentFunnelValidationException;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -9,14 +12,14 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Campos de {@code additionalInfo} conforme {@code swagger/consent-funnel/consent-funnel.yml}.
- * Todos opcionais; valores livres (string).
+ * additionalInfo: objeto opcional. Só as sete chaves abaixo, todas opcionais.
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = false)
 @Schema(description = "Informações complementares do evento do funil")
 public class ConsentFunnelAdditionalInfoDTO {
 
@@ -47,4 +50,12 @@ public class ConsentFunnelAdditionalInfoDTO {
     @JsonProperty("expired-by")
     @Schema(example = "authorization-timeout")
     private String expiredBy;
+
+    @JsonAnySetter
+    void rejectUnknownProperty(String name, Object ignored) {
+        throw ConsentFunnelValidationException.single(
+                "additionalInfo." + name,
+                "Unknown property 'additionalInfo." + name + "' is not allowed",
+                "ADDITIONAL_PROPERTIES");
+    }
 }

@@ -230,4 +230,30 @@ class MessageDTOBuilderTest {
         assertTrue(json.contains("\"total\":3"));
         assertTrue(json.contains("Field 'data' is required."));
     }
+
+    @Test
+    @DisplayName("Writes metadata.timestamp as yyyy-MM-dd'T'HH:mm:ss'Z' without fraction")
+    void shouldWriteMetadataTimestampWithoutFraction() {
+        RequestHeadersDTO headers = RequestHeadersDTO.builder()
+                .correlationId(CORRELATION_ID)
+                .origin("client")
+                .path("/path")
+                .operation("POST")
+                .timestamp("2026-10-15T17:44:33.014304846Z")
+                .build();
+
+        MessageDTO message = MessageDTOBuilder.buildFromHeaders(
+                headers,
+                Collections.emptySet(),
+                Collections.emptySet(),
+                List.of(),
+                "{}",
+                "localhost",
+                "http://localhost/path",
+                "org-id",
+                METADATA_VERSION,
+                METADATA_ENVIRONMENT);
+
+        assertEquals("2026-10-15T17:44:33Z", message.getMetadata().getTimestamp());
+    }
 }

@@ -126,6 +126,10 @@ public class ResponseBuilder {
         return ResponseEntity.status(httpStatus).body(response);
     }
 
+    /**
+     * Client-facing error body. {@code details} must be a stable, allowlisted message —
+     * never {@code Throwable#getMessage()}, stack traces or internal URLs.
+     */
     public ResponseEntity<ApiResponseDTO> buildErrorResponse(HttpStatus status, String error, String details) {
         ApiResponseDTO response = ApiResponseDTO.builder()
                 .error(error)

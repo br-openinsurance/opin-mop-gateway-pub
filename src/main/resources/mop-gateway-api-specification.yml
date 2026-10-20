@@ -197,7 +197,7 @@ paths:
                   summary: "Erro de conversão JSON"
                   value:
                     error: "JSON conversion error"
-                    details: "Failed to process JSON payload: Unexpected character..."
+                    details: "Failed to process JSON payload."
                     timestamp: "2026-04-23T14:10:09.777Z"
 
         '500':

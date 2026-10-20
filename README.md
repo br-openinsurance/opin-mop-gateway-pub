@@ -5,20 +5,20 @@ API HTTP **auto-hospedada** que cada participante do **Open Insurance Brasil** i
 > [!CAUTION]
 > **Alerta — headers da aplicação (FAPI) × headers MOP × validação por produto**
 >
-> Os headers que sua aplicação envia nas **APIs Open Insurance** (`Authorization`, `x-fapi-interaction-id`, …) **não são** os headers exigidos pelo **MOP Client Gateway** (`X-Correlation-Id`, `origin`, `path`, `operation`, `httpType`, …). O endpoint **`POST /data-funil-consents`** (funil PCM) segue contrato **ainda diferente** — sem headers MOP de trace.
+> Os headers que sua aplicação envia nas **APIs Open Insurance** (`Authorization`, `x-fapi-interaction-id`, …) **não são** os headers exigidos pelo **MOP Client Gateway** (`X-Correlation-Id`, `origin`, `path`, `operation`, `httpType`, …). O endpoint `POST /data-funil-consents` (funil PCM) segue contrato **ainda diferente** — sem headers MOP de trace.
 >
-> **Cada produto** (`consents`, `customers`, `insurance-*`, `quote-*`, funil PCM, etc.) possui **path, status HTTP e validação OpenAPI próprios** — não copie exemplos de um produto para outro.
+> **Cada produto** (`consents`, `customers`, `insurance-`*, `quote-*`, funil PCM, etc.) possui **path, status HTTP e validação OpenAPI próprios** — não copie exemplos de um produto para outro.
 >
-> **Explicação detalhada:** [`docs/ALERTA_HEADERS_README.md`](docs/ALERTA_HEADERS_README.md)
+> **Explicação detalhada:** `[docs/ALERTA_HEADERS_README.md](docs/ALERTA_HEADERS_README.md)`
 
 > [!NOTE]
-> **Versão estável de produção:** a branch `main` publica releases versionadas no GHCR — linha oficial para ambientes produtivos. **A versão mais recente em produção é sempre identificada por tag semver** (ex.: `v1.0.7`), e não pelo nome da branch. A branch `develop` permanece agora somente dedicada a homologação/sandbox (tag `develop`).
+> **Versão estável de produção:** a branch `main` publica releases versionadas no GHCR — linha oficial para ambientes produtivos. **A versão mais recente em produção é sempre identificada por tag semver** (ex.: `v1.0.8`), e não pelo nome da branch. A branch `develop` permanece agora somente dedicada a homologação/sandbox (tag `develop`).
 >
 > ```bash
-> docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.7
+> docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.8
 > ```
 >
-> Detalhes: `[docs/release-notes.md](docs/release-notes.md#v1-0-5)`.
+> Detalhes: `[docs/release-notes.md](docs/release-notes.md#v1-0-8)`.
 
 > [!IMPORTANT]
 > Este repositório **substitui** os antigos `mop-client-data-validator-pub` e `opin-mop-client-anonymization-pub`. Não é necessário implantar/configurar aqueles componentes — basta atualizar a imagem deste gateway.
@@ -94,10 +94,10 @@ Em produção, o **MOP Client** pode ser implantado com o **Helm Chart** publica
 - **[Instalação via Helm —](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/feat/mop-client-install/docs/INSTALA_MOP_CLIENT.md)** `INSTALA_MOP_CLIENT.md` (branch `feat/mop-client-install`)
 - Resumo e links neste repositório: `[docs/INSTALACAO.md](docs/INSTALACAO.md)`
 
-Imagem Docker de **produção** (GHCR, release **1.0.7**, branch `main`):
+Imagem Docker de **produção** (GHCR, release **1.0.8**, branch `main`):
 
 ```bash
-docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.7
+docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.8
 ```
 
 > Homologação/sandbox: use a tag `develop` — ver [Início rápido](#início-rápido--rodando-em-até-10-minutos).
@@ -795,7 +795,7 @@ Todos sob `/v1/anonymize/actuator/*`:
 
 
 > [!WARNING]
-> No `application.yml` base, `management.endpoints.web.exposure.include` está como `"*"` (todos expostos). Em produção, restrinja via `MANAGEMENT_ENDPOINTS_INCLUDE=health,info,metrics,prometheus` e proteja por rede/auth.
+> O default de produção expõe só `health,info,metrics,prometheus`. `show-details` do health é `never`. Amplie só se a rede já estiver autenticada (`MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE`, `MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS`).
 
 
 

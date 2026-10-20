@@ -27,12 +27,9 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(MissingRequestHeaderException.class)
     public ResponseEntity<List<String>> handleMissingHeader(MissingRequestHeaderException ex) {
-        logger.warn("Required header missing: {}", ex.getMessage());
-        List<String> errors = List.of(
-                "Missing required header: " + ex.getHeaderName(),
-                "Details: " + ex.getMessage()
-        );
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
+        logger.warn("Required header missing: {}", ex.getHeaderName());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(List.of("Missing required header: " + ex.getHeaderName()));
     }
 
     /**
@@ -41,11 +38,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<List<String>> handleUnreadableBody(HttpMessageNotReadableException ex) {
         logger.warn("Invalid or unreadable JSON payload: {}", ex.getMessage());
-        List<String> errors = List.of(
-                "Invalid or unreadable JSON payload.",
-                "Details: " + ex.getMessage()
-        );
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(List.of("Invalid or unreadable JSON payload."));
     }
 
     /**
@@ -54,11 +48,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<List<String>> handleNoResourceFound(NoResourceFoundException ex) {
         logger.warn("Endpoint not found: {}", ex.getMessage());
-        List<String> errors = List.of(
-                "Endpoint not found.",
-                "Details: " + ex.getHttpMethod() + " " + ex.getResourcePath()
-        );
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errors);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(List.of("Endpoint not found."));
     }
 
     /**
@@ -67,10 +58,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<List<String>> handleGenericException(Exception ex) {
         logger.error("Unexpected error: {}", ex.getMessage(), ex);
-        List<String> errors = List.of(
-                "An unexpected error occurred.",
-                "Details: " + ex.getMessage()
-        );
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errors);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(List.of("An unexpected error occurred."));
     }
 }

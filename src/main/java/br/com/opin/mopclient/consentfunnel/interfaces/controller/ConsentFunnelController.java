@@ -47,7 +47,7 @@ public class ConsentFunnelController {
             summary = "Recebe evento unitário do funil de consentimentos",
             description = """
                     Aceita payload JSON alinhado a `swagger/consent-funnel/consent-funnel.yml` (schema `ConsentCreated`).
-                    Validação: Bean Validation nos quatro IDs obrigatórios e OpenAPI (openapi4j).
+                    Validação: somente a estrutura ConsentCreated; additionalInfo opcional; campos extras rejeitados. OpenAPI (openapi4j) e Bean Validation.
                     **Não** enfileira nem envia ao MOP Server — fluxo independente de `POST /data`.
                     Evento aceito fica disponível para processamento downstream do funil.
                     """)

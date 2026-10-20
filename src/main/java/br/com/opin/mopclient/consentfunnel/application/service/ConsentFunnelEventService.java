@@ -4,14 +4,15 @@ import br.com.opin.mopclient.consentfunnel.application.mapper.ConsentFunnelEvent
 import br.com.opin.mopclient.consentfunnel.application.port.in.SubmitConsentFunnelEventUseCase;
 import br.com.opin.mopclient.consentfunnel.application.port.out.ConsentFunnelMetricsPort;
 import br.com.opin.mopclient.consentfunnel.domain.model.ConsentFunnelEvent;
+import br.com.opin.mopclient.consentfunnel.domain.validation.ConsentFunnelRequiredFieldsValidator;
 import br.com.opin.mopclient.consentfunnel.infrastructure.validation.ConsentFunnelOpenApiValidator;
 import br.com.opin.mopclient.consentfunnel.interfaces.dto.ConsentFunnelEventAcceptedResponseDTO;
 import br.com.opin.mopclient.consentfunnel.interfaces.dto.ConsentFunnelEventRequestDTO;
+import br.com.opin.mopclient.consentfunnel.shared.ConsentFunnelDateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
 import java.util.Objects;
 
 /**
@@ -40,6 +41,7 @@ public class ConsentFunnelEventService implements SubmitConsentFunnelEventUseCas
     public ConsentFunnelEventAcceptedResponseDTO submit(ConsentFunnelEventRequestDTO request) {
         Objects.requireNonNull(request, "request");
 
+        ConsentFunnelRequiredFieldsValidator.validate(request);
         openApiValidator.validate(request);
 
         ConsentFunnelEvent event = ConsentFunnelEventMapper.toDomain(request);
@@ -57,7 +59,7 @@ public class ConsentFunnelEventService implements SubmitConsentFunnelEventUseCas
                 .correlationId(event.correlationId())
                 .consentId(event.consentId())
                 .step(event.step() != null ? event.step().getValue() : request.getStep())
-                .receivedAt(Instant.now().toString())
+                .receivedAt(ConsentFunnelDateTime.formatNow())
                 .build();
     }
 }

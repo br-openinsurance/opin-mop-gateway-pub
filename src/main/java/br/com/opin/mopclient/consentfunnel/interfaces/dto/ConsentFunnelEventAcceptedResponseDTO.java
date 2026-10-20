@@ -28,6 +28,6 @@ public class ConsentFunnelEventAcceptedResponseDTO {
     @Schema(example = "consent-created")
     private String step;
 
-    @Schema(example = "2026-07-29T12:00:00Z")
+    @Schema(example = "2026-10-14T19:34:38")
     private String receivedAt;
 }

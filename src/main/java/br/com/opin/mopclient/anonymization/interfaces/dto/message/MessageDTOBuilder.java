@@ -3,8 +3,8 @@ package br.com.opin.mopclient.anonymization.interfaces.dto.message;
 import br.com.opin.mopclient.anonymization.interfaces.dto.validation.Validation;
 import br.com.opin.mopclient.gateway.interfaces.dto.RequestHeadersDTO;
 import br.com.opin.mopclient.gateway.interfaces.dto.ValidationsSummaryDTO;
+import br.com.opin.mopclient.shared.util.IsoUtcTimestamp;
 
-import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,11 +40,7 @@ public final class MessageDTOBuilder {
                 ? headersDTO.getClientSSId() : origin;
         String serverASId = headersDTO.getServerASId() != null && !headersDTO.getServerASId().isBlank()
                 ? headersDTO.getServerASId() : "";
-        String timestamp = headersDTO.getTimestamp();
-
-        if (timestamp == null || timestamp.isBlank()) {
-            timestamp = Instant.now().toString();
-        }
+        String timestamp = IsoUtcTimestamp.normalizeOrNow(headersDTO.getTimestamp());
 
         Map<String, String> headers = headersDTO.getHeaders() != null ? headersDTO.getHeaders() : Map.of();
         String method = extractMethod(headers);

@@ -45,10 +45,8 @@ class ConsentFunnelControllerTest {
                 .additionalInfo(ConsentFunnelAdditionalInfoDTO.builder()
                         .consentUser("user")
                         .build())
-                .timestamp("2022-11-07T17:26:32Z")
-                .clientOrgId("1fb79963-4bff-4204-9370-93aceb8a2f0d")
+                .timestamp("2026-10-14T19:34:38")
                 .clientSSId("2a59c2a3-529f-41c6-97e3-77395e9951ca")
-                .serverOrgId("ff66b95a-d817-4fbe-949a-c5912e240189")
                 .serverASId("f8cd7b48-197d-419b-8680-f42226111b6f")
                 .permissions(List.of("CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ"))
                 .build();
@@ -67,7 +65,7 @@ class ConsentFunnelControllerTest {
                     .correlationId(CORRELATION_ID)
                     .consentId(CONSENT_ID)
                     .step("consent-created")
-                    .receivedAt("2026-07-29T12:00:00Z")
+                    .receivedAt("2026-10-14T19:34:38")
                     .build();
 
             when(submitConsentFunnelEventUseCase.submit(any())).thenReturn(accepted);

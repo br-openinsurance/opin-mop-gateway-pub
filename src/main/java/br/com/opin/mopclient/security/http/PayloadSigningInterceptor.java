@@ -1,6 +1,8 @@
 package br.com.opin.mopclient.security.http;
 
 import br.com.opin.mopclient.anonymization.shared.util.MopReportidManager;
+import br.com.opin.mopclient.security.JwtPayloadSigner;
+import br.com.opin.mopclient.security.OutboundSigningOptions;
 import br.com.opin.mopclient.security.PayloadSigner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,7 +79,10 @@ public final class PayloadSigningInterceptor implements ClientHttpRequestInterce
         }
 
         Assert.notNull(body, "body must not be null");
-        String token = signer.sign(body);
+        boolean includeIatExp = !OutboundSigningOptions.omitRegisteredTimeClaims();
+        String token = signer instanceof JwtPayloadSigner jwtSigner
+                ? jwtSigner.sign(body, includeIatExp)
+                : signer.sign(body);
 
         byte[] signedBody = token.getBytes(StandardCharsets.UTF_8);
 

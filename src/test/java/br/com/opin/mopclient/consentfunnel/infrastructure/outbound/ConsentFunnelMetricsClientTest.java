@@ -20,7 +20,9 @@ import org.springframework.web.client.RestTemplate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -32,7 +34,7 @@ import static org.mockito.Mockito.when;
 class ConsentFunnelMetricsClientTest {
 
     private static final String METRICS_URL =
-            "https://mop-server.example.test/metrics";
+            "http://mop-server-entrypoint-dev.intranet.opinbrasil/metrics";
 
     @Mock
     private RestTemplate restTemplate;
@@ -58,6 +60,14 @@ class ConsentFunnelMetricsClientTest {
         ArgumentCaptor<HttpEntity<String>> captor = ArgumentCaptor.forClass(HttpEntity.class);
         verify(restTemplate).postForEntity(eq(METRICS_URL), captor.capture(), eq(String.class));
         assertEquals("application/json", captor.getValue().getHeaders().getContentType().toString());
+        String body = captor.getValue().getBody();
+        assertTrue(body.contains("\"additionalInfo\""));
+        assertTrue(body.contains("consent-user"));
+        assertFalse(body.contains("\"orgId\""));
+        assertFalse(body.contains("\"clientOrgId\""));
+        assertFalse(body.contains("\"serverOrgId\""));
+        assertFalse(body.contains("\"exp\""));
+        assertFalse(body.contains("\"iat\""));
     }
 
     @Test
@@ -99,10 +109,8 @@ class ConsentFunnelMetricsClientTest {
                 .additionalInfo(ConsentFunnelAdditionalInfoDTO.builder()
                         .consentUser("user")
                         .build())
-                .timestamp("2022-11-07T17:26:32Z")
-                .clientOrgId("1fb79963-4bff-4204-9370-93aceb8a2f0d")
+                .timestamp("2026-10-14T19:34:38")
                 .clientSSId("2a59c2a3-529f-41c6-97e3-77395e9951ca")
-                .serverOrgId("ff66b95a-d817-4fbe-949a-c5912e240189")
                 .serverASId("f8cd7b48-197d-419b-8680-f42226111b6f")
                 .permissions(List.of("CUSTOMERS_PERSONAL_IDENTIFICATIONS_READ"))
                 .build();

@@ -1,11 +1,11 @@
 package br.com.opin.mopclient.gateway.application.service;
 
+import br.com.opin.mopclient.shared.util.IsoUtcTimestamp;
 import br.com.opin.mopclient.shared.util.MopReportidContext;
 import br.com.opin.mopclient.shared.util.MopReportidGenerator;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.time.Instant;
 import java.util.Map;
 
 import static br.com.opin.mopclient.gateway.interfaces.constants.HttpHeaderConstants.MOP_REPORTID;
@@ -48,12 +48,10 @@ public class TraceabilityService {
     }
 
     /**
-     * Generates current timestamp in ISO-8601 format.
-     *
-     * @return Timestamp string
+     * Timestamp UTC do envio de rastreio: {@code yyyy-MM-dd'T'HH:mm:ss'Z'} (sem fração).
      */
     public String generateTimestamp() {
-        return Instant.now().toString();
+        return IsoUtcTimestamp.now();
     }
 }
 

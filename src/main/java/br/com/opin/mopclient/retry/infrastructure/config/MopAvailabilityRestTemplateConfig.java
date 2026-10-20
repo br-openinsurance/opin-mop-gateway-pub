@@ -2,7 +2,7 @@ package br.com.opin.mopclient.retry.infrastructure.config;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.boot.restclient.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestTemplate;
@@ -24,8 +24,8 @@ public class MopAvailabilityRestTemplateConfig {
             @Value("${mop.server.availability.connect-timeout-ms:3000}") long connectTimeoutMs,
             @Value("${mop.server.availability.read-timeout-ms:5000}") long readTimeoutMs) {
         return builder
-                .setConnectTimeout(Duration.ofMillis(connectTimeoutMs))
-                .setReadTimeout(Duration.ofMillis(readTimeoutMs))
+                .connectTimeout(Duration.ofMillis(connectTimeoutMs))
+                .readTimeout(Duration.ofMillis(readTimeoutMs))
                 .build();
     }
 }

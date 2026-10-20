@@ -2,13 +2,13 @@
 
 Notas de versão do **MOP Client**, no estilo do ecossistema MOP (New features, Enhancements, Bug fixes).
 
-**Última atualização do documento: 24 de setembro de 2026.**
+**Última atualização do documento: 15 de outubro de 2026.**
 
 > [!NOTE]
-> **Versão estável de produção:** a branch **`main`** publica releases versionadas no GHCR — linha oficial para ambientes produtivos. **A versão mais recente em produção é sempre identificada por tag semver** (ex.: **`v1.0.7`**), e não pelo nome da branch. A branch **`develop`** permanece agora somente dedicada a homologação/sandbox (tag `develop`).
+> **Versão estável de produção:** a branch **`main`** publica releases versionadas no GHCR — linha oficial para ambientes produtivos. **A versão mais recente em produção é sempre identificada por tag semver** (ex.: **`v1.0.8`**), e não pelo nome da branch. A branch **`develop`** permanece agora somente dedicada a homologação/sandbox (tag `develop`).
 >
 > ```bash
-> docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.7
+> docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.8
 > ```
 
 ```mermaid
@@ -23,6 +23,7 @@ flowchart LR
 ---
 
 ## Versões da release note
+- [1.0.8 (2026-10-15)](#v1-0-8)
 - [1.0.7 (2026-09-24)](#v1-0-7)
 - [1.0.6 (2026-07-10)](#v1-0-6)
 - [1.0.5 (2026-07-03)](#v1-0-5)
@@ -35,6 +36,42 @@ flowchart LR
 ---
 ---
 
+<a id="v1-0-8"></a>
+
+## 1.0.8
+
+### New features
+
+- **Funil de consentimentos — sandbox OPIN:** o destino das métricas PCM em homologação está publicado. Configure a variável do canal (não é o `POST /process`):
+
+  ```bash
+  export MOP_CONSENT_FUNNEL_METRICS_URL=https://mop-server-entrypoint-sandbox.opinbrasil.com.br/metrics
+  ```
+
+  Host sandbox: `https://mop-server-entrypoint-sandbox.opinbrasil.com.br/`. Contrato JSON: [`swagger/consent-funnel/consent-funnel.yml`](../src/main/resources/swagger/consent-funnel/consent-funnel.yml). Guia: [`docs/DOCUMENTACAO.md`](DOCUMENTACAO.md).
+
+### Enhancements
+
+- **Funil — contrato fechado:** o `POST /v1/data-funil-consents` aceita só os campos do schema `ConsentCreated`. `additionalInfo` é opcional. Campos obrigatórios vazios devolvem **HTTP 400** (*The field {name} is required and cannot be empty*). `timestamp` e `receivedAt` no formato `yyyy-MM-dd'T'HH:mm:ss` (sem fração e sem `Z`). O JWT do funil **não** inclui `iat` nem `exp`.
+
+### Bug fixes
+
+- **Vulnerabilidades (Dependabot):** os quatro alertas em `pom.xml` ficam tratados nesta versão, sem alteração funcional no contrato da API:
+
+  | Alerta | Severidade | Pacote | Remediação |
+  |---|---|---|---|
+  | **#38** Spring Framework Improper Path Limitation in XsltView (**CVE-2026-47884**) | Critical | `org.springframework:spring-webmvc` | Spring Framework **7.0.9** + Spring Boot **4.1.1** |
+  | **#40** RabbitMQ: Malformed UTF-8 in shortstr properties permanently disables RPC consumers | Moderate | `com.rabbitmq:amqp-client` | `amqp-client` **5.37.0** |
+  | **#39** RabbitMQ Java client: plaintext broker credentials leaked in exception message from ConnectionFactoryConfigurator.load() | Moderate | `com.rabbitmq:amqp-client` | `amqp-client` **5.37.0** |
+  | **#41** RabbitMQ: JSONReader in the default JSON-RPC mapper never terminates on truncated input, causing DoS | Moderate | `com.rabbitmq:amqp-client` | `amqp-client` **5.37.0** |
+
+```bash
+docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.8
+```
+
+Evidências: [`docs/vulnerabilities/`](vulnerabilities/) · [`docs/DOCUMENTACAO.md`](DOCUMENTACAO.md) · [`docs/VARIAVEIS_DE_AMBIENTE.md`](VARIAVEIS_DE_AMBIENTE.md).
+
+---
 <a id="v1-0-7"></a>
 
 ## 1.0.7

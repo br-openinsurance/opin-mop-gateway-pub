@@ -4,6 +4,7 @@ import br.com.opin.mopclient.anonymization.shared.util.MopReportidManager;
 import br.com.opin.mopclient.consentfunnel.application.port.out.ConsentFunnelMetricsPort;
 import br.com.opin.mopclient.consentfunnel.interfaces.dto.ConsentFunnelEventRequestDTO;
 import br.com.opin.mopclient.gateway.shared.exception.ErrorResponseException;
+import br.com.opin.mopclient.security.OutboundSigningOptions;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
@@ -69,7 +70,8 @@ public class ConsentFunnelMetricsClient implements ConsentFunnelMetricsPort {
             if (StringUtils.hasText(correlationId)) {
                 MopReportidManager.setMopReportid(correlationId);
             }
-            deliver(metricsUrl, serialize(event));
+            OutboundSigningOptions.runOmittingRegisteredTimeClaims(
+                    () -> deliver(metricsUrl, serialize(event)));
         } finally {
             if (previousMopReportId != null && !previousMopReportId.isBlank()) {
                 MopReportidManager.setMopReportid(previousMopReportId);
@@ -101,19 +103,17 @@ public class ConsentFunnelMetricsClient implements ConsentFunnelMetricsPort {
                     duration.toMillis(),
                     correlationIdOrDash());
         } catch (ResourceAccessException e) {
-            throw deliveryError("Connection error", "Unable to reach metrics endpoint: " + url, e);
+            LOGGER.error("[FUNNEL] Metrics connection error | url={} | cause={}", url, e.getMessage());
+            throw deliveryError("Connection error", "Unable to reach the metrics endpoint.", e);
         } catch (HttpClientErrorException e) {
-            throw deliveryError(
-                    "Client error",
-                    "Metrics endpoint returned " + e.getStatusCode() + ": " + e.getResponseBodyAsString(),
-                    e);
+            LOGGER.error("[FUNNEL] Metrics client error | url={} | status={} | body={}",
+                    url, e.getStatusCode(), e.getResponseBodyAsString());
+            throw deliveryError("Client error", "The metrics endpoint rejected the event.", e);
         } catch (HttpServerErrorException e) {
-            throw deliveryError(
-                    "Server error",
-                    "Metrics endpoint returned " + e.getStatusCode() + ": " + e.getResponseBodyAsString(),
-                    e);
+            LOGGER.error("[FUNNEL] Metrics server error | url={} | status={}", url, e.getStatusCode());
+            throw deliveryError("Server error", "The metrics endpoint failed to process the event.", e);
         } catch (RestClientException e) {
-            throw deliveryError("Request error", "Failed to deliver consent funnel event to metrics", e);
+            throw deliveryError("Request error", "Failed to deliver the consent funnel event.", e);
         }
     }
 

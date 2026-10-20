@@ -7,8 +7,11 @@ import br.com.opin.mopclient.consentfunnel.interfaces.dto.ConsentFunnelViolation
 import br.com.opin.mopclient.gateway.shared.exception.ErrorResponseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -22,12 +25,30 @@ import java.util.Map;
 /**
  * Tratamento centralizado de erros do bounded context {@code consentfunnel}.
  */
+@Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice(basePackageClasses = br.com.opin.mopclient.consentfunnel.interfaces.controller.ConsentFunnelController.class)
 public class ConsentFunnelExceptionHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConsentFunnelExceptionHandler.class);
     private static final String BEAN_VALIDATION_CODE = "400";
     private static final String ERROR_STATUS = "ERROR";
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ConsentFunnelValidationErrorResponseDTO> handleUnreadableBody(
+            HttpMessageNotReadableException ex) {
+        ConsentFunnelValidationException funnel = findFunnelValidation(ex);
+        if (funnel != null) {
+            return handleFunnelValidation(funnel);
+        }
+        LOGGER.warn("Consent funnel JSON is unreadable");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(buildErrorResponse(List.of(
+                ConsentFunnelViolationDTO.builder()
+                        .violation("Invalid or unreadable JSON payload")
+                        .code(BEAN_VALIDATION_CODE)
+                        .severity("ERROR")
+                        .attribute("body")
+                        .build())));
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ConsentFunnelValidationErrorResponseDTO> handleBeanValidation(
@@ -59,10 +80,21 @@ public class ConsentFunnelExceptionHandler {
     public ResponseEntity<Map<String, String>> handleMetricsDeliveryFailure(ErrorResponseException ex) {
         LOGGER.warn("Consent funnel metrics delivery failed | error={} | details={}", ex.getError(), ex.getDetails());
         Map<String, String> body = new LinkedHashMap<>();
-        body.put("error", ex.getError());
-        body.put("details", ex.getDetails());
+        body.put("error", "Metrics delivery failed");
+        body.put("details", "The consent funnel event could not be delivered.");
         body.put("timestamp", ex.getTimestamp());
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(body);
+    }
+
+    private static ConsentFunnelValidationException findFunnelValidation(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof ConsentFunnelValidationException funnel) {
+                return funnel;
+            }
+            current = current.getCause();
+        }
+        return null;
     }
 
     private static ConsentFunnelValidationErrorResponseDTO buildErrorResponse(

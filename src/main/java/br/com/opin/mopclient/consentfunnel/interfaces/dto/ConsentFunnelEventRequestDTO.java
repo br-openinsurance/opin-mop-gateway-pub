@@ -1,5 +1,9 @@
 package br.com.opin.mopclient.consentfunnel.interfaces.dto;
 
+import br.com.opin.mopclient.consentfunnel.domain.exception.ConsentFunnelValidationException;
+import br.com.opin.mopclient.consentfunnel.shared.ConsentFunnelDateTime;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
@@ -15,67 +19,72 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 /**
- * Request body alinhado a {@code swagger/consent-funnel/consent-funnel.yml} (schema {@code ConsentCreated}).
- * Todos os campos de raiz são obrigatórios; apenas as chaves de {@code additionalInfo} são opcionais.
+ * Request body alinhado a {@code swagger/consent-funnel/consent-funnel.yml}.
+ * Somente: consentId, step, origin, correlationId, additionalInfo, timestamp,
+ * clientSSId, serverASId e permissions. Qualquer outro campo na raiz é rejeitado.
+ * additionalInfo é opcional.
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = false)
 @Schema(description = "Evento do funil de consentimentos (ConsentCreated)")
 public class ConsentFunnelEventRequestDTO {
 
     public static final String UUID_PATTERN = "^\\w{8}-\\w{4}-\\w{4}-\\w{4}-\\w{12}$";
     public static final String ORIGIN_PATTERN = "^(?i)(CLIENT|SERVER)$";
 
-    @NotBlank
+    @NotBlank(message = "The field consentId is required and cannot be empty")
     @Schema(example = "urn:bancoex:C1DD33123")
     private String consentId;
 
-    @NotBlank
+    @NotBlank(message = "The field step is required and cannot be empty")
     @Schema(example = "consent-created")
     private String step;
 
-    @NotBlank
+    @NotBlank(message = "The field origin is required and cannot be empty")
     @Pattern(regexp = ORIGIN_PATTERN, message = "origin must be CLIENT or SERVER")
     @Schema(example = "CLIENT", allowableValues = {"CLIENT", "SERVER"})
     private String origin;
 
-    @NotBlank
+    @NotBlank(message = "The field correlationId is required and cannot be empty")
+    @Pattern(regexp = UUID_PATTERN, message = "correlationId must be a UUID")
     @Schema(example = "577869e5-4c63-4b19-9235-a18d22c80986")
     private String correlationId;
 
     @Valid
-    @Schema(description = "Informações complementares opcionais")
+    @Schema(description = "Opcional. Só as chaves conhecidas; todas opcionais. Reenviado ao PCM quando presente.")
     private ConsentFunnelAdditionalInfoDTO additionalInfo;
 
-    @NotBlank
-    @Schema(example = "2022-11-07T17:26:32Z")
+    @NotBlank(message = "The field timestamp is required and cannot be empty")
+    @Pattern(
+            regexp = ConsentFunnelDateTime.REGEX,
+            message = "The field timestamp must match yyyy-MM-dd'T'HH:mm:ss")
+    @Schema(example = "2026-10-14T19:34:38")
     private String timestamp;
 
-    @NotBlank
-    @Pattern(regexp = UUID_PATTERN, message = "clientOrgId must be a UUID")
-    @Schema(example = "1fb79963-4bff-4204-9370-93aceb8a2f0d")
-    private String clientOrgId;
-
-    @NotBlank
+    @NotBlank(message = "The field clientSSId is required and cannot be empty")
     @Pattern(regexp = UUID_PATTERN, message = "clientSSId must be a UUID")
     @Schema(example = "2a59c2a3-529f-41c6-97e3-77395e9951ca")
     private String clientSSId;
 
-    @NotBlank
-    @Pattern(regexp = UUID_PATTERN, message = "serverOrgId must be a UUID")
-    @Schema(example = "ff66b95a-d817-4fbe-949a-c5912e240189")
-    private String serverOrgId;
-
-    @NotBlank
+    @NotBlank(message = "The field serverASId is required and cannot be empty")
     @Pattern(regexp = UUID_PATTERN, message = "serverASId must be a UUID")
     @Schema(example = "f8cd7b48-197d-419b-8680-f42226111b6f")
     private String serverASId;
 
-    @NotEmpty
-    @Size(min = 1, message = "permissions must not be empty")
+    @NotEmpty(message = "The field permissions is required and cannot be empty")
+    @Size(min = 1, message = "The field permissions is required and cannot be empty")
     @Schema(description = "Permissões do consentimento")
-    private List<@NotBlank String> permissions;
+    private List<@NotBlank(message = "The field permissions is required and cannot contain empty items") String> permissions;
+
+    @JsonAnySetter
+    void rejectUnknownProperty(String name, Object ignored) {
+        throw ConsentFunnelValidationException.single(
+                name,
+                "Unknown property '" + name + "' is not allowed",
+                "ADDITIONAL_PROPERTIES");
+    }
 }

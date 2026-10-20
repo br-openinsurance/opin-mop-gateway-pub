@@ -57,10 +57,8 @@ class ConsentFunnelStepRulesValidatorTest {
                 "CLIENT",
                 "577869e5-4c63-4b19-9235-a18d22c80986",
                 additionalInfo,
-                "2022-11-07T17:26:32Z",
-                "1fb79963-4bff-4204-9370-93aceb8a2f0d",
+                "2026-10-14T19:34:38",
                 "2a59c2a3-529f-41c6-97e3-77395e9951ca",
-                "ff66b95a-d817-4fbe-949a-c5912e240189",
                 "f8cd7b48-197d-419b-8680-f42226111b6f",
                 null);
     }

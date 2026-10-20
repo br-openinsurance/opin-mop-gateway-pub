@@ -36,7 +36,7 @@ flowchart LR
 |----------|-------------|-----------|----------|
 | **A. APIs Open Insurance (aplicação)** | Outro participante (transmissora/receptora) | Headers **FAPI-BR / Open Insurance** da transação real | `Authorization`, `x-fapi-interaction-id`, `x-fapi-auth-date`, `x-idempotency-key`, `x-customer-user-agent`, `x-fapi-customer-ip-address` |
 | **B. MOP Client — rastreio (`POST /data`)** | **Seu** MOP Client Gateway | Headers **MOP de trace** que descrevem *qual* operação você reporta | `X-Correlation-Id`, `origin`, `path`, `operation`, `httpType`, `statusCode` (condicional), opcionais `clientSSId`, `serverASId`, `traceOrigin`, `X-Mop-Reportid` |
-| **C. MOP Client — funil PCM (`POST /data-funil-consents`)** | **Seu** MOP Client Gateway | **Sem** headers MOP de trace; IDs vão **no corpo JSON** | `correlationId`, `consentId`, `step`, `clientOrgId`, `clientSSId`, `serverOrgId`, `serverASId`, … |
+| **C. MOP Client — funil PCM (`POST /data-funil-consents`)** | **Seu** MOP Client Gateway | **Sem** headers MOP de trace; IDs vão **no corpo JSON** | `correlationId`, `consentId`, `step`, `clientSSId`, `serverASId`, … |
 
 ```mermaid
 flowchart TB

@@ -32,3 +32,7 @@ docker run --rm <imagem> sh -c "apk info sqlite-libs libgcrypt"
 ```
 
 Esperado: `sqlite-libs-3.53.2-r0` (ou superior) e `libgcrypt` ≥ 1.11.3-r0.
+
+## Último scan
+
+**2026-10-06** — Trivy na CI (`develop`): Alpine **3.24.2** com **0** vulnerabilidades. Screenshot: [`image-20261006-152900.png`](image-20261006-152900.png).

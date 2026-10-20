@@ -9,10 +9,10 @@ spring:
     active: ${SPRING_PROFILES_ACTIVE:default}
 
   rabbitmq:
-    host: RABBITMQ_VALIDATOR_HOST
-    port: RABBITMQ_VALIDATOR_PORT
-    username: RABBITMQ_USERNAME
-    password: RABBITMQ_PASSWORD
+    host: ${RABBITMQ_VALIDATOR_HOST}
+    port: ${RABBITMQ_VALIDATOR_PORT}
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
 
   # Cache configuration
   cache:
@@ -46,10 +46,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:*}
+        include: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:health,info,metrics,prometheus}
   endpoint:
     health:
-      show-details: ${MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS:always}
+      show-details: ${MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS:never}
   metrics:
     tags:
       application: ${spring.application.name}
@@ -71,7 +71,7 @@ mop:
     anonymization-config:
       url: ${EXTERNAL_API_DATA_ANONYMIZATION}
     consent-funnel-metrics:
-      url: ${MOP_CONSENT_FUNNEL_METRICS_URL:}
+      url: ${MOP_CONSENT_FUNNEL_METRICS_URL}
       enabled: ${MOP_CONSENT_FUNNEL_METRICS_ENABLED:true}
   payload-signing:
     enabled: ${MOP_PAYLOAD_SIGNING_ENABLED:true}

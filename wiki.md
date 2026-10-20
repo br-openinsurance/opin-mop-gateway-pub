@@ -3,10 +3,10 @@
 Visão técnica do **MOP Client** no estado atual do repositório: uma aplicação Spring Boot que expõe HTTP, executa o pipeline interno de processamento e chama o **servidor MOP**; em falhas transitórias, usa **RabbitMQ** apenas como **fila de retry** e **Resilience4j** para circuitos nos clientes HTTP downstream.
 
 > [!NOTE]
-> **Versão estável de produção:** a branch **`main`** publica releases versionadas no GHCR — linha oficial para ambientes produtivos. **A versão mais recente em produção é sempre identificada por tag semver** (ex.: **`v1.0.7`**), e não pelo nome da branch. A branch **`develop`** permanece agora somente dedicada a homologação/sandbox (tag `develop`).
+> **Versão estável de produção:** a branch **`main`** publica releases versionadas no GHCR — linha oficial para ambientes produtivos. **A versão mais recente em produção é sempre identificada por tag semver** (ex.: **`v1.0.8`**), e não pelo nome da branch. A branch **`develop`** permanece agora somente dedicada a homologação/sandbox (tag `develop`).
 >
 > ```bash
-> docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.7
+> docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.8
 > ```
 
 ## Índice
@@ -104,10 +104,10 @@ Implantação em **Kubernetes** via **Helm Chart** (GHCR: `ghcr.io/br-openinsura
 - Guia oficial: [INSTALA_MOP_CLIENT.md](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/feat/mop-client-install/docs/INSTALA_MOP_CLIENT.md) no repositório `opin-mop-gateway-pub` (branch `feat/mop-client-install`).
 - Índice local: [docs/INSTALACAO.md](docs/INSTALACAO.md).
 
-Imagem Docker de **produção** (GHCR, release **1.0.7**, branch `main`):
+Imagem Docker de **produção** (GHCR, release **1.0.8**, branch `main`):
 
 ```bash
-docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.7
+docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.8
 ```
 
 > Homologação/sandbox: tag `develop` — ver secção [Desenvolvimento](#desenvolvimento).
@@ -189,13 +189,17 @@ Somente vulnerabilidades classificadas como **Critical**, **High** ou **Medium**
 
 Detalhes: [`docs/vulnerabilities/README.md`](docs/vulnerabilities/README.md#escopo-de-remediação-severidade) · achados Alpine: [`docs/vulnerabilities/ALPINE-2026.md`](docs/vulnerabilities/ALPINE-2026.md).
 
-> **Último export Tenable (2026-06-26):** achados em dependências Java são **Low** (ex.: Spring `spring-webmvc` 6.2.11) — fora do escopo de remediação acima.
+> **Último scan Trivy (2026-10-07):** Alpine **0**; JAR **1** = [CVE-2026-47884](docs/vulnerabilities/CVE-2026-47884.md) (`XsltView` + `/**` com view; **não explorável** neste REST). VEX: [`docs/vulnerabilities/vex-CVE-2026-47884.json`](docs/vulnerabilities/vex-CVE-2026-47884.json). Evidência: [`docs/vulnerabilities/image-20261007-000000.png`](docs/vulnerabilities/image-20261007-000000.png).
 >
-> **Alpine (imagem base):** CVE-2026-11822, CVE-2026-11824 (**Critical**, `sqlite-libs`) e CVE-2026-41989 (**High**, `libgcrypt`) — **no escopo**. Ver [ALPINE-2026.md](docs/vulnerabilities/ALPINE-2026.md).
+> **Tenable (2026-06-26):** achados em dependências Java eram **Low** (ex.: Spring `spring-webmvc` 6.2.11) — fora do escopo de remediação acima.
+>
+> **Alpine (histórico 2026-06):** CVE-2026-11822, CVE-2026-11824 (**Critical**, `sqlite-libs`) e CVE-2026-41989 (**High**, `libgcrypt`) na 3.23 — **remediado** na 3.24. Ver [ALPINE-2026.md](docs/vulnerabilities/ALPINE-2026.md).
 
 | Ferramenta | Data da execução | Artefatos | Resumo |
 |------------|------------------|-----------|--------|
-| **Trivy** (imagem container + JAR) | **2026-06-26** | [`docs/vulnerabilities/trivy.txt`](docs/vulnerabilities/trivy.txt) | Imagem GHCR `develop` (Alpine 3.23.5): **Critical/High** em pacotes OS — [detalhes](docs/vulnerabilities/ALPINE-2026.md); JAR sem achados no export |
+| **Trivy** (screenshot — **último scan**) | **2026-10-07** | [`docs/vulnerabilities/image-20261007-000000.png`](docs/vulnerabilities/image-20261007-000000.png) · [CVE-2026-47884](docs/vulnerabilities/CVE-2026-47884.md) | Alpine **0**; JAR **1** VEX `not_affected` |
+| **Trivy** (screenshot) | **2026-10-06** 15:29 | [`docs/vulnerabilities/image-20261006-152900.png`](docs/vulnerabilities/image-20261006-152900.png) | Scan com Spring 7.0.9 (incompatível com Boot 3.5) |
+| **Trivy** (imagem container + JAR) | **2026-06-26** | [`docs/vulnerabilities/trivy.txt`](docs/vulnerabilities/trivy.txt) | Export anterior: Alpine 3.23.5 — [detalhes](docs/vulnerabilities/ALPINE-2026.md) |
 | **Tenable** (SCA) | **2026-06-26** 11:01 | [`docs/vulnerabilities/Vulnerabilities_All_2026-06-26-11_01.csv`](docs/vulnerabilities/Vulnerabilities_All_2026-06-26-11_01.csv) · [`docs/vulnerabilities/Software_Filtered_2026-06-26-11_01.csv`](docs/vulnerabilities/Software_Filtered_2026-06-26-11_01.csv) | Achados em dependências (ex.: Spring `spring-webmvc` 6.2.11); ver CSV para severidade e fix version |
 | **Tenable** (screenshot) | **2026-06-26** 13:58 | [`docs/vulnerabilities/image-20260626-135821.png`](docs/vulnerabilities/image-20260626-135821.png) | Evidência visual da varredura |
 

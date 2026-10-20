@@ -25,9 +25,7 @@ public final class ConsentFunnelEventMapper {
                 request.getCorrelationId(),
                 toAdditionalInfoMap(request.getAdditionalInfo()),
                 request.getTimestamp(),
-                request.getClientOrgId(),
                 request.getClientSSId(),
-                request.getServerOrgId(),
                 request.getServerASId(),
                 request.getPermissions());
     }

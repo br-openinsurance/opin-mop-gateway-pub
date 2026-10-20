@@ -71,4 +71,19 @@ class ResponseBuilderTest {
         assertNotNull(response.getBody());
         assertEquals("WARNING", response.getBody().getValidations().getStatus());
     }
+
+    @Test
+    @DisplayName("error response returns only the provided error and details")
+    void errorResponseDoesNotInventInternalDetails() {
+        var response = responseBuilder.buildErrorResponse(
+                org.springframework.http.HttpStatus.BAD_REQUEST,
+                "Invalid header",
+                "Header 'origin' must be either 'client' or 'server'");
+
+        assertNotNull(response.getBody());
+        assertEquals("Invalid header", response.getBody().getError());
+        assertEquals("Header 'origin' must be either 'client' or 'server'", response.getBody().getDetails());
+        org.junit.jupiter.api.Assertions.assertNull(response.getBody().getMessage());
+        org.junit.jupiter.api.Assertions.assertNull(response.getBody().getContext());
+    }
 }

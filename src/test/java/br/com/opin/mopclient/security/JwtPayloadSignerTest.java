@@ -51,6 +51,20 @@ class JwtPayloadSignerTest {
     }
 
     @Test
+    void shouldOmitIatAndExpWhenSigningFunnelPayload() throws Exception {
+        JwtPayloadSigner signer = new JwtPayloadSigner(privateKey, "kid-1", "org-test");
+
+        String token = signer.sign("{\"consentId\":\"urn:bancoex:1\"}".getBytes(), false);
+        SignedJWT sjwt = SignedJWT.parse(token);
+
+        assertNull(sjwt.getJWTClaimsSet().getIssueTime());
+        assertNull(sjwt.getJWTClaimsSet().getExpirationTime());
+        assertNull(sjwt.getJWTClaimsSet().getClaim("iat"));
+        assertNull(sjwt.getJWTClaimsSet().getClaim("exp"));
+        assertEquals("urn:bancoex:1", sjwt.getJWTClaimsSet().getStringClaim("consentId"));
+    }
+
+    @Test
     void shouldFailFastWhenKidIsNull() {
         NullPointerException ex = assertThrows(
                 NullPointerException.class,

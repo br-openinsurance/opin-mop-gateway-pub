@@ -13,9 +13,7 @@ public record ConsentFunnelEvent(
         String correlationId,
         Map<String, String> additionalInfo,
         String timestamp,
-        String clientOrgId,
         String clientSSId,
-        String serverOrgId,
         String serverASId,
         List<String> permissions) {
 }

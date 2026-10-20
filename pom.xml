@@ -8,13 +8,13 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.16</version>
+        <version>4.1.1</version>
         <relativePath/>
     </parent>
 
     <groupId>gateway</groupId>
     <artifactId>gateway</artifactId>
-    <version>1.0.7</version>
+    <version>1.0.8</version>
     <name>openinsurance-gateway</name>
     <description>MOP Client — serviço unificado de validação, anonimização e comunicação com a API externa</description>
 
@@ -26,21 +26,20 @@
         <maven.compiler.target>17</maven.compiler.target>
         <skipTests>false</skipTests>
         <mop.environment>sandbox</mop.environment>
-        <!-- Dependency versions to override transitive vulnerabilities -->
-        <!-- Tomcat: CVE-2026-65182/65905/68525 — scanner lists 10.1.58; that version was skipped, 10.1.59 is on Maven Central -->
-        <tomcat.version>10.1.59</tomcat.version>
+        <!-- Spring Framework 7.0.9 (CVE-2026-47884 / XsltView). Boot 4.1.1 is the supported pairing. -->
+        <spring-framework.version>7.0.9</spring-framework.version>
+        <!-- Tomcat 11.0.24 (Boot 4.1.1) → 11.0.25: CVE-2026-65182/65905/68525 -->
+        <tomcat.version>11.0.25</tomcat.version>
+        <!-- Jackson 3 (tools.jackson, Boot 4 default 3.1.5) → 3.1.7: CVE-2026-89407/89425/68497/91776/91777 -->
+        <jackson-bom.version>3.1.7</jackson-bom.version>
+        <!-- Jackson 2 (spring-boot-jackson2 + código existente) -->
+        <jackson2-bom.version>2.21.7</jackson2-bom.version>
         <!-- Netty: CVE-2026-44891 (4.1.136) and CVE-2026-75595 (4.1.137) -->
         <netty.version>4.1.137.Final</netty.version>
         <!-- Logback: CVE-2025-11228, CVE-2026-1225, CVE-2026-13006 (fixed in 1.5.37+) -->
         <logback.version>1.5.38</logback.version>
-        <!-- Jackson: CVE-2026-54515 and later 2.21.x advisories; 2.21.6 is current 2.21 line -->
-        <jackson-bom.version>2.21.6</jackson-bom.version>
-        <!-- Spring Framework: CVE-2026-41850 (spring-expression); CVE-2026-41842/41845 (spring-webmvc) -->
-        <spring-framework.version>6.2.19</spring-framework.version>
-        <!-- Micrometer: CVE-2026-40983/40984 — stay on 1.15.x (Spring Boot 3.5); 1.15.12 is the patched line -->
-        <micrometer.version>1.15.12</micrometer.version>
-        <!-- RabbitMQ Java client: CVE-2026-63337/69219/69220 -->
-        <rabbit-amqp-client.version>5.33.1</rabbit-amqp-client.version>
+        <!-- RabbitMQ Java client: GHSA credenciais em exception (5.35.0), UTF-8 shortstr (5.36.0), JSONReader DoS (5.36.1/5.37.0). 5.36.1 não está no Central; 5.37.0 fecha os três. -->
+        <rabbit-amqp-client.version>5.37.0</rabbit-amqp-client.version>
         <!-- External dependency versions -->
         <openapi4j.version>1.0.7</openapi4j.version>
         <gson.version>2.13.1</gson.version>
@@ -50,41 +49,45 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>com.fasterxml.jackson</groupId>
+                <groupId>org.springframework</groupId>
+                <artifactId>spring-framework-bom</artifactId>
+                <version>${spring-framework.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>tools.jackson</groupId>
                 <artifactId>jackson-bom</artifactId>
                 <version>${jackson-bom.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
             <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-databind</artifactId>
-                <version>${jackson-bom.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
+                <groupId>tools.jackson.core</groupId>
                 <artifactId>jackson-core</artifactId>
                 <version>${jackson-bom.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.springframework</groupId>
-                <artifactId>spring-webmvc</artifactId>
-                <version>${spring-framework.version}</version>
+                <groupId>tools.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson-bom.version}</version>
             </dependency>
             <dependency>
-                <groupId>org.springframework</groupId>
-                <artifactId>spring-core</artifactId>
-                <version>${spring-framework.version}</version>
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson2-bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
             <dependency>
-                <groupId>org.springframework</groupId>
-                <artifactId>spring-expression</artifactId>
-                <version>${spring-framework.version}</version>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson2-bom.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.micrometer</groupId>
-                <artifactId>micrometer-core</artifactId>
-                <version>${micrometer.version}</version>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-core</artifactId>
+                <version>${jackson2-bom.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.rabbitmq</groupId>
@@ -116,10 +119,23 @@
         <!-- Spring Boot Starters -->
         <!-- ================================================================== -->
         
-        <!-- Spring Boot Web Starter -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+        <!-- Dependabot #38 / CVE-2026-47884 (XsltView): versão explícita para o scanner não ficar em 6.2.19 / 7.0.8. -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webmvc</artifactId>
+            <version>${spring-framework.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-restclient</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-jackson2</artifactId>
         </dependency>
 
         <!-- Validation Support -->
@@ -151,16 +167,22 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
+        <!-- Dependabot #39/#40/#41: UTF-8 shortstr, credenciais em exception, JSONReader DoS. -->
+        <dependency>
+            <groupId>com.rabbitmq</groupId>
+            <artifactId>amqp-client</artifactId>
+            <version>${rabbit-amqp-client.version}</version>
+        </dependency>
 
         <!-- AOP + Resilience4j circuit breakers for downstream HTTP -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-aop</artifactId>
+            <artifactId>spring-boot-starter-aspectj</artifactId>
         </dependency>
         <dependency>
             <groupId>io.github.resilience4j</groupId>
-            <artifactId>resilience4j-spring-boot3</artifactId>
-            <version>2.2.0</version>
+            <artifactId>resilience4j-spring-boot4</artifactId>
+            <version>2.4.0</version>
         </dependency>
 
         <!-- Caffeine Cache -->
@@ -211,18 +233,6 @@
             <groupId>com.nimbusds</groupId>
             <artifactId>nimbus-jose-jwt</artifactId>
             <version>10.9.1</version>
-        </dependency>
-
-        <!-- ================================================================== -->
-        <!-- Development Tools -->
-        <!-- ================================================================== -->
-        
-        <!-- Spring Boot DevTools (Optional - for hot reload in development) -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-devtools</artifactId>
-            <scope>runtime</scope>
-            <optional>true</optional>
         </dependency>
 
         <!-- Lombok (Optional - for reducing boilerplate code) -->
@@ -308,13 +318,6 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
                     <mainClass>br.com.opin.mopclient.MopClientApplication</mainClass>
-                    <excludes>
-                        <!-- Exclude devtools from production build -->
-                        <exclude>
-                            <groupId>org.springframework.boot</groupId>
-                            <artifactId>spring-boot-devtools</artifactId>
-                        </exclude>
-                    </excludes>
                 </configuration>
                 <executions>
                     <execution>

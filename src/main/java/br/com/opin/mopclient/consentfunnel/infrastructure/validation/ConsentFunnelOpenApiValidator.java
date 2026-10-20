@@ -48,8 +48,10 @@ public class ConsentFunnelOpenApiValidator {
     }
 
     public void validate(ConsentFunnelEventRequestDTO request) {
-        JsonNode payload = parsePayload(request);
+        validatePayload(parsePayload(request));
+    }
 
+    void validatePayload(JsonNode payload) {
         Body requestBody = Body.from(payload);
         Request openApiRequest = new DefaultRequest.Builder(OPERATION_PATH, Request.Method.POST)
                 .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)

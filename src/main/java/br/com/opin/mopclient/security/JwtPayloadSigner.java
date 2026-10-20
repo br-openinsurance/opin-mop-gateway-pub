@@ -64,9 +64,18 @@ public final class JwtPayloadSigner implements PayloadSigner {
 
     @Override
     public String sign(byte[] payload) {
+        return sign(payload, true);
+    }
+
+    /**
+     * @param includeRegisteredTimeClaims {@code false} omite claims {@code iat} e {@code exp}
+     *                                    (canal do funil PCM). O rastreio MOP continua com {@code true}.
+     */
+    public String sign(byte[] payload, boolean includeRegisteredTimeClaims) {
         Objects.requireNonNull(payload, "payload cannot be null");
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("[JWS] Iniciando assinatura | kid=\"{}\" orgId=\"{}\"", keyId, orgId);
+            LOGGER.debug("[JWS] Iniciando assinatura | kid=\"{}\" orgId=\"{}\" iatExp={}",
+                    keyId, orgId, includeRegisteredTimeClaims);
         }
 
         JsonNode root;
@@ -82,15 +91,21 @@ public final class JwtPayloadSigner implements PayloadSigner {
         JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder();
         for (Iterator<Map.Entry<String, JsonNode>> it = root.fields(); it.hasNext(); ) {
             Map.Entry<String, JsonNode> e = it.next();
+            String claimName = e.getKey();
+            if (!includeRegisteredTimeClaims && ("iat".equals(claimName) || "exp".equals(claimName))) {
+                continue;
+            }
             JsonNode v = e.getValue();
             if (v != null && !v.isNull()) {
-                claimsBuilder.claim(e.getKey(), OBJECT_MAPPER.convertValue(v, Object.class));
+                claimsBuilder.claim(claimName, OBJECT_MAPPER.convertValue(v, Object.class));
             }
         }
         claimsBuilder.claim("orgId", orgId);
-        Instant now = Instant.now();
-        claimsBuilder.issueTime(Date.from(now));
-        claimsBuilder.expirationTime(Date.from(now.plus(1, ChronoUnit.HOURS)));
+        if (includeRegisteredTimeClaims) {
+            Instant now = Instant.now();
+            claimsBuilder.issueTime(Date.from(now));
+            claimsBuilder.expirationTime(Date.from(now.plus(1, ChronoUnit.HOURS)));
+        }
 
         JWTClaimsSet claims = claimsBuilder.build();
 

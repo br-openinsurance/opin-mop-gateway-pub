@@ -163,9 +163,9 @@ public class AnonymizerController {
         } catch (JsonProcessingException e) {
             LOGGER.error("Failed to process JSON: {}", e.getMessage(), e);
             return responseBuilder.buildErrorResponse(
-                    HttpStatus.BAD_REQUEST, 
-                    "JSON conversion error", 
-                    "Failed to process JSON payload: " + e.getMessage());
+                    HttpStatus.BAD_REQUEST,
+                    "JSON conversion error",
+                    "Failed to process JSON payload.");
         } catch (ClientRetryEnqueuedException e) {
             RequestHeadersDTO h = e.getHeadersDTO();
             String responseClientSSId = h.getClientSSId() != null && !h.getClientSSId().isBlank()
