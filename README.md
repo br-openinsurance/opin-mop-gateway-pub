@@ -42,6 +42,56 @@ API HTTP **auto-hospedada** que cada participante do **Open Insurance Brasil** i
 
 ---
 
+### Fluxo de registro de eventos no MOP
+
+Interação Open Insurance entre Receptora e Transmissora, com os quatro pontos de registro no MOP.
+Todas as etapas compartilham o mesmo `fapi_interaction_id` (exemplo: `ABC123`).
+
+```mermaid
+sequenceDiagram
+    participant R as RECEPTORA<br/>(Client)
+    participant M as MOP
+    participant T as TRANSMISSORA<br/>(Server)
+
+    Note over R,T: fapi_interaction_id = ABC123
+
+    R-->>M: 1. Chamada API MOP: REQUEST_CLIENT
+    Note right of M: timestamp = T1
+    R->>T: 2. Chamada real Open Insurance (request)
+    activate T
+    Note right of T: 3. Recebe request
+    T-->>M: 4. Chamada API MOP: REQUEST_SERVER
+    Note left of M: timestamp = T2
+    Note right of T: 5. Processa API
+    T-->>M: 6. Chamada API MOP: RESPONSE_SERVER
+    Note left of M: timestamp = T3
+    T->>R: 7. Response
+    deactivate T
+    Note left of R: 8. Recebe response
+    R-->>M: 9. Chamada API MOP: RESPONSE_CLIENT
+    Note right of M: timestamp = T4
+```
+
+```mermaid
+flowchart LR
+    MOP[MOP] --> MSG[Mensageria] --> PCM[PCM]
+```
+
+#### Eventos registrados no MOP
+
+| Evento | Quem envia | Quando | Timestamp |
+|---|---|---|---|
+| `REQUEST_CLIENT` | Receptora | Antes de enviar a request à Transmissora | T1 |
+| `REQUEST_SERVER` | Transmissora | Ao receber a request, antes de processar | T2 |
+| `RESPONSE_SERVER` | Transmissora | Após processar, antes de devolver a response | T3 |
+| `RESPONSE_CLIENT` | Receptora | Ao receber a response da Transmissora | T4 |
+
+**Legenda:** seta contínua (`->>`) = tráfego real Open Insurance; seta tracejada (`-->>`) = chamada de registro no MOP.
+
+Todos os eventos da mesma interação são correlacionados pelo `fapi_interaction_id` e seguem do MOP para a Mensageria e, depois, para a PCM.
+
+---
+
 
 
 ## [Sumário](https://github.com/br-openinsurance/opin-mop-gateway-pub/wiki/Release-notes)
