@@ -914,8 +914,8 @@ Documentação completa: [`docs/DOCUMENTACAO.md`](docs/DOCUMENTACAO.md).
 - `[docs/PATH_MOP_HEADER.md](docs/PATH_MOP_HEADER.md)` — fórmula do header `path` e specs em `swagger/current/`.
 - `[wiki.md](wiki.md#varreduras-de-vulnerabilidade)` — varreduras de vulnerabilidade (Trivy, Tenable).
 - `[wiki.md](wiki.md)` — arquitetura interna.
-- `[src/main/resources/mop-gateway-api-specification.yml](src/main/resources/mop-gateway-api-specification.yml)` — contrato HTTP do gateway.
-- `[src/main/resources/swagger/current/](src/main/resources/swagger/current/)` — specs Open Insurance usadas na validação.
+- [`mop-gateway-api-specification.yml`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/src/main/resources/mop-gateway-api-specification.yml) — contrato HTTP do gateway.
+- [`swagger/current/`](https://github.com/br-openinsurance/opin-mop-gateway-pub/tree/main/src/main/resources/swagger/current) — specs Open Insurance usadas na validação.
 
 
 

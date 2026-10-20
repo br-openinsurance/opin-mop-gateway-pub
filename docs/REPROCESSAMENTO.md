@@ -87,4 +87,4 @@ Procedimento e exemplos de CLI/UI: [VARIAVEIS_DE_AMBIENTE.md — Criação obrig
 | O cliente HTTP sempre vê erro quando há fila? | Não — pode receber **200** com mensagem de sucesso; ver logs `[MOP retry]`. |
 | O que ajusta “frequência de atualização” de regras/config? | Principalmente **TTL dos caches** (`CACHE_*_TTL_SECONDS`). |
 
-Sandbox e URLs: [README](../README.md).
+Sandbox e URLs: [README](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/README.md).
