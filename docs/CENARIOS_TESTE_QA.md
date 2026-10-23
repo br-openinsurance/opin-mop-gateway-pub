@@ -715,7 +715,7 @@ Fluxo interno: validação → anonimização (GET fields + apply) → montagem 
 
 ## Referências
 
-- [README.md](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/README.md)
+- [README.md](../README.md)
 - [VARIAVEIS_DE_AMBIENTE.md](VARIAVEIS_DE_AMBIENTE.md)
 - [REPROCESSAMENTO.md](REPROCESSAMENTO.md)
-- [mop-gateway-api-specification.yml](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/src/main/resources/mop-gateway-api-specification.yml)
+- [mop-gateway-api-specification.yml](../src/main/resources/mop-gateway-api-specification.yml)

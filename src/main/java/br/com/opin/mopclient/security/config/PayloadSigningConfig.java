@@ -12,16 +12,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.util.StringUtils;
 
 /**
- * Spring configuration that wires outbound payload signing.
+ * Assinatura de saída no {@code RestTemplate} compartilhado:
+ * rastreio {@code POST /process} e funil {@code POST} em {@code MOP_CONSENT_FUNNEL_METRICS_URL}.
  *
- * <p>Modos suportados:</p>
  * <ul>
- *   <li><b>Assinado</b> (recomendado em produção) — {@code private-key-pem} configurado e {@code enabled} != {@code false}.
- *       O JSON é convertido em JWT compacto antes de sair na rede.</li>
- *   <li><b>Unsigned passthrough</b> (apenas dev local) — {@code private-key-pem} vazio. O gateway sobe e envia o JSON
- *       em claro com {@code WARN} explícito. Útil para validar o pipeline interno sem credenciais do participante.</li>
- *   <li><b>Erro</b> — {@code private-key-pem} configurado e {@code enabled=false}. Configuração inconsistente:
- *       o gateway recusa subir para evitar vazar JSON em claro com chave disponível.</li>
+ *   <li>{@code MOP_PAYLOAD_SIGNING_ENABLED=true} — JWT PS256 ({@code application/jwt}).</li>
+ *   <li>{@code MOP_PAYLOAD_SIGNING_ENABLED=false} — JSON em claro nos dois canais (assinatura na borda).</li>
  * </ul>
  */
 @Configuration
@@ -67,8 +63,8 @@ public class PayloadSigningConfig {
             allowUnsignedPassthrough = true;
             if (hasKey) {
                 LOGGER.warn(
-                        "[JWS] Payload signing explicitly disabled (mop.payload-signing.enabled=false) even though a private key is configured. "
-                                + "Outbound payloads will be sent UNSIGNED.");
+                        "[JWS] MOP_PAYLOAD_SIGNING_ENABLED=false: POST /process and funnel /metrics "
+                                + "leave as unsigned JSON (signing at the edge).");
             }
         } else {
             // enabled=null: follow the presence of the key (default behavior)

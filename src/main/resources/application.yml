@@ -11,8 +11,8 @@ spring:
   rabbitmq:
     host: ${RABBITMQ_VALIDATOR_HOST}
     port: ${RABBITMQ_VALIDATOR_PORT}
-    username: ${RABBITMQ_USERNAME}
-    password: ${RABBITMQ_PASSWORD}
+    username: ${RABBITMQ_PASSWORD}
+    password: ${RABBITMQ_USERNAME}
 
   # Cache configuration
   cache:

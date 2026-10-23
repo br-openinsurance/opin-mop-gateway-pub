@@ -80,7 +80,7 @@ class PayloadSigningInterceptorTest {
         HttpRequest request = mock(HttpRequest.class);
         when(request.getMethod()).thenReturn(HttpMethod.POST);
         when(request.getHeaders()).thenReturn(headers);
-        when(request.getURI()).thenReturn(java.net.URI.create("https://mop.example/process"));
+        when(request.getURI()).thenReturn(java.net.URI.create("https://mop.example/metrics"));
 
         byte[] bodyBytes = "{\"x\":1}".getBytes(StandardCharsets.UTF_8);
         ClientHttpResponse response = mock(ClientHttpResponse.class);

@@ -1,13 +1,13 @@
 # Funil de consentimentos (PCM) — documentação
 
-- **Público:** associadas participantes do Open Insurance Brasil.
-- **Canal:** `POST /v1/data-funil-consents`
-- **Contrato JSON:** [`consent-funnel.yml`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/src/main/resources/swagger/consent-funnel/consent-funnel.yml) — schema `ConsentCreated`
-- **Collection:** [`06-funil-consents-por-step.postman_collection.json`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/collections-apresentacao/06-funil-consents-por-step.postman_collection.json)
+> **Público:** associadas participantes do Open Insurance Brasil.  
+> **Canal (ingresso no gateway):** `POST /v1/data-funil-consents`  
+> **Contrato JSON (use este swagger como base):** [`swagger/consent-funnel/consent-funnel.yml`](../src/main/resources/swagger/consent-funnel/consent-funnel.yml) — schema `ConsentCreated`  
+> **Collection:** [`collections-apresentacao/06-funil-consents-por-step.postman_collection.json`](collections-apresentacao/06-funil-consents-por-step.postman_collection.json)
 
 ## Ambiente sandbox — destino das métricas
 
-O gateway **não** envia o funil para o `POST /process`. Depois de validar o JSON contra o swagger acima, ele POSTa o JWT em **`MOP_CONSENT_FUNNEL_METRICS_URL`**.
+O gateway **não** envia o funil para o `POST /process`. Depois de validar o JSON, POSTa em **`MOP_CONSENT_FUNNEL_METRICS_URL`**. A assinatura é a **mesma** do rastreio MOP (`MOP_PAYLOAD_SIGNING_ENABLED`): `true` = JWT PS256; `false` = JSON em claro.
 
 **Host sandbox OPIN:** `https://mop-server-entrypoint-sandbox.opinbrasil.com.br/`
 
@@ -31,7 +31,7 @@ Este documento descreve o ingresso de eventos do **funil de consentimentos** no 
 
 O participante reporta cada etapa do consentimento (criação, autenticação, autorização, uso do recurso, revogação, expiração) em um canal próprio, separado do rastreio `POST /v1/anonymize/data`.
 
-O gateway confere se o evento está completo e coerente com o `step`, aceita o envio e encaminha a métrica ao ambiente central (JWT PS256).
+O gateway confere se o evento está completo e coerente com o `step`, aceita o envio e encaminha a métrica (`MOP_PAYLOAD_SIGNING_ENABLED=true` → JWT; `false` → JSON em claro).
 
 | | Rastreio MOP | Funil PCM |
 |---|---|---|
@@ -46,7 +46,7 @@ O gateway confere se o evento está completo e coerente com o `step`, aceita o e
 flowchart LR
     APP[Aplicação da associada] -->|JSON PCM<br/>Content-Type application/json| GW[POST /v1/data-funil-consents]
     GW -->|valida eventBody + regras do step| ACC[HTTP 202 ACCEPTED]
-    GW -->|JWT PS256| PCM[Métricas PCM]
+    GW -->|JWT ou JSON em claro<br/>MOP_PAYLOAD_SIGNING_ENABLED| PCM[Métricas /metrics]
 ```
 
 ---
@@ -170,7 +170,7 @@ HTTP **400** se faltar campo obrigatório, se o tipo não casar com a spec ou se
 
 ## 6. Collection Postman
 
-Arquivo: [`06-funil-consents-por-step.postman_collection.json`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/collections-apresentacao/06-funil-consents-por-step.postman_collection.json)
+Arquivo: [`06-funil-consents-por-step.postman_collection.json`](collections-apresentacao/06-funil-consents-por-step.postman_collection.json)
 
 1. Importe a collection.
 2. `baseUrl` padrão (ambiente de desenvolvimento): `http://localhost:8080/v1/anonymize`. URL completa: `POST http://localhost:8080/v1/anonymize/data-funil-consents`.
@@ -187,15 +187,15 @@ Esperado em cada um: **HTTP 202** quando o JSON passa na spec e a métrica PCM r
 - Não envia ao MOP `/process`.
 - Não substitui o reporte da API Consents (`CreateConsent` / `ResponseConsent`). Funil e rastreio convivem.
 
-Referência de implementação: `ConsentFunnelController`, `ConsentFunnelOpenApiValidator`, [`consent-funnel.yml`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/src/main/resources/swagger/consent-funnel/consent-funnel.yml).
+Referência de implementação: `ConsentFunnelController`, `ConsentFunnelOpenApiValidator`, `swagger/consent-funnel/consent-funnel.yml`.
 
 ---
 
 ## 8. Referências
 
-Este documento é o item **11** do [sumário do README](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/README.md#sumário).
+Este documento é o item **11** do [sumário do README](../README.md#sumário).
 
-- [README — Funil de consentimentos (PCM)](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/README.md#funil-de-consentimentos-pcm--documentação)
-- [`ALERTA_HEADERS_README.md`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/ALERTA_HEADERS_README.md) — headers FAPI × MOP × funil PCM
-- [`release-notes.md`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/release-notes.md#v1-0-8) — versão atual **1.0.8** (funil sandbox, contrato fechado, Dependabot)
-- [`06-funil-consents-por-step.postman_collection.json`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/collections-apresentacao/06-funil-consents-por-step.postman_collection.json)
+- [README — Funil de consentimentos (PCM)](../README.md#funil-de-consentimentos-pcm--documentação)
+- [`ALERTA_HEADERS_README.md`](ALERTA_HEADERS_README.md) — headers FAPI × MOP × funil PCM
+- [`release-notes.md`](release-notes.md#v1-0-8) — versão atual **1.0.8** (funil sandbox, contrato fechado, Dependabot)
+- [`06-funil-consents-por-step.postman_collection.json`](collections-apresentacao/06-funil-consents-por-step.postman_collection.json)

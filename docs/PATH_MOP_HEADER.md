@@ -314,6 +314,6 @@ Consulte sempre `servers[0].url` no arquivo. Referência frequente:
 
 ## Referências no repositório
 
-- Specs Open Insurance (validação): [`swagger/current/`](https://github.com/br-openinsurance/opin-mop-gateway-pub/tree/main/src/main/resources/swagger/current)
+- Specs Open Insurance (validação): [`src/main/resources/swagger/current/`](../src/main/resources/swagger/current/)
 - Fórmula do header `path`: este documento
 - Cenários QA: [`docs/CENARIOS_TESTE_QA.md`](CENARIOS_TESTE_QA.md)

@@ -43,7 +43,7 @@ Após o deploy, configure variáveis de ambiente e endpoints MOP conforme [`VARI
 docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:v1.0.8
 ```
 
-- **Desenvolvimento local (Docker):** imagem da branch `develop` + RabbitMQ — ver [README.md](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/README.md#início-rápido--rodando-em-até-10-minutos).
+- **Desenvolvimento local (Docker):** imagem da branch `develop` + RabbitMQ — ver [README.md](../README.md#início-rápido--rodando-em-até-10-minutos).
 
 ```bash
 docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gateway:develop

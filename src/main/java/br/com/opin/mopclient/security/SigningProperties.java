@@ -17,9 +17,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class SigningProperties {
 
     /**
-     * Enables request signing when a private key is present. If {@code null}, signing follows the presence
-     * of {@link #privateKeyPem}. {@code false} is not allowed together with a non-blank private key
-     * (application will fail to start).
+     * Assinatura de saída do {@code RestTemplate} (rastreio {@code /process} e funil {@code /metrics}).
+     * {@code true}: JWT PS256. {@code false}: JSON em claro (borda). {@code null}: segue a presença da chave.
      */
     private Boolean enabled;
 

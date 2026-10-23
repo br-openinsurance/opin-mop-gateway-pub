@@ -28,8 +28,9 @@ import java.time.Instant;
 import java.util.Objects;
 
 /**
- * POST do evento PCM para {@code mop.endpoints.consent-funnel-metrics.url}.
- * O {@link RestTemplate} aplica {@code PayloadSigningInterceptor} (JWT PS256 + {@code application/jwt}).
+ * POST do evento para {@code mop.endpoints.consent-funnel-metrics.url}.
+ * A assinatura segue {@code MOP_PAYLOAD_SIGNING_ENABLED}, igual ao {@code POST /process}:
+ * {@code true} = JWT; {@code false} = JSON em claro.
  */
 @Component
 public class ConsentFunnelMetricsClient implements ConsentFunnelMetricsPort {

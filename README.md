@@ -25,7 +25,7 @@ API HTTP **auto-hospedada** que cada participante do **Open Insurance Brasil** i
 
 > [!NOTE]
 > **Endpoints do MOP Server (por ambiente)**
->
+>MOP_PAYLOAD_SIGNING_ENABLED=falseMOP_PAYLOAD_SIGNING_ENABLED=falsecficou muito bom apresetação
 > Configure `EXTERNAL_REQUEST_URL` e `EXTERNAL_API_DATA_ANONYMIZATION` com a URL **completa** do ambiente em que o gateway irá operar. Credenciais JWS (`JWS_KID`, `JWS_ORG_ID`, chave privada) devem estar cadastradas no **mesmo** ambiente.
 >
 >
@@ -39,56 +39,6 @@ API HTTP **auto-hospedada** que cada participante do **Open Insurance Brasil** i
 > - **POST** `.../process`: endpoint de **processamento/ingestão**. Recebe o **payload final** que o gateway montou e anonimizado. No fluxo padrão, o corpo enviado ao MOP é um **JWT compacto** (`Content-Type: application/jwt`) quando a assinatura está habilitada.
 >
 > Em resumo: **GET = “quais campos anonimizar”**; **POST = “enviar o evento já anonimizado (e assinado)”**. Detalhes de variáveis: `[docs/VARIAVEIS_DE_AMBIENTE.md](docs/VARIAVEIS_DE_AMBIENTE.md)`.
-
----
-
-### Fluxo de registro de eventos no MOP
-
-Interação Open Insurance entre Receptora e Transmissora, com os quatro pontos de registro no MOP.
-Todas as etapas compartilham o mesmo `fapi_interaction_id` (exemplo: `ABC123`).
-
-```mermaid
-sequenceDiagram
-    participant R as RECEPTORA<br/>(Client)
-    participant M as MOP
-    participant T as TRANSMISSORA<br/>(Server)
-
-    Note over R,T: fapi_interaction_id = ABC123
-
-    R-->>M: 1. Chamada API MOP: REQUEST_CLIENT
-    Note right of M: timestamp = T1
-    R->>T: 2. Chamada real Open Insurance (request)
-    activate T
-    Note right of T: 3. Recebe request
-    T-->>M: 4. Chamada API MOP: REQUEST_SERVER
-    Note left of M: timestamp = T2
-    Note right of T: 5. Processa API
-    T-->>M: 6. Chamada API MOP: RESPONSE_SERVER
-    Note left of M: timestamp = T3
-    T->>R: 7. Response
-    deactivate T
-    Note left of R: 8. Recebe response
-    R-->>M: 9. Chamada API MOP: RESPONSE_CLIENT
-    Note right of M: timestamp = T4
-```
-
-```mermaid
-flowchart LR
-    MOP[MOP] --> MSG[Mensageria] --> PCM[PCM]
-```
-
-#### Eventos registrados no MOP
-
-| Evento | Quem envia | Quando | Timestamp |
-|---|---|---|---|
-| `REQUEST_CLIENT` | Receptora | Antes de enviar a request à Transmissora | T1 |
-| `REQUEST_SERVER` | Transmissora | Ao receber a request, antes de processar | T2 |
-| `RESPONSE_SERVER` | Transmissora | Após processar, antes de devolver a response | T3 |
-| `RESPONSE_CLIENT` | Receptora | Ao receber a response da Transmissora | T4 |
-
-**Legenda:** seta contínua (`->>`) = tráfego real Open Insurance; seta tracejada (`-->>`) = chamada de registro no MOP.
-
-Todos os eventos da mesma interação são correlacionados pelo `fapi_interaction_id` e seguem do MOP para a Mensageria e, depois, para a PCM.
 
 ---
 
@@ -806,7 +756,9 @@ Ative com `SPRING_PROFILES_ACTIVE=local` ou `--spring.profiles.active=local`.
 
 ## Segurança e assinatura JWS
 
-Quando `MOP_PAYLOAD_SIGNING_ENABLED=true`, o gateway assina o **payload final enviado ao MOP** como um JWT compacto, com:
+`MOP_PAYLOAD_SIGNING_ENABLED` vale para o **rastreio** (`POST /process`) **e** para o **funil** (`MOP_CONSENT_FUNNEL_METRICS_URL`). `true`: JWT compacto. `false`: JSON em claro nos dois destinos.
+
+Quando `true`, o JWT usa:
 
 
 | Item          | Valor                                                                           |
@@ -914,8 +866,8 @@ Documentação completa: [`docs/DOCUMENTACAO.md`](docs/DOCUMENTACAO.md).
 - `[docs/PATH_MOP_HEADER.md](docs/PATH_MOP_HEADER.md)` — fórmula do header `path` e specs em `swagger/current/`.
 - `[wiki.md](wiki.md#varreduras-de-vulnerabilidade)` — varreduras de vulnerabilidade (Trivy, Tenable).
 - `[wiki.md](wiki.md)` — arquitetura interna.
-- [`mop-gateway-api-specification.yml`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/src/main/resources/mop-gateway-api-specification.yml) — contrato HTTP do gateway.
-- [`swagger/current/`](https://github.com/br-openinsurance/opin-mop-gateway-pub/tree/main/src/main/resources/swagger/current) — specs Open Insurance usadas na validação.
+- `[src/main/resources/mop-gateway-api-specification.yml](src/main/resources/mop-gateway-api-specification.yml)` — contrato HTTP do gateway.
+- `[src/main/resources/swagger/current/](src/main/resources/swagger/current/)` — specs Open Insurance usadas na validação.
 
 
 

@@ -70,7 +70,7 @@ Detalhes de estágios internos: código-fonte e comentários em `ProcessingOrche
 - **Fila `mop.client.retry.queue`:** mensagens JSON com contexto para reenvio.
 - **Replay:** `ClientRetryReplayService` / `ClientRetryReplayScheduler` — intervalos em `mop.client.retry.replay.*`.
 
-Documentação dedicada: [docs/REPROCESSAMENTO.md](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/REPROCESSAMENTO.md).
+Documentação dedicada: [docs/REPROCESSAMENTO.md](docs/REPROCESSAMENTO.md).
 
 ---
 
@@ -80,7 +80,7 @@ Documentação dedicada: [docs/REPROCESSAMENTO.md](https://github.com/br-openins
 - Headers obrigatórios: `X-Correlation-Id`, `origin` (`client`/`server`), `path`, `operation`, `httpType`.
 - Header condicional: `statusCode` — opcional com `httpType=Request`; **obrigatório** com `httpType=Response` (100–599).
 - Opcionais: `traceOrigin`, `clientSSId`, `serverASId`, `X-Mop-Reportid`.
-- **`path`:** enviar o path **concreto** da transação (path MOP completo, começando com `/open-insurance/`; com URN/ID reais); não usar `{consentId}` nem só `/consents`. Ver [`docs/PATH_MOP_HEADER.md`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/PATH_MOP_HEADER.md).
+- **`path`:** enviar o path **concreto** da transação (path MOP completo, começando com `/open-insurance/`; com URN/ID reais); não usar `{consentId}` nem só `/consents`. Ver [`docs/PATH_MOP_HEADER.md`](docs/PATH_MOP_HEADER.md).
 - **`origin` + `httpType` + `statusCode`:** quatro combinações. Mesmo `X-Correlation-Id`, `path` e `operation`. Schema segue só o `httpType`.
 
   | `origin` | `httpType` | `statusCode` | Schema | Quem reporta |
@@ -90,10 +90,10 @@ Documentação dedicada: [docs/REPROCESSAMENTO.md](https://github.com/br-openins
   | `server` | `Response` | **obrigatório** | **response** do status | Transmissora enviou |
   | `client` | `Response` | **obrigatório** | **response** do status | Receptora recebeu |
 
-  Ver [`README.md`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/README.md#contrato-da-api) e [`docs/PATH_MOP_HEADER.md`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/PATH_MOP_HEADER.md).
+  Ver [`README.md`](README.md#contrato-da-api) e [`docs/PATH_MOP_HEADER.md`](docs/PATH_MOP_HEADER.md).
 - Resposta HTTP: `context`, `request` (com `path`, `operation`, `header`), `validations` (`status`, `total`, `pending`); `response` quando entrega síncrona ao MOP.
 
-Contrato resumido: [README.md](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/README.md).
+Contrato resumido: [README.md](README.md).
 
 ---
 
@@ -102,7 +102,7 @@ Contrato resumido: [README.md](https://github.com/br-openinsurance/opin-mop-gate
 Implantação em **Kubernetes** via **Helm Chart** (GHCR: `ghcr.io/br-openinsurance/mop-client-chart/mop-client`).
 
 - Guia oficial: [INSTALA_MOP_CLIENT.md](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/feat/mop-client-install/docs/INSTALA_MOP_CLIENT.md) no repositório `opin-mop-gateway-pub` (branch `feat/mop-client-install`).
-- Índice local: [docs/INSTALACAO.md](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/INSTALACAO.md).
+- Índice local: [docs/INSTALACAO.md](docs/INSTALACAO.md).
 
 Imagem Docker de **produção** (GHCR, release **1.0.8**, branch `main`):
 
@@ -119,7 +119,7 @@ docker pull ghcr.io/br-openinsurance/opin-mop-gateway-pub/open-insurance-mop-gat
 - `application.yml` — base, RabbitMQ, MOP, cache, Resilience4j, logging.
 - `application-local.yml` — sobrescritas locais; ativar com `SPRING_PROFILES_ACTIVE=local`.
 
-Variáveis: [docs/VARIAVEIS_DE_AMBIENTE.md](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/VARIAVEIS_DE_AMBIENTE.md).
+Variáveis: [docs/VARIAVEIS_DE_AMBIENTE.md](docs/VARIAVEIS_DE_AMBIENTE.md).
 
 ### Endpoints do MOP Server
 
@@ -173,7 +173,7 @@ mvn clean package
 
 ## Varreduras de vulnerabilidade
 
-Relatórios e evidências em [`docs/vulnerabilities/`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/vulnerabilities/).
+Relatórios e evidências em [`docs/vulnerabilities/`](docs/vulnerabilities/).
 
 ### Escopo de tratamento (severidade)
 
@@ -187,32 +187,32 @@ Somente vulnerabilidades classificadas como **Critical**, **High** ou **Medium**
 | Low | Não |
 | Info / outros | Não |
 
-Detalhes: [`docs/vulnerabilities/README.md`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/vulnerabilities/README.md#escopo-de-remediação-severidade) · achados Alpine: [`docs/vulnerabilities/ALPINE-2026.md`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/vulnerabilities/ALPINE-2026.md).
+Detalhes: [`docs/vulnerabilities/README.md`](docs/vulnerabilities/README.md#escopo-de-remediação-severidade) · achados Alpine: [`docs/vulnerabilities/ALPINE-2026.md`](docs/vulnerabilities/ALPINE-2026.md).
 
-> **Último scan Trivy (2026-10-07):** Alpine **0**; JAR **1** = [CVE-2026-47884](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/vulnerabilities/CVE-2026-47884.md) (`XsltView` + `/**` com view; **não explorável** neste REST). VEX: [`docs/vulnerabilities/vex-CVE-2026-47884.json`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/vulnerabilities/vex-CVE-2026-47884.json). Evidência: [`docs/vulnerabilities/image-20261007-000000.png`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/vulnerabilities/image-20261007-000000.png).
+> **Último scan Trivy (2026-10-07):** Alpine **0**; JAR **1** = [CVE-2026-47884](docs/vulnerabilities/CVE-2026-47884.md) (`XsltView` + `/**` com view; **não explorável** neste REST). VEX: [`docs/vulnerabilities/vex-CVE-2026-47884.json`](docs/vulnerabilities/vex-CVE-2026-47884.json). Evidência: [`docs/vulnerabilities/image-20261007-000000.png`](docs/vulnerabilities/image-20261007-000000.png).
 >
 > **Tenable (2026-06-26):** achados em dependências Java eram **Low** (ex.: Spring `spring-webmvc` 6.2.11) — fora do escopo de remediação acima.
 >
-> **Alpine (histórico 2026-06):** CVE-2026-11822, CVE-2026-11824 (**Critical**, `sqlite-libs`) e CVE-2026-41989 (**High**, `libgcrypt`) na 3.23 — **remediado** na 3.24. Ver [ALPINE-2026.md](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/vulnerabilities/ALPINE-2026.md).
+> **Alpine (histórico 2026-06):** CVE-2026-11822, CVE-2026-11824 (**Critical**, `sqlite-libs`) e CVE-2026-41989 (**High**, `libgcrypt`) na 3.23 — **remediado** na 3.24. Ver [ALPINE-2026.md](docs/vulnerabilities/ALPINE-2026.md).
 
 | Ferramenta | Data da execução | Artefatos | Resumo |
 |------------|------------------|-----------|--------|
-| **Trivy** (screenshot — **último scan**) | **2026-10-07** | [`docs/vulnerabilities/image-20261007-000000.png`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/vulnerabilities/image-20261007-000000.png) · [CVE-2026-47884](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/vulnerabilities/CVE-2026-47884.md) | Alpine **0**; JAR **1** VEX `not_affected` |
-| **Trivy** (screenshot) | **2026-10-06** 15:29 | [`docs/vulnerabilities/image-20261006-152900.png`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/vulnerabilities/image-20261006-152900.png) | Scan com Spring 7.0.9 (incompatível com Boot 3.5) |
-| **Trivy** (imagem container + JAR) | **2026-06-26** | [`docs/vulnerabilities/trivy.txt`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/vulnerabilities/trivy.txt) | Export anterior: Alpine 3.23.5 — [detalhes](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/vulnerabilities/ALPINE-2026.md) |
-| **Tenable** (SCA) | **2026-06-26** 11:01 | [`docs/vulnerabilities/Vulnerabilities_All_2026-06-26-11_01.csv`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/vulnerabilities/Vulnerabilities_All_2026-06-26-11_01.csv) · [`docs/vulnerabilities/Software_Filtered_2026-06-26-11_01.csv`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/vulnerabilities/Software_Filtered_2026-06-26-11_01.csv) | Achados em dependências (ex.: Spring `spring-webmvc` 6.2.11); ver CSV para severidade e fix version |
-| **Tenable** (screenshot) | **2026-06-26** 13:58 | [`docs/vulnerabilities/image-20260626-135821.png`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/vulnerabilities/image-20260626-135821.png) | Evidência visual da varredura |
+| **Trivy** (screenshot — **último scan**) | **2026-10-07** | [`docs/vulnerabilities/image-20261007-000000.png`](docs/vulnerabilities/image-20261007-000000.png) · [CVE-2026-47884](docs/vulnerabilities/CVE-2026-47884.md) | Alpine **0**; JAR **1** VEX `not_affected` |
+| **Trivy** (screenshot) | **2026-10-06** 15:29 | [`docs/vulnerabilities/image-20261006-152900.png`](docs/vulnerabilities/image-20261006-152900.png) | Scan com Spring 7.0.9 (incompatível com Boot 3.5) |
+| **Trivy** (imagem container + JAR) | **2026-06-26** | [`docs/vulnerabilities/trivy.txt`](docs/vulnerabilities/trivy.txt) | Export anterior: Alpine 3.23.5 — [detalhes](docs/vulnerabilities/ALPINE-2026.md) |
+| **Tenable** (SCA) | **2026-06-26** 11:01 | [`docs/vulnerabilities/Vulnerabilities_All_2026-06-26-11_01.csv`](docs/vulnerabilities/Vulnerabilities_All_2026-06-26-11_01.csv) · [`docs/vulnerabilities/Software_Filtered_2026-06-26-11_01.csv`](docs/vulnerabilities/Software_Filtered_2026-06-26-11_01.csv) | Achados em dependências (ex.: Spring `spring-webmvc` 6.2.11); ver CSV para severidade e fix version |
+| **Tenable** (screenshot) | **2026-06-26** 13:58 | [`docs/vulnerabilities/image-20260626-135821.png`](docs/vulnerabilities/image-20260626-135821.png) | Evidência visual da varredura |
 
 ---
 
 ## Referências
 
-- [README.md](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/README.md)
-- [docs/INSTALACAO.md](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/INSTALACAO.md) · [Helm (guia oficial)](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/feat/mop-client-install/docs/INSTALA_MOP_CLIENT.md)
-- [docs/VARIAVEIS_DE_AMBIENTE.md](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/VARIAVEIS_DE_AMBIENTE.md)
-- [docs/REPROCESSAMENTO.md](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/REPROCESSAMENTO.md)
-- [docs/vulnerabilities/](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/vulnerabilities/) — artefatos de varredura (Trivy, Tenable)
-- [docs/vulnerabilities/ALPINE-2026.md](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/docs/vulnerabilities/ALPINE-2026.md) — CVEs Critical/High na imagem Alpine
+- [README.md](README.md)
+- [docs/INSTALACAO.md](docs/INSTALACAO.md) · [Helm (guia oficial)](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/feat/mop-client-install/docs/INSTALA_MOP_CLIENT.md)
+- [docs/VARIAVEIS_DE_AMBIENTE.md](docs/VARIAVEIS_DE_AMBIENTE.md)
+- [docs/REPROCESSAMENTO.md](docs/REPROCESSAMENTO.md)
+- [docs/vulnerabilities/](docs/vulnerabilities/) — artefatos de varredura (Trivy, Tenable)
+- [docs/vulnerabilities/ALPINE-2026.md](docs/vulnerabilities/ALPINE-2026.md) — CVEs Critical/High na imagem Alpine
 - [Open Insurance Brasil](https://www.gov.br/susep/pt-br/assuntos/open-insurance)
 
 **Última revisão:** alinhada ao serviço unificado com fila de retry e circuitos HTTP.

@@ -20,16 +20,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 /**
- * Substitui o corpo JSON do POST pelo <strong>JWT compacto</strong> assinado e define
- * {@code Content-Type: application/jwt}, conforme exigido pelo endpoint {@code /process} do MOP.
+ * Interceptor do {@code RestTemplate}: rastreio {@code /process} e funil {@code /metrics}.
  *
- * <p>O JWT é gerado a partir do JSON original (claims em {@link br.com.opin.mopclient.security.JwtPayloadSigner}).
- * O JSON em claro não é enviado na rede quando há chave configurada.</p>
- *
- * <p><b>Modo passthrough sem assinatura</b>: quando construído com {@code allowUnsignedPassthrough=true}
- * (e {@code enabled=false}), permite que o body JSON saia em claro — destinado <i>somente</i> a desenvolvimento
- * local sem credenciais JWS. Cada requisição emite WARN com {@code correlationId}. Esse modo é ativado pelo
- * {@code PayloadSigningConfig} apenas quando nenhuma chave privada foi configurada.</p>
+ * <p>{@code enabled=true}: troca JSON por JWT PS256 ({@code application/jwt}).
+ * {@code enabled=false} e passthrough: JSON em claro ({@code application/json}).</p>
  */
 public final class PayloadSigningInterceptor implements ClientHttpRequestInterceptor {
 
@@ -63,8 +57,8 @@ public final class PayloadSigningInterceptor implements ClientHttpRequestInterce
                                     + "Configure mop.payload-signing.private-key-pem (and do not set enabled=false when the key is present).");
                 }
                 LOGGER.warn(
-                        "[JWS] Sending JSON body UNSIGNED to MOP — no private key configured (dev mode). "
-                                + "method={} URI={} bodyLength={} correlationId={}",
+                        "[JWS] UNSIGNED JSON (MOP_PAYLOAD_SIGNING_ENABLED=false) | "
+                                + "process and funnel | method={} URI={} bodyLength={} correlationId={}",
                         request.getMethod(),
                         request.getURI(),
                         body.length,

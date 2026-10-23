@@ -66,7 +66,7 @@ Todos os endpoints do MOP usados pelo gateway ficam sob o prefixo `mop.endpoints
 
 | Propriedade | Variável | Padrão (base) | Descrição |
 |---|---|---|---|
-| `mop.endpoints.consent-funnel-metrics.url` | `MOP_CONSENT_FUNNEL_METRICS_URL` | intranet `.../metrics` | URL completa do destino PCM após `POST /v1/data-funil-consents`. **Sandbox:** `https://mop-server-entrypoint-sandbox.opinbrasil.com.br/metrics`. Contrato do JSON: [`consent-funnel.yml`](https://github.com/br-openinsurance/opin-mop-gateway-pub/blob/main/src/main/resources/swagger/consent-funnel/consent-funnel.yml). |
+| `mop.endpoints.consent-funnel-metrics.url` | `MOP_CONSENT_FUNNEL_METRICS_URL` | intranet `.../metrics` | URL completa do destino PCM após `POST /v1/data-funil-consents`. **Sandbox:** `https://mop-server-entrypoint-sandbox.opinbrasil.com.br/metrics`. Contrato do JSON: `swagger/consent-funnel/consent-funnel.yml`. |
 | `mop.endpoints.consent-funnel-metrics.enabled` | `MOP_CONSENT_FUNNEL_METRICS_ENABLED` | `true` | Quando `false`, o gateway valida o evento e não envia a métrica. |
 
 ---
@@ -77,7 +77,7 @@ Configura a assinatura do payload final enviado ao MOP. **Obrigatória em produ�
 
 | Propriedade | Variável | Padrão | Descrição |
 |---|---|---|---|
-| `mop.payload-signing.enabled` | `MOP_PAYLOAD_SIGNING_ENABLED` | `true` | Liga/desliga a assinatura JWS. Quando `true`, exige `JWS_PRIVATE_KEY`, `JWS_KID` e `JWS_ORG_ID` (validados no startup). Quando `false`, o payload é enviado **sem assinatura** (ver regras abaixo). |
+| `mop.payload-signing.enabled` | `MOP_PAYLOAD_SIGNING_ENABLED` | `true` | Liga/desliga a assinatura JWS nos **dois** envios de saída: rastreio `POST /process` **e** funil `POST` em `MOP_CONSENT_FUNNEL_METRICS_URL`. `true` = JWT PS256. `false` = JSON em claro (assinatura na borda). |
 | `mop.payload-signing.private-key-pem` | `JWS_PRIVATE_KEY` | **sem default** ⚠️ | Chave privada PKCS#8 em PEM. No `application.yml` base, é referenciada sem default (`${JWS_PRIVATE_KEY}`), então deve estar definida quando o profile base é carregado e, em especial, quando `MOP_PAYLOAD_SIGNING_ENABLED=true`. |
 | `mop.payload-signing.key-id` | `JWS_KID` | **sem default** ⚠️ | `kid` no header JWT — deve casar com chave publicada no JWKS do participante. No `application.yml` base, é referenciado sem default (`${JWS_KID}`), então deve estar definido quando `MOP_PAYLOAD_SIGNING_ENABLED=true`. |
 | `mop.payload-signing.org-id` | `JWS_ORG_ID` | **sem default** ⚠️ | `orgId` (UUID) nas claims do JWT e em `trace.OrgId`. No `application.yml` base, é referenciado sem default (`${JWS_ORG_ID}`) e é validado no startup. |
@@ -89,7 +89,7 @@ Configura a assinatura do payload final enviado ao MOP. **Obrigatória em produ�
 | `JWS_PRIVATE_KEY` | `MOP_PAYLOAD_SIGNING_ENABLED` | Comportamento |
 |---|---|---|
 | definido | `true` (default) | ✅ **Assinado** (recomendado) |
-| definido | `false` | ⚠️ **Sem assinatura** — payload sai **unsigned** mesmo com chave configurada (útil para ambientes/dev específicos; não recomendado em produção). |
+| definido | `false` | JSON em claro no `/process` **e** no funil `/metrics` (mesmo flag). |
 | vazio | `true` (default) | ❌ **Erro no boot** (`enabled=true` exige chave + `kid` + `orgId`) |
 | vazio | `false` | ❌ **Erro no boot** (no base YAML, as variáveis `JWS_*` são placeholders sem default) |
 
